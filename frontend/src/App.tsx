@@ -1,26 +1,37 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-function App() {
+import "./styles/global.css";
+import { ThemeProvider } from './styles/ThemeContext';
+import MainLayout from './layouts/mainLayout';
+import VoterLandingPage from './pages/voter/voterLandingPage';
+
+// Voter pages
+
+// Official pages
+
+// Shared pages
+
+const App: React.FC = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<MainLayout />}>
+
+            {/* Voter routes */}
+            <Route path="/voter/landing" element={<VoterLandingPage />} />
+
+            {/* Official routes */}
+
+            {/* Shared routes */}
+
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
-}
+};
 
 export default App;
+
