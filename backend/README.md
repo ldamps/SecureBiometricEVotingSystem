@@ -1,4 +1,4 @@
-# Secure Biometric E-Voting System – Backend
+# Secure Biometric E-Voting System – Backend //update needed//
 
 FastAPI backend for the Secure Biometric Electronic Voting System.
 
@@ -52,3 +52,28 @@ backend/
 ```
 
 CORS is configured so the React frontend at `http://localhost:3000` can call this API.
+
+## pgAdmin
+
+1. Install PostgreSQL
+2. Install pgAdmin
+3. In pgAdmin, add a Server:
+Right‑click Servers → Register → Server.
+General tab: name it e.g. “Local” or “E-Voting”.
+Connection tab:
+Host: localhost
+Port: 5432
+Username: postgres (default superuser)
+Password: the one you set during PostgreSQL install (or the default if you didn’t change it).
+Save; pgAdmin will connect to PostgreSQL.
+Create a database:
+Right‑click the server → Create → Database.
+Name it e.g. secure_evoting or evoting_db.
+Owner: postgres (or a user you create).
+Save.
+(Optional but recommended) Create a user for the app:
+Right‑click Login/Group Roles → Create → Login/Group Role.
+General: name e.g. evoting_app.
+Definition: set a password.
+Privileges: enable “Can login”.
+Then grant that role privileges on your database (e.g. right‑click the database → Properties → Security or use SQL to GRANT ALL ON DATABASE secure_evoting TO evoting_app;).

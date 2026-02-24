@@ -2,6 +2,7 @@
 FastAPI backend for Secure Biometric E-Voting System.
 Run with: uvicorn main:app --reload
 """
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
