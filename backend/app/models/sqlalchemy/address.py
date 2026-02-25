@@ -1,4 +1,21 @@
+"""Address model - voter address (encrypted)."""
 
+from __future__ import annotations
+
+import uuid
+import enum
+from sqlalchemy import ForeignKey, String, Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base.sqlalchemy_base import Base, EncryptedBytes
+
+
+class AddressType(str, enum.Enum):
+    """ Address Type """
+    OVERSEAS = "OVERSEAS" # Overseas address
+    LOCAL_CURRENT = "LOCAL_CURRENT" # Current local address
+    LOCAL_PAST = "LOCAL_PAST" # Past local address needed for those overseas
 
 class Address(Base):
     """ 
@@ -6,3 +23,29 @@ class Address(Base):
     """
 
     __tablename__ = "address"
+
+    # Target scope ----------
+    voter_id : Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("voter.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Data ----------
+    address_type : Mapped[AddressType] = mapped_column(
+        SAEnum(AddressType, name="address_type_enum", create_constraint=True),
+        nullable=False,
+        index=True,
+    )
+    address_type: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    address_line1: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+    address_line2: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+    town: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+    postcode: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+    county: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+    country: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+
+    # Relationships ----------
+
+    # Database constraints + indexes ----------

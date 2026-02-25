@@ -1,0 +1,42 @@
+"""Biometric template model - stored template per voter/modality."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Boolean, Float, ForeignKey, SmallInteger, String, TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base.sqlalchemy_base import Base
+
+
+class BiometricTemplate(Base):
+    """Biometric template (e.g. fingerprint/face) for a voter."""
+
+    __tablename__ = "biometric_template"
+
+    biometric_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("voter.voter_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    modality: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    template_data: Mapped[bytes | None] = mapped_column(nullable=True)  # raw bytes
+    quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    template_dimension: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    status: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    encoded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Relationships ----------
+
+    # Database constraints + indexes ----------
