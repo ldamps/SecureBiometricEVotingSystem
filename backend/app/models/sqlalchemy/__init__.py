@@ -19,7 +19,6 @@ from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.candidate import Candidate
 from app.models.sqlalchemy.seat_allocation import SeatAllocation
-from app.models.sqlalchemy.tally_allocation import TallyAllocation
 from app.models.sqlalchemy.vote import Vote
 from app.models.sqlalchemy.tally_result import TallyResult
 from app.models.sqlalchemy.error_report import ErrorReport
@@ -37,7 +36,6 @@ __all__ = [
     "ErrorReport",
     "Investigation",
     "SeatAllocation",
-    "TallyAllocation",
     "TallyResult",
     "Voter",
     "VoterLedger",

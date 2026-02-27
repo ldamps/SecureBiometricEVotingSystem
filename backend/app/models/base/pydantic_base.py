@@ -1,6 +1,13 @@
 """Base config for Pydantic schemas used with SQLAlchemy models."""
 
-from pydantic import ConfigDict
+from pydantic import BaseModel, ConfigDict
 
-# Use when schema is built from an ORM model (e.g. response schemas)
-ORM_CONFIG = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class BaseSchema(BaseModel):
+    """Base config for Pydantic schemas used with SQLAlchemy models."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+
+    

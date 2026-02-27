@@ -3,8 +3,11 @@ FastAPI backend for Secure Biometric E-Voting System.
 Run with: uvicorn main:app --reload
 """
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+
+from app.db import get_db
 
 app = FastAPI(
     title="Secure Biometric E-Voting System API",
@@ -32,6 +35,13 @@ def root():
 def health():
     """Health check for deployment and monitoring."""
     return {"status": "ok"}
+
+
+@app.get("/constituencies")
+def list_constituencies(db: Session = Depends(get_db)):
+    """List all constituencies (example DB-backed route)."""
+    from app.models.sqlalchemy import Constituency
+    return db.query(Constituency).all()
 
 
 if __name__ == "__main__":

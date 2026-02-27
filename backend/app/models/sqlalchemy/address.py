@@ -24,21 +24,22 @@ class Address(Base):
 
     __tablename__ = "address"
 
-    # Target scope ----------
-    voter_id : Mapped[uuid.UUID] = mapped_column(
+    address_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("voter.id", ondelete="CASCADE"),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    voter_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("voter.voter_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-
-    # Data ----------
-    address_type : Mapped[AddressType] = mapped_column(
+    address_type: Mapped[AddressType] = mapped_column(
         SAEnum(AddressType, name="address_type_enum", create_constraint=True),
         nullable=False,
         index=True,
     )
-    address_type: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     address_line1: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     address_line2: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     town: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)

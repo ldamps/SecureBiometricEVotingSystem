@@ -19,7 +19,33 @@ source venv/bin/activate   # Linux/macOS
 pip install -r requirements.txt
 ```
 
-### 3. Run the server
+### 3. Database setup
+
+1. **Create a PostgreSQL database** (e.g. `secure_evoting`) and note the connection details (user, password, host, port).
+
+2. **Configure the connection**  
+   Copy the example env file and set `DATABASE_URL`:
+   ```bash
+   cp example.env .env
+   ```
+   Edit `.env` and set:
+   ```bash
+   DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+   ```
+   Example for a local DB named `secure_evoting`:
+   ```bash
+   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/secure_evoting
+   ```
+
+3. **Create all tables** (run from the `backend` directory, with your venv activated):
+   ```bash
+   alembic upgrade head
+   ```
+   This applies the initial migration and creates every table (constituency, election, voter, address, ballot_token, vote, seat_allocation, tally_result, etc.). For later schema changes, add new migrations with `alembic revision --autogenerate -m "description"` then `alembic upgrade head`.
+
+   **Note:** Use a virtual environment (`python3 -m venv venv` then `source venv/bin/activate`) and install dependencies with `pip install -r requirements.txt` so that `psycopg2-binary` and `alembic` are available.
+
+### 4. Run the server
 
 **Development (with auto-reload):**
 
