@@ -1,4 +1,6 @@
-// Navbar component for the e-voting platform
+// Navbar component for the e-voting platform - will be seen on all pages
+
+
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
@@ -14,11 +16,11 @@ const Navbar: React.FC = () => {
       style={{
         position: "sticky",
         top: 0,
-        zIndex: 100,
+        zIndex: 200,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        height: layout.navHeight,
+        height: "72px",
         padding: `0 ${spacing.lg}`,
         backgroundColor: colors.navBackground,
         color: colors.navText,
@@ -30,7 +32,7 @@ const Navbar: React.FC = () => {
         style={{
           color: colors.navText,
           textDecoration: "none",
-          fontSize: fontSizes.lg,
+          fontSize: fontSizes.xl || "1.5rem",
           fontWeight: fontWeights.bold,
           letterSpacing: "0.02em",
         }}
@@ -38,68 +40,156 @@ const Navbar: React.FC = () => {
         Official UK Voting Platform
       </Link>
 
-      {/* Info icon button */}
-      <div style={{ position: "relative" }}>
+      {/* Right side: theme toggle + info button */}
+      <div style={{ display: "flex", alignItems: "center", gap: spacing.md }}>
+        {/* Light/Dark mode toggle */}
         <button
-          onClick={() => setShowInfo(!showInfo)}
-          aria-label="Information"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          title={mode === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
           style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            border: `2px solid ${colors.navText}`,
+            padding: "0",
             backgroundColor: "transparent",
+            border: "none",
             color: colors.navText,
-            fontSize: fontSizes.base,
-            fontWeight: fontWeights.bold,
+            fontSize: fontSizes.base || "1rem",
             cursor: "pointer",
+            whiteSpace: "nowrap",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            lineHeight: 1,
           }}
         >
-          i
+          {mode === "light" ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.navText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.navText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            )}
         </button>
 
-        {/* Info dropdown */}
-        {showInfo && (
-          <div
+        {/* Info icon button */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowInfo(!showInfo)}
+            aria-label="Information"
+            title="Information"
             style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              right: 0,
-              width: "240px",
-              backgroundColor: colors.surface,
-              color: colors.text.primary,
-              border: `1px solid ${colors.border}`,
-              borderRadius: theme.borderRadius.md,
-              padding: spacing.md,
-              boxShadow: colors.shadows.lg,
-              fontSize: fontSizes.sm,
-              zIndex: 200,
+              width: "36px",
+              height: "36px",
+              borderRadius: "50%",
+              border: `2px solid ${colors.navText}`,
+              backgroundColor: "transparent",
+              color: colors.navText,
+              fontSize: fontSizes.lg || "1.125rem",
+              fontWeight: fontWeights.bold,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              lineHeight: 1,
             }}
           >
-            <p style={{ marginBottom: spacing.sm }}>
-              The Official UK Voting Platform for secure online voting.
-            </p>
-            <button
-              onClick={toggleTheme}
+            i
+          </button>
+
+          {/* Info dropdown with options */}
+          {showInfo && (
+            <div
               style={{
-                width: "100%",
-                padding: `${spacing.xs} ${spacing.sm}`,
-                backgroundColor: colors.surfaceAlt,
-                border: `1px solid ${colors.border}`,
-                borderRadius: theme.borderRadius.sm,
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                right: 0,
+                width: "260px",
+                backgroundColor: colors.surface,
                 color: colors.text.primary,
-                fontSize: fontSizes.sm,
-                cursor: "pointer",
+                border: `1px solid ${colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                padding: spacing.md,
+                boxShadow: colors.shadows.lg,
+                fontSize: fontSizes.base || "1rem",
+                zIndex: 200,
               }}
             >
-              {mode === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}
-            </button>
-          </div>
-        )}
+              <p style={{ marginBottom: spacing.md, fontSize: fontSizes.base || "1rem" }}>
+                The Official UK Voting Platform for secure online voting.
+              </p>
+              <nav
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: spacing.xs,
+                }}
+              >
+                <Link
+                  to="/a"
+                  onClick={() => setShowInfo(false)}
+                  style={{
+                    display: "block",
+                    padding: `${spacing.xs} ${spacing.sm}`,
+                    backgroundColor: colors.surfaceAlt,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: theme.borderRadius.sm,
+                    color: colors.text.primary,
+                    fontSize: fontSizes.base || "1rem",
+                    textDecoration: "none",
+                    textAlign: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  About the Platform
+                </Link>
+                <Link
+                  to="/b"
+                  onClick={() => setShowInfo(false)}
+                  style={{
+                    display: "block",
+                    padding: `${spacing.xs} ${spacing.sm}`,
+                    backgroundColor: colors.surfaceAlt,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: theme.borderRadius.sm,
+                    color: colors.text.primary,
+                    fontSize: fontSizes.base || "1rem",
+                    textDecoration: "none",
+                    textAlign: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  Register to Vote
+                </Link>
+                <Link
+                  to="/c"
+                  onClick={() => setShowInfo(false)}
+                  style={{
+                    display: "block",
+                    padding: `${spacing.xs} ${spacing.sm}`,
+                    backgroundColor: colors.surfaceAlt,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: theme.borderRadius.sm,
+                    color: colors.text.primary,
+                    fontSize: fontSizes.base || "1rem",
+                    textDecoration: "none",
+                    textAlign: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  The Voting Process
+                </Link>
+              </nav>
+            </div>
+          )}
+        </div>
       </div>
     </nav>
   );
