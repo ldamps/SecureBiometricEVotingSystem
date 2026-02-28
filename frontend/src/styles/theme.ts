@@ -90,16 +90,16 @@ const lightColors = {
   
 // Dark theme colors
 const darkColors = {
-    navBackground: "#0D1225",
+    navBackground: "#1B2444",
     navText: "#FFFFFF",
   
-    primary: "#818CF8",
+    primary: "#162C55",
     primaryHover: "#6366F1",
     secondary: "#A5B4FC",
     secondaryHover: "#818CF8",
     accent: "#FBBF24",
   
-    background: "#0F1225",
+    background: "#0A1228",
     surface: "#1A1F3D",
     surfaceAlt: "#232849",
     border: "#2E3461",
@@ -108,7 +108,7 @@ const darkColors = {
       primary: "#F1F5F9",
       secondary: "#94A3B8",
       light: "#64748B",
-      inverse: "#0F172A",
+      inverse: "#FFFFFF",
     },
   
     status: {

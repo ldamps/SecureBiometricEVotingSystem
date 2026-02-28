@@ -32,7 +32,7 @@ const Navbar: React.FC = () => {
         style={{
           color: colors.navText,
           textDecoration: "none",
-          fontSize: fontSizes.xl || "1.5rem",
+          fontSize: fontSizes["2xl"],
           fontWeight: fontWeights.bold,
           letterSpacing: "0.02em",
         }}
@@ -52,7 +52,7 @@ const Navbar: React.FC = () => {
             backgroundColor: "transparent",
             border: "none",
             color: colors.navText,
-            fontSize: fontSizes.base || "1rem",
+            fontSize: fontSizes["4xl"],
             cursor: "pointer",
             whiteSpace: "nowrap",
             display: "flex",
@@ -61,7 +61,7 @@ const Navbar: React.FC = () => {
           }}
         >
           {mode === "light" ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.navText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={colors.navText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
               </svg>
             ) : (
@@ -86,8 +86,8 @@ const Navbar: React.FC = () => {
             aria-label="Information"
             title="Information"
             style={{
-              width: "36px",
-              height: "36px",
+              width: "40px",
+              height: "40px",
               borderRadius: "50%",
               border: `2px solid ${colors.navText}`,
               backgroundColor: "transparent",
