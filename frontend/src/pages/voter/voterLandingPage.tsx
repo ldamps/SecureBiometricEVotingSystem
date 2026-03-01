@@ -77,6 +77,7 @@ const VoterLandingPage: React.FC = () => {
             fontSize: fontSizes["2xl"],
             fontWeight: fontWeights.semibold,
           }}
+          onClick={() => navigate("/voter/register")}
         >
           Register To Vote
         </button>

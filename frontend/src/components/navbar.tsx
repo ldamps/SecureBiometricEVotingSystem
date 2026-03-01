@@ -28,7 +28,7 @@ const Navbar: React.FC = () => {
       }}
     >
       <Link
-        to="/"
+        to="/voter/landing"
         style={{
           color: colors.navText,
           textDecoration: "none",
@@ -65,7 +65,7 @@ const Navbar: React.FC = () => {
                 <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
               </svg>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={colors.navText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={colors.navText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
                 <line x1="12" y1="21" x2="12" y2="23" />
@@ -133,7 +133,7 @@ const Navbar: React.FC = () => {
                 }}
               >
                 <Link
-                  to="/a"
+                  to="/voter/about"
                   onClick={() => setShowInfo(false)}
                   style={{
                     display: "block",
@@ -151,7 +151,25 @@ const Navbar: React.FC = () => {
                   About the Platform
                 </Link>
                 <Link
-                  to="/b"
+                  to="/voter/voting-process"
+                  onClick={() => setShowInfo(false)}
+                  style={{
+                    display: "block",
+                    padding: `${spacing.xs} ${spacing.sm}`,
+                    backgroundColor: colors.surfaceAlt,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: theme.borderRadius.sm,
+                    color: colors.text.primary,
+                    fontSize: fontSizes.base || "1rem",
+                    textDecoration: "none",
+                    textAlign: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  The Voting Process
+                </Link>
+                <Link
+                  to="/voter/register"
                   onClick={() => setShowInfo(false)}
                   style={{
                     display: "block",
@@ -169,7 +187,7 @@ const Navbar: React.FC = () => {
                   Register to Vote
                 </Link>
                 <Link
-                  to="/c"
+                  to="/voter/register"
                   onClick={() => setShowInfo(false)}
                   style={{
                     display: "block",
@@ -184,7 +202,25 @@ const Navbar: React.FC = () => {
                     cursor: "pointer",
                   }}
                 >
-                  The Voting Process
+                  Manage Vote Registration
+                </Link>
+                <Link
+                  to="/"
+                  onClick={() => setShowInfo(false)}
+                  style={{
+                    display: "block",
+                    padding: `${spacing.xs} ${spacing.sm}`,
+                    backgroundColor: colors.surfaceAlt,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: theme.borderRadius.sm,
+                    color: colors.text.primary,
+                    fontSize: fontSizes.base || "1rem",
+                    textDecoration: "none",
+                    textAlign: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  Vote Now
                 </Link>
               </nav>
             </div>

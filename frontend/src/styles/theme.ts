@@ -57,7 +57,7 @@ const lightColors = {
     navText: "#FFFFFF",
   
     primary: "#1B2444",
-    primaryHover: "#2A3660",
+    primaryHover: "#141429",
     secondary: "#4F5D8A",
     secondaryHover: "#3E4C73",
     accent: "#F59E0B",
@@ -69,7 +69,7 @@ const lightColors = {
   
     text: {
       primary: "#0F172A",
-      secondary: "#475569",
+      secondary: "#364150",
       light: "#94A3B8",
       inverse: "#FFFFFF",
     },
@@ -93,8 +93,8 @@ const darkColors = {
     navBackground: "#1B2444",
     navText: "#FFFFFF",
   
-    primary: "#162C55",
-    primaryHover: "#6366F1",
+    primary: "#1B2444",
+    primaryHover: "#253B61",
     secondary: "#A5B4FC",
     secondaryHover: "#818CF8",
     accent: "#FBBF24",
@@ -106,7 +106,7 @@ const darkColors = {
   
     text: {
       primary: "#F1F5F9",
-      secondary: "#94A3B8",
+      secondary: "#E3E9F1",
       light: "#64748B",
       inverse: "#FFFFFF",
     },
