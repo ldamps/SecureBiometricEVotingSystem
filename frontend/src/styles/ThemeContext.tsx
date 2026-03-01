@@ -24,10 +24,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const root = document.documentElement;
         root.style.setProperty("--color-primary", theme.colors.primary);
         root.style.setProperty("--color-primary-hover", theme.colors.primaryHover);
+        root.style.setProperty("--color-text-primary", theme.colors.text.primary);
+        root.style.setProperty("--color-text-secondary", theme.colors.text.secondary);
         root.style.setProperty("--color-text-inverse", theme.colors.text.inverse);
         root.style.setProperty("--border-radius-lg", theme.borderRadius.lg);
         root.style.setProperty("--shadow-md", theme.colors.shadows.md);
         root.style.setProperty("--shadow-lg", theme.colors.shadows.lg);
+        root.style.setProperty("--spacing-xs", theme.spacing.xs);
+        root.style.setProperty("--spacing-sm", theme.spacing.sm);
+        root.style.setProperty("--spacing-md", theme.spacing.md);
+        root.style.setProperty("--spacing-xl", theme.spacing.xl);
+        root.style.setProperty("--font-size-xl", theme.fontSizes.xl);
+        root.style.setProperty("--font-size-2xl", theme.fontSizes["2xl"]);
+        root.style.setProperty("--font-size-3xl", theme.fontSizes["3xl"]);
     }, [theme]);
 
     return (
