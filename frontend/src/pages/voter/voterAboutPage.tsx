@@ -2,30 +2,30 @@ import React from "react";
 import { useTheme } from "../../styles/ThemeContext";
 import {
     getLinkStyle,
-    getSectionStarStyle,
+    getSectionIconStyle,
     getH3Style,
     getPAfterHeaderStyle,
-    getHeaderH1Style,
+    getPageTitleStyle,
     getFirstSectionStyle,
     getSectionH2Style,
     getSectionWithPaddingStyle,
     getListStyle,
-} from "./voterAboutPage.styles";
+} from "../../styles/pageStyles";
 
 const VoterAboutPage: React.FC = () => {
     const { theme } = useTheme();
     const linkStyle = getLinkStyle(theme);
     const h3Style = getH3Style(theme);
     const pAfterHeaderStyle = getPAfterHeaderStyle(theme);
-    const headerH1Style = getHeaderH1Style(theme);
+    const pageTitleStyle = getPageTitleStyle(theme);
     const firstSectionStyle = getFirstSectionStyle(theme);
     const sectionH2Style = getSectionH2Style(theme);
     const sectionWithPaddingStyle = getSectionWithPaddingStyle(theme);
     const listStyle = getListStyle(theme);
-    const sectionStarStyle = getSectionStarStyle(theme);
+    const sectionIconStyle = getSectionIconStyle(theme);
 
     const sectionStar = (
-        <svg width="0.65em" height="0.65em" viewBox="0 0 24 24" style={sectionStarStyle} aria-hidden>
+        <svg width="0.65em" height="0.65em" viewBox="0 0 24 24" style={sectionIconStyle} aria-hidden>
             <path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.6-6.3 4.6 2.3-7-6-4.6h7.6z" />
         </svg>
     );
@@ -37,7 +37,7 @@ const VoterAboutPage: React.FC = () => {
             `}</style>
             <div className="voter-about-page">
                 <header>
-                    <h1 style={headerH1Style}>About the Platform</h1>
+                    <h1 style={pageTitleStyle}>About the Platform</h1>
                 </header>
 
                 {/* About the platform */}
