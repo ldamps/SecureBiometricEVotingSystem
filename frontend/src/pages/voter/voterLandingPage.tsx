@@ -92,6 +92,7 @@ const VoterLandingPage: React.FC = () => {
             fontWeight: fontWeights.semibold,
             padding: spacing.lg,
           }}
+          onClick={() => navigate("/voter/manage-registration")}
         >
           Manage Vote
           <br />
