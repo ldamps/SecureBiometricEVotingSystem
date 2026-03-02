@@ -68,6 +68,7 @@ const VoterLandingPage: React.FC = () => {
             fontWeight: fontWeights.bold,
             letterSpacing: "0.04em",
           }}
+          onClick={() => navigate("/voter/voting")}
         >
           Vote
         </button>

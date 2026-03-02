@@ -205,7 +205,7 @@ const Navbar: React.FC = () => {
                   Manage Vote Registration
                 </Link>
                 <Link
-                  to="/"
+                  to="/voter/voting"
                   onClick={() => setShowInfo(false)}
                   style={{
                     display: "block",

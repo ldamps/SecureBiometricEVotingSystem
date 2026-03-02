@@ -61,13 +61,14 @@ const VoterRegistrationPage: React.FC = () => {
         <p style={firstSectionStyle}>
           You can use this service to get on the electoral register so you can vote in elections in the UK.
           <br />
+          <br />
           You only need to register once - not for every election. If you have changed your name, address or nationality, you need to{" "}
           <a style={linkStyle} href="/voter/manage-registration">update your registration details</a>.
           <br />
+          To know more about the voting process, please visit the <a style={linkStyle} href="/voter/voting-process">The Voting Process</a> page.
           <br />
-          <p> 
-            This process will take around 5 minutes.
-          </p>
+          <br />
+          This process will take around 5 minutes.
         </p>
 
         {/* Before you start + Who can register - side by side (stack on mobile) */}

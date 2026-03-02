@@ -18,9 +18,6 @@ const VoterManageRegistrationPage: React.FC = () => {
     
     return (
         <div className="voter-manage-registration-page">
-            <style>
-
-            </style>
             <div className="voter-manage-registration-page voter-page-content" style={{ ...wrapperStyle }}>
                 <header>
                     <h1 style={pageTitleStyle}>Manage your voting details</h1>
