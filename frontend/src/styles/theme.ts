@@ -66,6 +66,7 @@ const lightColors = {
     surface: "#FFFFFF",
     surfaceAlt: "#EEF1FB",
     border: "#C7CDE8",
+    button: "#162F62",
   
     text: {
       primary: "#0F172A",
@@ -103,6 +104,7 @@ const darkColors = {
     surface: "#1A1F3D",
     surfaceAlt: "#232849",
     border: "#2E3461",
+    button: "#162F62",
   
     text: {
       primary: "#F1F5F9",

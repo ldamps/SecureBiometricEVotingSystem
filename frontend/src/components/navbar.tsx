@@ -13,6 +13,7 @@ const Navbar: React.FC = () => {
 
   return (
     <nav
+      className="app-nav"
       style={{
         position: "sticky",
         top: 0,
@@ -21,7 +22,6 @@ const Navbar: React.FC = () => {
         alignItems: "center",
         justifyContent: "space-between",
         height: "72px",
-        padding: `0 ${spacing.lg}`,
         backgroundColor: colors.navBackground,
         color: colors.navText,
         transition: "background-color 0.3s ease",
@@ -29,10 +29,10 @@ const Navbar: React.FC = () => {
     >
       <Link
         to="/voter/landing"
+        className="nav-brand"
         style={{
           color: colors.navText,
           textDecoration: "none",
-          fontSize: fontSizes["2xl"],
           fontWeight: fontWeights.bold,
           letterSpacing: "0.02em",
         }}

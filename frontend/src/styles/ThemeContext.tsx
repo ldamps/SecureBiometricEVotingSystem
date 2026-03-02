@@ -24,6 +24,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const root = document.documentElement;
         root.style.setProperty("--color-primary", theme.colors.primary);
         root.style.setProperty("--color-primary-hover", theme.colors.primaryHover);
+        root.style.setProperty("--color-button", theme.colors.button);
+        root.style.setProperty("--border-radius-md", theme.borderRadius.md);
         root.style.setProperty("--color-text-primary", theme.colors.text.primary);
         root.style.setProperty("--color-text-secondary", theme.colors.text.secondary);
         root.style.setProperty("--color-text-inverse", theme.colors.text.inverse);

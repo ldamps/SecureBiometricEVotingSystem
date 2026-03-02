@@ -10,6 +10,7 @@ import {
     getSectionH2Style,
     getSectionWithPaddingStyle,
     getListStyle,
+    getVoterPageContentWrapperStyle,
 } from "../../styles/pageStyles";
 
 const VoterAboutPage: React.FC = () => {
@@ -23,10 +24,11 @@ const VoterAboutPage: React.FC = () => {
     const sectionWithPaddingStyle = getSectionWithPaddingStyle(theme);
     const listStyle = getListStyle(theme);
     const sectionIconStyle = getSectionIconStyle(theme);
+    const wrapperStyle = getVoterPageContentWrapperStyle(theme);
 
-    const sectionStar = (
+    const sectionDiamond = (
         <svg width="0.65em" height="0.65em" viewBox="0 0 24 24" style={sectionIconStyle} aria-hidden>
-            <path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.6-6.3 4.6 2.3-7-6-4.6h7.6z" />
+            <rect x="4" y="4" width="16" height="16" rx="2" transform="rotate(45 12 12)" />
         </svg>
     );
 
@@ -35,7 +37,7 @@ const VoterAboutPage: React.FC = () => {
             <style>{`
                 .voter-about-page a:hover { color: ${theme.colors.primaryHover}; }
             `}</style>
-            <div className="voter-about-page">
+            <div className="voter-about-page voter-page-content" style={wrapperStyle}>
                 <header>
                     <h1 style={pageTitleStyle}>About the Platform</h1>
                 </header>
@@ -50,7 +52,7 @@ const VoterAboutPage: React.FC = () => {
                     </p>
                 </section>
 
-                { /* Our committtment to Data Protection in the UK */}
+                { /* Committtment to Data Protection in the UK */}
                 <section style={sectionWithPaddingStyle}>
                     <h2 style={sectionH2Style}>Our committtment to Data Protection in the UK</h2>
                     <p style={pAfterHeaderStyle}>
@@ -79,8 +81,9 @@ const VoterAboutPage: React.FC = () => {
                         </ul>
                     </p>
 
+                    { /* Privacy by Design */}
                     <h3 style={h3Style}>
-                        {sectionStar}
+                        {sectionDiamond}
                         Privacy by Design
                     </h3>
                     <p style={pAfterHeaderStyle}>
@@ -95,8 +98,9 @@ const VoterAboutPage: React.FC = () => {
                         Where processing activites present high ricks to individual rights and freedoms, we conduct Data Protection Impact Assessments (DPIAs) in accordance with UK GDPR requirements.
                     </p>
 
+                    { /* Transparency and Individual Rights */}
                     <h3 style={h3Style}>
-                        {sectionStar}
+                        {sectionDiamond}
                         Transparency and Individual Rights
                     </h3>
                     <p style={pAfterHeaderStyle}>
@@ -113,8 +117,9 @@ const VoterAboutPage: React.FC = () => {
                         In the unlikely event of a personal data breach, we follow established incident response procedures and where legally required, notify the Information Commissioner's Office within the mandated timeframe.
                     </p>
 
+                    { /* Accountability and Governance */}
                     <h3 style={h3Style}>
-                        {sectionStar}
+                        {sectionDiamond}
                         Accountability and Governance
                     </h3>
                     <p style={pAfterHeaderStyle}>

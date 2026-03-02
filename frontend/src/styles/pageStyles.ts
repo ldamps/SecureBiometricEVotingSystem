@@ -3,11 +3,12 @@
  * Each function takes the current theme and returns a React.CSSProperties object.
  * Use with useTheme() in page components.
  */
+
 import type { Theme } from "./theme";
 
 /** Link style (primary colour, underline) - for in-content links */
 export const getLinkStyle = (theme: Theme) => ({
-  color: theme.colors.primary,
+  color: theme.colors.secondary,
   textDecoration: "underline" as const,
 });
 
@@ -94,4 +95,47 @@ export const getListStyle = (theme: Theme) => ({
   color: theme.colors.text.secondary,
   lineHeight: 1.6,
   padding: theme.spacing.xl,
+});
+
+/** Centred content wrapper for voter pages – use with .voter-page-content class for responsive width */
+export const getVoterPageContentWrapperStyle = (theme: Theme) => ({
+  paddingLeft: theme.spacing.lg,
+  paddingRight: theme.spacing.lg,
+});
+
+// --- Voter registration page ---
+
+/** Card container (e.g. Before you start, Who can register) */
+export const getRegistrationCardStyle = (theme: Theme) => ({
+  backgroundColor: theme.colors.surface,
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: theme.borderRadius.lg,
+  padding: theme.spacing.xl,
+  boxShadow: theme.colors.shadows.sm,
+});
+
+/** Card title (h2) on registration page */
+export const getRegistrationCardTitleStyle = (theme: Theme) => ({
+  fontSize: theme.fontSizes.xl,
+  fontWeight: theme.fontWeights.bold,
+  color: theme.colors.text.primary,
+  marginBottom: theme.spacing.md,
+});
+
+/** Card body text on registration page */
+export const getRegistrationCardTextStyle = (theme: Theme) => ({
+  fontSize: theme.fontSizes.base,
+  color: theme.colors.text.secondary,
+  lineHeight: 1.6,
+  marginBottom: theme.spacing.sm,
+});
+
+/** List (ul) inside registration cards */
+export const getRegistrationListStyle = (theme: Theme) => ({
+  fontSize: theme.fontSizes.base,
+  color: theme.colors.text.secondary,
+  lineHeight: 1.8,
+  paddingLeft: theme.spacing.xl,
+  marginTop: theme.spacing.sm,
+  marginBottom: theme.spacing.sm,
 });
