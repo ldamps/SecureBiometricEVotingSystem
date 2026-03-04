@@ -2,7 +2,16 @@
 
 import React from "react";
 import { useTheme } from "../../styles/ThemeContext";
-import { getFirstSectionStyle, getLinkStyle, getListStyle, getPageTitleStyle } from "../../styles/pageStyles";
+import {
+    getFirstSectionStyle,
+    getLinkStyle,
+    getListStyle,
+    getPageTitleStyle,
+    getRegistrationCardStyle,
+    getRegistrationCardTitleStyle,
+    getRegistrationCardTextStyle,
+    getRegistrationListStyle,
+} from "../../styles/pageStyles";
 import PrimaryButton from "../../components/PrimaryButton";
 import { useNavigate } from "react-router-dom";
 
@@ -14,6 +23,10 @@ const VoteCastingPage: React.FC = () => {
     const firstSectionStyle = getFirstSectionStyle(theme);
     const listStyle = getListStyle(theme);
     const linkStyle = getLinkStyle(theme);
+    const cardStyle = getRegistrationCardStyle(theme);
+    const cardTitleStyle = getRegistrationCardTitleStyle(theme);
+    const cardTextStyle = getRegistrationCardTextStyle(theme);
+    const cardListStyle = getRegistrationListStyle(theme);
 
     return (
         <div className="voter-voting-page">
@@ -34,22 +47,28 @@ const VoteCastingPage: React.FC = () => {
                 To know more about the voting process, please visit the <a style={linkStyle} href="/voter/voting-process">The Voting Process</a> page.
                 <br />
                 <br />
-                <p>
-                    <i>Please note:
-                        <ul style={listStyle}>
-                            <li>You must be registered and eligible to vote in order to cast your vote. 
-                            <br />
-                            If you have not registered to vote yet, you can <a style={linkStyle} href="/voter/register">register to vote here</a></li>
-                            <li>Your registrations need to be up-to-date. <br /> 
-                            If you have changed your name, address or nationality, you need to <a style={linkStyle} href="/voter/manage-registration">update your registration details</a></li>
-                            <li>You can only vote once.</li>
-                            <li>You are only eligible to vote in elections run in your current constituency.</li>
-                            <li>Once verified, you will have 10 minutes to cast your vote. If you do not cast your vote within 10 minutes, you will need to start the process again.</li>
-                        </ul>
-                    </i>
-                </p>
+                <div style={cardStyle}>
+                    <h2 style={cardTitleStyle}>Please note</h2>
+                    <ul style={cardListStyle}>
+                        <li style={cardTextStyle}>You must be registered and eligible to vote in order to cast your vote.
+                        <br />
+                        If you have not registered to vote yet, you can <a style={linkStyle} href="/voter/register">register to vote here</a>.
+                        </li>
+                        <li style={cardTextStyle}>Your registrations need to be up-to-date.
+                        <br />
+                        If you have changed your name, address or nationality, you need to <a style={linkStyle} href="/voter/manage-registration">update your registration details</a>.
+                        </li>
+                        <li style={cardTextStyle}>You can only vote once.
+                        <br />
+                        You are only eligible to vote in elections run in your current constituency.
+                        </li>
+                        <li style={cardTextStyle}>You are only eligible to vote in elections run in your current constituency.</li>
+                        <li style={cardTextStyle}>Once verified, you will have 10 minutes to cast your vote. If you do not cast your vote within 10 minutes, you will need to start the process again.</li>
+                    </ul>
+                </div>
+                <br />
                 <PrimaryButton onClick={() => navigate("/voter/landing")}>Vote</PrimaryButton>
-            </p>
+            </p> 
         </div>
     )
 };
