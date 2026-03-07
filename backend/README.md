@@ -49,17 +49,22 @@ pip install -r requirements.txt
 
 **Development (with auto-reload):**
 
-```bash
-uvicorn main:app --reload
-```
+- **If you are already in the `backend` directory** (e.g. after running setup steps above):
 
-Or from the project root:
+  ```bash
+  uvicorn main:app --reload
+  ```
 
-```bash
-cd backend && uvicorn main:app --reload
-```
+- **If you are in the project root** (e.g. `SecureBiometricEVotingSystem/`), first change into `backend`, then run:
 
-The API will be available at **http://localhost:8000**.
+  ```bash
+  cd backend && uvicorn main:app --reload
+  ```
+
+
+**If you see "Address already in use"** — port 8000 is in use. Either stop the other process or use a different port: `uvicorn main:app --reload --port 8001`. To free port 8000 (Linux/macOS): `lsof -i :8000` then `kill <PID>`.
+
+The API will be available at **http://localhost:8000** (or the port you chose).
 
 - **API root:** http://localhost:8000/
 - **Health check:** http://localhost:8000/health
@@ -73,7 +78,7 @@ backend/
 ├── main.py           # FastAPI app and routes
 ├── requirements.txt
 ├── README.md
-└── app/              # Optional: routers, models, services
+└── app/              # Optional: routers, models, servicesuvicorn main:app --reload --port 8001
     └── __init__.py
 ```
 
