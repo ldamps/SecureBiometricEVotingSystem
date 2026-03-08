@@ -1,4 +1,4 @@
-
+from enum import Enum
 
 # Resource enums
 class Resource(Enum):

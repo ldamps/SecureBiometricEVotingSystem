@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-import uuid
 import enum
-from sqlalchemy import ForeignKey, String, Enum as SAEnum
+import uuid
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Enum as SAEnum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base.sqlalchemy_base import Base, EncryptedBytes
+
+if TYPE_CHECKING:
+    from app.models.sqlalchemy.voter import Voter
 
 
 class AddressType(str, enum.Enum):
@@ -47,6 +52,16 @@ class Address(Base):
     county: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     country: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
 
-    # Relationships ----------
+    # RELATIONSHIPS ----------
+
+    # voter -> address (one voter can have multiple addresses e.g. current + previous)
+    voter: Mapped["Voter"] = relationship(
+        "Voter",
+        back_populates="addresses",
+        cascade="all, delete-orphan",
+        lazy="select"
+    )
 
     # Database constraints + indexes ----------
+    __table_args__ = (
+    )
