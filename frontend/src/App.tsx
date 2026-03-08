@@ -14,6 +14,8 @@ import VoterManageRegistrationPage from '../../frontend/src/pages/voter/voterMan
 import VoterCastingPage from './pages/voter/voterVoting';
 
 // Official pages
+import OfficialLandingPage from './pages/official/officialLandingPage';
+import OfficialHomePage from './pages/official/officialHomePage';
 
 // Shared pages
 
@@ -33,7 +35,9 @@ const App: React.FC = () => {
             <Route path="/voter/voting" element={<VoterCastingPage />} />
 
             {/* Official routes */}
-
+            <Route path="/official/landing" element={<OfficialLandingPage />} />
+            <Route path="/official/home" element={<OfficialHomePage />} />
+            
             {/* Shared routes */}
 
           </Route>
