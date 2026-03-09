@@ -5,26 +5,19 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
 import PrimaryButton from "../../components/PrimaryButton";
 import {
-  getPageTitleStyle,
-  getFirstSectionStyle,
-  getVoterPageContentWrapperStyle,
-  getLinkStyle,
-  getRegistrationCardStyle,
-  getRegistrationCardTitleStyle,
+  VoterPageWrapper,
+  VoterPageHeader,
+  VoterFirstSection,
+  VoterCard,
+  VoterLink,
   getRegistrationCardTextStyle,
   getRegistrationListStyle,
-} from "../../styles/pageStyles";
+} from "../../features/components";
 
 const VoterRegistrationPage: React.FC = () => {
   const { theme } = useTheme();
   const { colors, spacing } = theme;
   const navigate = useNavigate();
-  const pageTitleStyle = getPageTitleStyle(theme);
-  const firstSectionStyle = getFirstSectionStyle(theme);
-  const wrapperStyle = getVoterPageContentWrapperStyle(theme);
-  const linkStyle = getLinkStyle(theme);
-  const cardStyle = getRegistrationCardStyle(theme);
-  const cardTitleStyle = getRegistrationCardTitleStyle(theme);
   const cardTextStyle = getRegistrationCardTextStyle(theme);
   const listStyle = getRegistrationListStyle(theme);
 
@@ -52,57 +45,52 @@ const VoterRegistrationPage: React.FC = () => {
           }
         }
       `}</style>
-      <div className="voter-registration-page voter-page-content" style={wrapperStyle}>
-        <header>
-          <h1 style={pageTitleStyle}>Register to Vote</h1>
-        </header>
+      <VoterPageWrapper className="voter-registration-page">
+        <VoterPageHeader title="Register to Vote" />
 
         {/* Register to vote intro */}
-        <p style={firstSectionStyle}>
+        <VoterFirstSection>
           You can use this service to get on the electoral register so you can vote in elections in the UK.
           <br />
           <br />
           You only need to register once - not for every election. If you have changed your name, address or nationality, you need to{" "}
-          <a style={linkStyle} href="/voter/manage-registration">update your registration details</a>.
+          <VoterLink href="/voter/manage-registration">update your registration details</VoterLink>.
           <br />
-          To know more about the voting process, please visit the <a style={linkStyle} href="/voter/voting-process">The Voting Process</a> page.
+          To know more about the voting process, please visit the <VoterLink href="/voter/voting-process">The Voting Process</VoterLink> page.
           <br />
           <br />
           This process will take around 5 minutes.
-        </p>
+        </VoterFirstSection>
 
         {/* Before you start + Who can register - side by side (stack on mobile) */}
         <div className="registration-cards-grid">
           {/* Before you start */}
-          <div style={cardStyle}>
-            <h2 style={cardTitleStyle}>Before you start</h2>
+          <VoterCard title="Before you start">
             <p style={cardTextStyle}>
               You'll be asked for your National Insurance number (but you can still register if you do not have one).
             </p>
             <p style={{ ...cardTextStyle, marginBottom: 0 }}>
-              <a style={linkStyle} href="https://www.gov.uk/find-national-insurance-number">Find your National Insurance number here on Gov.UK</a>.
+              <VoterLink href="https://www.gov.uk/find-national-insurance-number">Find your National Insurance number here on Gov.UK</VoterLink>.
             </p>
             <br />
             <p style={cardTextStyle}>
                 You will also be asked to register biometrics as part of the registration process.
             </p>
-          </div>
+          </VoterCard>
 
           {/* Who can register */}
-          <div style={cardStyle}>
-            <h2 style={cardTitleStyle}>Who can register to vote</h2>
+          <VoterCard title="Who can register to vote">
             <p style={cardTextStyle}>
               You can register to vote up to 2 years before you reach voting age —{" "}
-              <a style={linkStyle} href="/voter/voting-process">check the rules around voting in the UK</a>.
+              <VoterLink href="/voter/voting-process">check the rules around voting in the UK</VoterLink>.
             </p>
-          </div>
+          </VoterCard>
         </div>
 
         {/* England/NI + Scotland/Wales - side by side (stack on mobile) */}
         <div className="registration-cards-grid">
           {/* England or Northern Ireland */}
-          <div style={cardStyle}>
-            <h2 style={cardTitleStyle}>If you live in England or Northern Ireland</h2>
+          <VoterCard title="If you live in England or Northern Ireland">
             <p style={cardTextStyle}>
               You must be aged <strong>16 or over</strong> to register.
             </p>
@@ -117,11 +105,10 @@ const VoterRegistrationPage: React.FC = () => {
               <li>a citizen of Denmark, Luxembourg, Poland, Portugal or Spain</li>
               <li>a citizen of another EU country, who on or before 31 December 2020 had permission to enter or stay (or did not need permission) and this has continued without a break</li>
             </ul>
-          </div>
+          </VoterCard>
 
           {/* Scotland or Wales */}
-          <div style={cardStyle}>
-            <h2 style={cardTitleStyle}>If you live in Scotland or Wales</h2>
+          <VoterCard title="If you live in Scotland or Wales">
             <p style={cardTextStyle}>
               You must be aged <strong>14 or over</strong> to register.
             </p>
@@ -131,12 +118,11 @@ const VoterRegistrationPage: React.FC = () => {
             <p style={cardTextStyle}>
               You can also register if you have permission to enter or stay in the UK, Channel Islands or Isle of Man, or you do not need permission.
             </p>
-          </div>
+          </VoterCard>
         </div>
 
         {/* If you live abroad - full width (inner columns stack on mobile) */}
-        <div style={{ ...cardStyle, marginBottom: spacing.lg }}>
-          <h2 style={cardTitleStyle}>If you live abroad</h2>
+        <VoterCard title="If you live abroad" style={{ marginBottom: spacing.lg }}>
           <div className="registration-cards-grid-inner">
             <div>
               <p style={cardTextStyle}>
@@ -159,12 +145,12 @@ const VoterRegistrationPage: React.FC = () => {
               </p>
             </div>
           </div>
-        </div>
+        </VoterCard>
         { /* Register to vote button */}
         <div style={{ textAlign: "center", marginTop: spacing.xl }}>
           <PrimaryButton onClick={() => navigate("/voter/register")}>Register to Vote</PrimaryButton>
         </div>
-      </div>
+      </VoterPageWrapper>
     </div>
   );
 };

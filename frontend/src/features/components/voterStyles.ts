@@ -1,10 +1,10 @@
 /**
- * Reusable inline style getters for page content.
+ * Reusable inline style getters for voter page content.
  * Each function takes the current theme and returns a React.CSSProperties object.
  * Use with useTheme() in page components.
  */
 
-import type { Theme } from "./theme";
+import type { Theme } from "../../styles/theme";
 
 /** Link style (primary colour, underline) - for in-content links */
 export const getLinkStyle = (theme: Theme) => ({
@@ -102,8 +102,6 @@ export const getVoterPageContentWrapperStyle = (theme: Theme) => ({
   paddingLeft: theme.spacing.lg,
   paddingRight: theme.spacing.lg,
 });
-
-// --- Voter registration page ---
 
 /** Card container (e.g. Before you start, Who can register) */
 export const getRegistrationCardStyle = (theme: Theme) => ({

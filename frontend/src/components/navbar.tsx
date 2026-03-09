@@ -1,7 +1,5 @@
 // Navbar component for the e-voting platform - will be seen on all pages
 
-
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "../styles/ThemeContext";

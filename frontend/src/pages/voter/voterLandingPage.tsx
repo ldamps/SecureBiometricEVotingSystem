@@ -3,13 +3,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import { getVoterPageContentWrapperStyle } from "../../styles/pageStyles";
+import { VoterPageWrapper } from "../../features/components";
 
 const VoterLandingPage: React.FC = () => {
   const { theme } = useTheme();
   const { colors, spacing, fontSizes, fontWeights, fonts, layout } = theme;
   const navigate = useNavigate();
-  const wrapperStyle = getVoterPageContentWrapperStyle(theme);
 
   return (
     <div
@@ -22,7 +21,7 @@ const VoterLandingPage: React.FC = () => {
         padding: spacing["2xl"],
       }}
     >
-      <div className="container voter-page-content" style={{ ...wrapperStyle, flex: 1, display: "flex", flexDirection: "column" }}>
+      <VoterPageWrapper className="container" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Welcome header */}
         <header style={{ marginBottom: spacing.xl, textAlign: "center" }}>
           <h1
@@ -100,7 +99,7 @@ const VoterLandingPage: React.FC = () => {
           Registration Details
         </button>
         </div>
-      </div>
+      </VoterPageWrapper>
     </div>
   );
 };

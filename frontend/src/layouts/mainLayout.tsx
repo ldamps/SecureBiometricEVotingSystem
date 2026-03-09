@@ -4,13 +4,14 @@ import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useTheme } from "../styles/ThemeContext";
 import Navbar from "../components/navbar";
+import OfficialNavbar from "../components/officialNavbar";
 
 const MainLayout: React.FC = () => {
   const { theme } = useTheme();
   const { colors } = theme;
   const { pathname } = useLocation();
   const isOfficialLanding = pathname === "/official/landing";
-  const isOfficialHome = pathname === "/official/home";
+  const isOfficialPage = pathname.startsWith("/official/");
 
   return (
     <div
@@ -23,7 +24,11 @@ const MainLayout: React.FC = () => {
         transition: "background-color 0.3s ease, color 0.3s ease",
       }}
     >
-      {!isOfficialLanding && !isOfficialHome && <Navbar />}
+      {isOfficialLanding ? null : isOfficialPage ? (
+        <OfficialNavbar />
+      ) : (
+        <Navbar />
+      )}
 
       <main style={{ flex: 1 }}>
         <Outlet />

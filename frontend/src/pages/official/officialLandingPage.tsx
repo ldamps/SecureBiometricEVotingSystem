@@ -6,7 +6,7 @@ import {
   getRegistrationCardStyle,
   getRegistrationCardTitleStyle,
   getRegistrationCardTextStyle,
-} from "../../styles/pageStyles";
+} from "../../features/components";
 
 const OfficialLandingPage: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();

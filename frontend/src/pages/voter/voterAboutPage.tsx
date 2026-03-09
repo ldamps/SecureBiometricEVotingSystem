@@ -1,46 +1,35 @@
 import React from "react";
 import { useTheme } from "../../styles/ThemeContext";
 import {
-    getLinkStyle,
-    getSectionIconStyle,
+    VoterPageWrapper,
+    VoterPageHeader,
+    VoterLink,
+    SectionDiamond,
     getH3Style,
     getPAfterHeaderStyle,
-    getPageTitleStyle,
     getFirstSectionStyle,
     getSectionH2Style,
     getSectionWithPaddingStyle,
     getListStyle,
-    getVoterPageContentWrapperStyle,
-} from "../../styles/pageStyles";
+} from "../../features/components";
 
 const VoterAboutPage: React.FC = () => {
     const { theme } = useTheme();
-    const linkStyle = getLinkStyle(theme);
     const h3Style = getH3Style(theme);
     const pAfterHeaderStyle = getPAfterHeaderStyle(theme);
-    const pageTitleStyle = getPageTitleStyle(theme);
     const firstSectionStyle = getFirstSectionStyle(theme);
     const sectionH2Style = getSectionH2Style(theme);
     const sectionWithPaddingStyle = getSectionWithPaddingStyle(theme);
     const listStyle = getListStyle(theme);
-    const sectionIconStyle = getSectionIconStyle(theme);
-    const wrapperStyle = getVoterPageContentWrapperStyle(theme);
-
-    const sectionDiamond = (
-        <svg width="0.65em" height="0.65em" viewBox="0 0 24 24" style={sectionIconStyle} aria-hidden>
-            <rect x="4" y="4" width="16" height="16" rx="2" transform="rotate(45 12 12)" />
-        </svg>
-    );
 
     return (
         <div>
             <style>{`
                 .voter-about-page a:hover { color: ${theme.colors.primaryHover}; }
             `}</style>
-            <div className="voter-about-page voter-page-content" style={wrapperStyle}>
-                <header>
-                    <h1 style={pageTitleStyle}>About the Platform</h1>
-                </header>
+            <div className="voter-about-page">
+                <VoterPageWrapper className="voter-about-page">
+                    <VoterPageHeader title="About the Platform" />
 
                 {/* About the platform */}
                 <section style={firstSectionStyle}>
@@ -83,7 +72,7 @@ const VoterAboutPage: React.FC = () => {
 
                     { /* Privacy by Design */}
                     <h3 style={h3Style}>
-                        {sectionDiamond}
+                        <SectionDiamond />
                         Privacy by Design
                     </h3>
                     <p style={pAfterHeaderStyle}>
@@ -100,7 +89,7 @@ const VoterAboutPage: React.FC = () => {
 
                     { /* Transparency and Individual Rights */}
                     <h3 style={h3Style}>
-                        {sectionDiamond}
+                        <SectionDiamond />
                         Transparency and Individual Rights
                     </h3>
                     <p style={pAfterHeaderStyle}>
@@ -119,7 +108,7 @@ const VoterAboutPage: React.FC = () => {
 
                     { /* Accountability and Governance */}
                     <h3 style={h3Style}>
-                        {sectionDiamond}
+                        <SectionDiamond />
                         Accountability and Governance
                     </h3>
                     <p style={pAfterHeaderStyle}>
@@ -138,26 +127,27 @@ const VoterAboutPage: React.FC = () => {
                     <p style={pAfterHeaderStyle}>
                         To use the Official UK Voting Platform, please visit the following links:
                         <ul style={listStyle}>
-                            <li><a href="/voter/voting-process" style={linkStyle}>The Voting Process</a></li>
-                            <li><a href="/voter/register" style={linkStyle}>Register to Vote</a></li>
-                            <li><a href="/" style={linkStyle}>Manage Vote Registration</a></li>
-                            <li><a href="/" style={linkStyle}>Vote Now</a></li>
+                            <li><VoterLink href="/voter/voting-process">The Voting Process</VoterLink></li>
+                            <li><VoterLink href="/voter/register">Register to Vote</VoterLink></li>
+                            <li><VoterLink href="/">Manage Vote Registration</VoterLink></li>
+                            <li><VoterLink href="/">Vote Now</VoterLink></li>
                         </ul>
                         <br/>
                         Further links on UK Electoral Law and Data Protection can be found at the following sources:
                         <ul style={listStyle}>
                             <li>
-                                <a href="https://www.electoralcommission.org.uk/voting-and-elections" style={linkStyle} target="_blank" rel="noopener noreferrer">Electoral Commission</a>
+                                <VoterLink href="https://www.electoralcommission.org.uk/voting-and-elections" target="_blank" rel="noopener noreferrer">Electoral Commission</VoterLink>
                             </li>
                             <li>
-                                <a href="https://www.ico.org.uk/for-organisations/guide-to-data-protection/guide-to-the-general-data-protection-regulation-gdpr/" style={linkStyle} target="_blank" rel="noopener noreferrer">Information Commissioner's Office</a>
+                                <VoterLink href="https://www.ico.org.uk/for-organisations/guide-to-data-protection/guide-to-the-general-data-protection-regulation-gdpr/" target="_blank" rel="noopener noreferrer">Information Commissioner's Office</VoterLink>
                             </li>
                             <li>
-                                <a href="https://www.legislation.gov.uk/eur/2016/679/contents" style={linkStyle} target="_blank" rel="noopener noreferrer">General Data Protection Regulation (GDPR)</a>
+                                <VoterLink href="https://www.legislation.gov.uk/eur/2016/679/contents" target="_blank" rel="noopener noreferrer">General Data Protection Regulation (GDPR)</VoterLink>
                             </li>
                         </ul>
                     </p>
                 </section>
+                </VoterPageWrapper>
             </div>
         </div>
     );
