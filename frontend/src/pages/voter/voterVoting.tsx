@@ -13,7 +13,7 @@ import {
   getListStyle,
   getRegistrationCardTextStyle,
   getRegistrationListStyle,
-} from "../../features/components";
+} from "../../features/voter/components";
 
 const VoteCastingPage: React.FC = () => {
     const { theme } = useTheme();

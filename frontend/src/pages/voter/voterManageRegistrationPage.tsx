@@ -4,7 +4,7 @@ import React from "react";
 import { useTheme } from "../../styles/ThemeContext";
 import PrimaryButton from "../../components/PrimaryButton";
 import { useNavigate } from "react-router-dom";
-import { VoterPageWrapper, VoterPageHeader, VoterFirstSection, VoterLink, getListStyle } from "../../features/components";
+import { VoterPageWrapper, VoterPageHeader, VoterFirstSection, VoterLink, getListStyle } from "../../features/voter/components";
 
 const VoterManageRegistrationPage: React.FC = () => {
     const { theme } = useTheme();

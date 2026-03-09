@@ -1,6 +1,6 @@
 import React from "react";
-import { useTheme } from "../../styles/ThemeContext";
-import { getVoterPageContentWrapperStyle } from "./voterStyles";
+import { useTheme } from "../../../styles/ThemeContext";
+import { getVoterPageContentWrapperStyle } from "../../../features/voter/components/voterStyles";
 
 interface VoterPageWrapperProps {
   children: React.ReactNode;

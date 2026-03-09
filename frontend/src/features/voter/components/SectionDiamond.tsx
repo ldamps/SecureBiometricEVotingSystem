@@ -1,6 +1,6 @@
 import React from "react";
-import { useTheme } from "../../styles/ThemeContext";
-import { getSectionIconStyle } from "./voterStyles";
+import { useTheme } from "../../../styles/ThemeContext";
+import { getSectionIconStyle } from "../../../features/voter/components/voterStyles";
 
 const SectionDiamond: React.FC = () => {
   const { theme } = useTheme();

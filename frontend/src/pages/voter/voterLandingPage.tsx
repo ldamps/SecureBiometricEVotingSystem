@@ -3,7 +3,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import { VoterPageWrapper } from "../../features/components";
+import { VoterPageWrapper } from "../../features/voter/components";
 
 const VoterLandingPage: React.FC = () => {
   const { theme } = useTheme();

@@ -1,6 +1,6 @@
 import React from "react";
 import { useTheme } from "../../styles/ThemeContext";
-import { VoterPageWrapper, VoterPageHeader } from "../../features/components";
+import { VoterPageWrapper, VoterPageHeader } from "../../features/voter/components";
 
 const VoterVotingProcessPage: React.FC = () => {
     const { theme } = useTheme();

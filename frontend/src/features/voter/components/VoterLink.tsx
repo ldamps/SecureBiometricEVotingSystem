@@ -1,6 +1,6 @@
 import React from "react";
-import { useTheme } from "../../styles/ThemeContext";
-import { getLinkStyle } from "./voterStyles";
+import { useTheme } from "../../../styles/ThemeContext";
+import { getLinkStyle } from "../../../features/voter/components/voterStyles";
 
 interface VoterLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   children: React.ReactNode;

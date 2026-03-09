@@ -1,9 +1,9 @@
 import React from "react";
-import { useTheme } from "../../styles/ThemeContext";
+import { useTheme } from "../../../styles/ThemeContext";
 import {
   getRegistrationCardStyle,
   getRegistrationCardTitleStyle,
-} from "./voterStyles";
+} from "../../../features/voter/components/voterStyles";
 
 interface VoterCardProps {
   title: string;

@@ -1,12 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import {
-  getLinkStyle,
-  getRegistrationCardStyle,
-  getRegistrationCardTitleStyle,
-  getRegistrationCardTextStyle,
-} from "../../features/components";
 
 const OfficialLandingPage: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
@@ -70,14 +64,12 @@ const OfficialLandingPage: React.FC = () => {
 
       <div
         style={{
-          ...getRegistrationCardStyle(theme),
           maxWidth: "420px",
           width: "100%",
         }}
       >
         <h1
           style={{
-            ...getRegistrationCardTitleStyle(theme),
             marginTop: 0,
             marginBottom: spacing.xl,
             textAlign: "center",
@@ -171,26 +163,14 @@ const OfficialLandingPage: React.FC = () => {
             Login
           </button>
         </form>
-
+        <br />
         <p
           style={{
-            marginTop: spacing.lg,
-            marginBottom: spacing.xs,
-            fontSize: fontSizes.sm,
-            textAlign: "center",
-          }}
-        >
-          <Link to="/official/forgot-password" style={getLinkStyle(theme)}>
-            Forgot password?
-          </Link>
-        </p>
-        <p
-          style={{
-            ...getRegistrationCardTextStyle(theme),
             margin: 0,
             textAlign: "center",
             fontStyle: "italic",
             fontSize: fontSizes.sm,
+            color: colors.text.secondary,
           }}
         >
           If you have any queries or have forgotten your password, please contact admin@UKElection.com

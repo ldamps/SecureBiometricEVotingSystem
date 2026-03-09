@@ -11,7 +11,7 @@ import {
     getSectionH2Style,
     getSectionWithPaddingStyle,
     getListStyle,
-} from "../../features/components";
+} from "../../features/voter/components";
 
 const VoterAboutPage: React.FC = () => {
     const { theme } = useTheme();

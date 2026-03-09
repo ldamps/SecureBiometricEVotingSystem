@@ -1,6 +1,6 @@
 import React from "react";
-import { useTheme } from "../../styles/ThemeContext";
-import { getFirstSectionStyle } from "./voterStyles";
+import { useTheme } from "../../../styles/ThemeContext";
+import { getFirstSectionStyle } from "../../../features/voter/components/voterStyles";
 
 interface VoterFirstSectionProps {
   children: React.ReactNode;

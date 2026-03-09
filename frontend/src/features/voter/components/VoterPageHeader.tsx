@@ -1,6 +1,6 @@
 import React from "react";
-import { useTheme } from "../../styles/ThemeContext";
-import { getPageTitleStyle } from "./voterStyles";
+import { useTheme } from "../../../styles/ThemeContext";
+import { getPageTitleStyle } from "../../../features/voter/components/voterStyles";
 
 interface VoterPageHeaderProps {
   title: string;

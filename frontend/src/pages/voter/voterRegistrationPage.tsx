@@ -12,7 +12,7 @@ import {
   VoterLink,
   getRegistrationCardTextStyle,
   getRegistrationListStyle,
-} from "../../features/components";
+} from "../../features/voter/components";
 
 const VoterRegistrationPage: React.FC = () => {
   const { theme } = useTheme();

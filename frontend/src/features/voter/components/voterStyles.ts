@@ -4,7 +4,7 @@
  * Use with useTheme() in page components.
  */
 
-import type { Theme } from "../../styles/theme";
+import type { Theme } from "../../../styles/theme";
 
 /** Link style (primary colour, underline) - for in-content links */
 export const getLinkStyle = (theme: Theme) => ({
