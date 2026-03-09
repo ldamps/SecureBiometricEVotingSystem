@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
+import { getCardStyle } from "../../styles/ui";
 
 const OfficialLandingPage: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
@@ -66,6 +66,7 @@ const OfficialLandingPage: React.FC = () => {
         style={{
           maxWidth: "420px",
           width: "100%",
+          ...getCardStyle(theme),
         }}
       >
         <h1

@@ -3,12 +3,13 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import { VoterPageWrapper } from "../../features/voter/components";
+import { getVoterPageContentWrapperStyle } from "../../styles/ui";
 
 const VoterLandingPage: React.FC = () => {
   const { theme } = useTheme();
   const { colors, spacing, fontSizes, fontWeights, fonts, layout } = theme;
   const navigate = useNavigate();
+  const wrapperStyle = getVoterPageContentWrapperStyle(theme);
 
   return (
     <div
@@ -21,7 +22,7 @@ const VoterLandingPage: React.FC = () => {
         padding: spacing["2xl"],
       }}
     >
-      <VoterPageWrapper className="container" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div className="container voter-page-content" style={{ ...wrapperStyle, flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Welcome header */}
         <header style={{ marginBottom: spacing.xl, textAlign: "center" }}>
           <h1
@@ -58,51 +59,45 @@ const VoterLandingPage: React.FC = () => {
             minHeight: 0,
           }}
         >
-        {/* Vote - spans both rows on the left */}
-        <button
-          className="button-base"
-          style={{
-            gridRow: "1 / 3",
-            fontSize: fontSizes["4xl"],
-            fontWeight: fontWeights.bold,
-            letterSpacing: "0.04em",
-          }}
-          onClick={() => navigate("/voter/voting")}
-        >
-          Vote
-        </button>
-
-        {/* Register To Vote - top right */}
-        <button
-          className="button-base"
-          style={{
-            fontSize: fontSizes["2xl"],
-            fontWeight: fontWeights.semibold,
-          }}
-          onClick={() => navigate("/voter/register")}
-        >
-          Register To Vote
-        </button>
-
-        {/* Manage Vote Registration Details - bottom right */}
-        <button
-          className="button-base"
-          style={{
-            fontSize: fontSizes["2xl"],
-            fontWeight: fontWeights.semibold,
-            padding: spacing.lg,
-          }}
-          onClick={() => navigate("/voter/manage-registration")}
-        >
-          Manage Vote
-          <br />
-          Registration Details
-        </button>
+          <button
+            className="button-base"
+            style={{
+              gridRow: "1 / 3",
+              fontSize: fontSizes["4xl"],
+              fontWeight: fontWeights.bold,
+              letterSpacing: "0.04em",
+            }}
+            onClick={() => navigate("/voter/voting")}
+          >
+            Vote
+          </button>
+          <button
+            className="button-base"
+            style={{
+              fontSize: fontSizes["2xl"],
+              fontWeight: fontWeights.semibold,
+            }}
+            onClick={() => navigate("/voter/register")}
+          >
+            Register To Vote
+          </button>
+          <button
+            className="button-base"
+            style={{
+              fontSize: fontSizes["2xl"],
+              fontWeight: fontWeights.semibold,
+              padding: spacing.lg,
+            }}
+            onClick={() => navigate("/voter/manage-registration")}
+          >
+            Manage Vote
+            <br />
+            Registration Details
+          </button>
         </div>
-      </VoterPageWrapper>
+      </div>
     </div>
   );
 };
 
 export default VoterLandingPage;
-
