@@ -1,13 +1,20 @@
 import React, { useState } from "react";
 import { useTheme } from "../../styles/ThemeContext";
 import { getCardStyle } from "../../styles/ui";
+import { useNavigate } from "react-router-dom";
 
 const OfficialLandingPage: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
   const { colors, spacing, fontSizes, fontWeights, borderRadius } = theme;
+  const navigate = useNavigate();
 
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("")
+  const [password, setPassword] = useState("");
+
+  const handleLogin = () => {
+    console.log("Login clicked"); // TODO: Implement login logic
+    navigate("/official/home");
+  }
 
   return (
     <div
@@ -160,6 +167,7 @@ const OfficialLandingPage: React.FC = () => {
               borderRadius: borderRadius.md,
               cursor: "pointer",
             }}
+            onClick={handleLogin}
           >
             Login
           </button>

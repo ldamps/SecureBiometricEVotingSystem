@@ -11,7 +11,8 @@ import VoterAboutPage from '../../frontend/src/pages/voter/voterAboutPage';
 import VoterRegistrationPage from '../../frontend/src/pages/voter/voterRegistrationPage';
 import VoterVotingProcessPage from '../../frontend/src/pages/voter/voterVotingProcessPage';
 import VoterManageRegistrationPage from '../../frontend/src/pages/voter/voterManageRegistrationPage';
-import VoterCastingPage from './pages/voter/voterVoting';
+import VoterCastingPage from './pages/voter/voterVotingPage';
+import VoteCastingPage from './pages/voter/voteCastingPage';
 
 // Official pages
 import OfficialLandingPage from './pages/official/officialLandingPage';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
             <Route path="/voter/voting-process" element={<VoterVotingProcessPage />} />
             <Route path="/voter/manage-registration" element={<VoterManageRegistrationPage />} />
             <Route path="/voter/voting" element={<VoterCastingPage />} />
+            <Route path="/voter/vote-casting" element={<VoteCastingPage />} />  
 
             {/* Official routes */}
             <Route path="/official/landing" element={<OfficialLandingPage />} />

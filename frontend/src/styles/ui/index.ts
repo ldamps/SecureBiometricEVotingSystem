@@ -30,6 +30,13 @@ export {
 
 export { getListStyle } from "./list";
 
+export {
+  getStepTitleStyle,
+  getStepDescStyle,
+  getStepFormInputStyle,
+  getStepLabelStyle,
+} from "./step";
+
 // Legacy aliases for backward compatibility (registration card = card, voter page wrapper = page content wrapper)
 export {
   getCardStyle as getRegistrationCardStyle,

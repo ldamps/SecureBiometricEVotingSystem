@@ -67,7 +67,9 @@ const lightColors = {
     surfaceAlt: "#EEF1FB",
     border: "#C7CDE8",
     button: "#162F62",
-  
+    badge: "#E4E9FA",
+    bar: "#162F62",
+    
     text: {
       primary: "#0F172A",
       secondary: "#364150",
@@ -105,6 +107,8 @@ const darkColors = {
     surfaceAlt: "#232849",
     border: "#2E3461",
     button: "#162F62",
+    badge: "#1A1F3D",
+    bar: "#B4B6D4",
   
     text: {
       primary: "#F1F5F9",

@@ -71,7 +71,7 @@ const VoteCastingPage: React.FC = () => {
             </ul>
           </div>
           <br />
-          <PrimaryButton onClick={() => navigate("/voter/landing")}>Vote</PrimaryButton>
+          <PrimaryButton onClick={() => navigate("/voter/vote-casting")}>Vote</PrimaryButton>
         </div>
       </div>
     </div>
