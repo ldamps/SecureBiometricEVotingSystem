@@ -15,8 +15,6 @@ const VoteCastingPage = () => {
     });
 
     const next = () => setStep(s => Math.min(s+1, 5));
-    const back = () => setStep(s => Math.max(s-1, 1));
-
 
     const pages = [
         <ElectionSelection next={next} state={state} setState={setState} />,

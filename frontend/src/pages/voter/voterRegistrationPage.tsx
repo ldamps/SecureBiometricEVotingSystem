@@ -85,6 +85,9 @@ const VoterRegistrationPage: React.FC = () => {
             <p style={cardTextStyle}>
               You can register to vote up to 2 years before you reach voting age —{" "}
               <a href="/voter/voting-process" style={linkStyle}>check the rules around voting in the UK</a>.
+              <br />
+              <br />
+              Please note, it is a criminal offence to register while pretending to be someone else.
             </p>
           </div>
         </div>
@@ -140,7 +143,7 @@ const VoterRegistrationPage: React.FC = () => {
         </div>
 
         <div style={{ textAlign: "center", marginTop: spacing.xl }}>
-          <PrimaryButton onClick={() => navigate("/voter/register")}>Register to Vote</PrimaryButton>
+          <PrimaryButton onClick={() => navigate("/voter/registeration")}>Register to Vote</PrimaryButton>
         </div>
       </div>
     </div>

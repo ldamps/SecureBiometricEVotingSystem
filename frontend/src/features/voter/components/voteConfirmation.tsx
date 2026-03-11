@@ -13,7 +13,10 @@ function VoteConfirmation({next, state, setState}: {next: () => void, state: any
                 <ProgressBar step={5} theme={theme} />
             </div>
             <h1 style={getStepTitleStyle(theme)}>Thank You for Voting!</h1>
-            <p style={getStepDescStyle(theme)}>If you would like to receive an email confirmation, please tick the box below.</p>
+            <p>
+                Before you finish, please note you can only vote once. 
+                <br />Once you have submitted your vote, you will not be able to change your vote.
+            </p>
             <label
                 style={{
                     ...getCardStyle(theme),

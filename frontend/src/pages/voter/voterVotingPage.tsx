@@ -66,6 +66,9 @@ const VoteCastingPage: React.FC = () => {
                 <br />
                 You are only eligible to vote in elections run in your current constituency.
               </li>
+              <li style={cardTextStyle}>Your registrations 
+                It is a criminal offence to offer an incentive to someone to get them to vote, vote in a certain way or to stop them from voting.
+              </li>
               <li style={cardTextStyle}>You are only eligible to vote in elections run in your current constituency.</li>
               <li style={cardTextStyle}>Once verified, you will have 10 minutes to cast your vote. If you do not cast your vote within 10 minutes, you will need to start the process again.</li>
             </ul>
