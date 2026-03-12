@@ -1,7 +1,7 @@
 import { getCardStyle, getStepDescStyle, getStepTitleStyle, getVoterPageContentWrapperStyle } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
-import PrimaryButton from "../../../components/PrimaryButton";
+import { PrimaryButton } from "../../../styles/ui";
 import { useNavigate } from "react-router-dom";
 
 function RegistrationConfirmation({next, back, state, setState}: {next: () => void, back: () => void, state: any, setState: (state: any) => void}) {
@@ -31,6 +31,9 @@ function RegistrationConfirmation({next, back, state, setState}: {next: () => vo
                 <br />
                 <br />
                 Once you have finished this process, you will receive an email confirmation of your registration.
+
+                <br />
+                You will receive another email when your registration has been confirmed and you can start voting!
             </p>
             <label
                 style={{

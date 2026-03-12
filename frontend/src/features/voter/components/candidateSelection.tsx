@@ -3,7 +3,7 @@
 import ProgressBar from "./progressBar";
 import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepDescStyle } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
-import PrimaryButton from "../../../components/PrimaryButton";
+import { PrimaryButton } from "../../../styles/ui";
 
 const CANDIDATES = [
     { id: 1, name: "John Doe" },

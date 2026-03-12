@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTheme } from "../../styles/ThemeContext";
-import PrimaryButton from "../../components/PrimaryButton";
+import { PrimaryButton } from "../../styles/ui";
 import { useNavigate } from "react-router-dom";
 import {
   getListStyle,
@@ -45,7 +45,7 @@ const VoterManageRegistrationPage: React.FC = () => {
 
         {/* Manage voting details button */}
         <div style={{ textAlign: "left", marginTop: spacing.xl, marginLeft: spacing.xl }}>
-          <PrimaryButton onClick={() => navigate("/voter/manage-registration")}>Update your registration details</PrimaryButton>
+          <PrimaryButton onClick={() => navigate("/voter/update-registration")}>Update your registration details</PrimaryButton>
         </div>
       </div>
     </div>

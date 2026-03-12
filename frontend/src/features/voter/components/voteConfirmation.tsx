@@ -1,7 +1,7 @@
 import ProgressBar from "./progressBar";
-import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepDescStyle } from "../../../styles/ui";
+import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
-import PrimaryButton from "../../../components/PrimaryButton";
+import { PrimaryButton } from "../../../styles/ui";
 import { useNavigate } from "react-router-dom";
 
 function VoteConfirmation({next, state, setState}: {next: () => void, state: any, setState: (state: any) => void}) {

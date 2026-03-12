@@ -30,12 +30,30 @@ export {
 
 export { getListStyle } from "./list";
 
+export { getBadgeStyle, getStatusBadgeStyle } from "./badge";
+export type { StatusBadgeVariant } from "./badge";
+
+export { getTabsStyle, getTabsContainerStyle, getTabButtonStyle } from "./tabs";
+
+export { getTableStyle, getTableHeaderStyle, getTableCellStyle } from "./table";
+
+export { getSelectorStyle, getSelectStyle } from "./selector";
+
 export {
   getStepTitleStyle,
   getStepDescStyle,
   getStepFormInputStyle,
   getStepLabelStyle,
 } from "./step";
+
+export {
+  getPrimaryButtonStyle,
+  getPrimaryButtonHoverStyle,
+  getSecondaryButtonStyle,
+  getSecondaryButtonHoverStyle,
+} from "./button";
+export type { ButtonProps } from "./button";
+export { PrimaryButton, SecondaryButton } from "./buttons";
 
 // Legacy aliases for backward compatibility (registration card = card, voter page wrapper = page content wrapper)
 export {

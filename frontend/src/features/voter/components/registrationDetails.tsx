@@ -1,7 +1,7 @@
 import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, getStepFormInputStyle } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
-import PrimaryButton from "../../../components/PrimaryButton";
+import { PrimaryButton } from "../../../styles/ui";
 
 const NATIONALITY_OPTIONS = [
     { key: "nationalityBritish", label: "British" },

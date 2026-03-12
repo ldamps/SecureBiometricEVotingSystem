@@ -3,7 +3,7 @@
 import ProgressBar from "./progressBar";
 import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepDescStyle } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
-import PrimaryButton from "../../../components/PrimaryButton";
+import { PrimaryButton } from "../../../styles/ui";
 
 function BiometricVerification({next, state, setState}: {next: () => void, state: any, setState: (state: any) => void}) {
     const { theme } = useTheme();

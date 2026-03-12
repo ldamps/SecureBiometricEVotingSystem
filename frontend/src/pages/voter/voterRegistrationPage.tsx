@@ -3,7 +3,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import PrimaryButton from "../../components/PrimaryButton";
+import { PrimaryButton } from "../../styles/ui";
 import {
   getPageTitleStyle,
   getFirstSectionStyle,

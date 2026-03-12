@@ -1,6 +1,6 @@
 // Voting Step: Voter Identity
 
-import PrimaryButton from "../../../components/PrimaryButton";
+import { PrimaryButton } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import { getCardStyle, getVoterPageContentWrapperStyle, getStepTitleStyle, getStepDescStyle, getStepFormInputStyle, getStepLabelStyle } from "../../../styles/ui";
 import ProgressBar from "./progressBar";

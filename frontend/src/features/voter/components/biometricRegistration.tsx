@@ -1,4 +1,4 @@
-import PrimaryButton from "../../../components/PrimaryButton";
+import { PrimaryButton } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import { getCardStyle, getStepTitleStyle } from "../../../styles/ui";
 import ProgressBar from "./progressBar";
@@ -7,7 +7,6 @@ function BiometricRegistration({next, back, state, setState}: {next: () => void,
     const { theme } = useTheme();
     return (
         <div>
-            <h1>Biometric Registration</h1>
             <div style={{ ...getCardStyle(theme), marginBottom: "1.75rem" }}>
                 <ProgressBar step={4} theme={theme} />
                 <h1 style={getStepTitleStyle(theme)}>Registration: Register Your Biometrics</h1>

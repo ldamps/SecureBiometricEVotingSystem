@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTheme } from "../../styles/ThemeContext";
-import PrimaryButton from "../../components/PrimaryButton";
+import { PrimaryButton } from "../../styles/ui";
 import { useNavigate } from "react-router-dom";
 import {
   getPageTitleStyle,

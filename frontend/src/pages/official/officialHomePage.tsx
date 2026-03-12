@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
 import {
   getPageContentWrapperStyle,
@@ -7,16 +8,23 @@ import {
   getCardStyle,
   getCardTitleStyle,
   getCardTextStyle,
+  getTabsContainerStyle,
+  getTabButtonStyle,
+  getTableStyle,
+  getTableHeaderStyle,
+  getTableCellStyle,
+  getSelectStyle,
+  getStatusBadgeStyle,
 } from "../../styles/ui";
-import type { Theme } from "../../styles/theme";
 import VotesPerConstituencyChart from "../../features/admin/components/votesPerConstituencyChart";
 import SeatAllocationChart from "../../features/admin/components/seatAllocationChart";
 import ReportErrorModal from "../../features/admin/components/reportErrorModal";
+import ManageOfficials from "../../features/admin/components/manageOfficials";
 
 // --- Mock data (replace with backend when available) ---
 
 /** Set to true to show Audit logs tab (admin only). */
-const MOCK_USER_IS_ADMIN = false;
+const MOCK_USER_IS_ADMIN = true;
 
 interface ConcludedElection {
   id: string;
@@ -54,6 +62,7 @@ interface Investigation {
   reportedAt: string;
 }
 
+
 const MOCK_CONCLUDED_ELECTIONS: ConcludedElection[] = [
   { id: "el-1", name: "UK General Election 2024", concludedAt: "2024-07-05", totalConstituencies: 650 },
   { id: "el-2", name: "Local Council Elections 2024", concludedAt: "2024-05-02", totalConstituencies: 331 },
@@ -89,87 +98,35 @@ const MOCK_INVESTIGATIONS: Investigation[] = [
   { id: "INV-005", title: "Biometric verification timeout", status: "resolved", reportedAt: "2024-07-03" },
 ];
 
-// --- Styles (theme-dependent) ---
-
-const getTabsContainerStyle = (theme: Theme) => ({
-  display: "flex" as const,
-  gap: theme.spacing.sm,
-  paddingLeft: theme.spacing.xl,
-  paddingRight: theme.spacing.xl,
-  paddingTop: theme.spacing.md,
-  paddingBottom: theme.spacing.sm,
-  borderBottom: `1px solid ${theme.colors.border}`,
-  flexWrap: "wrap" as const,
-});
-
-const getTabButtonStyle = (theme: Theme, active: boolean) => ({
-  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-  border: "none",
-  borderRadius: theme.borderRadius.md,
-  background: active ? theme.colors.primary : "transparent",
-  color: active ? theme.colors.text.inverse : theme.colors.text.primary,
-  fontWeight: theme.fontWeights.medium,
-  cursor: "pointer",
-  fontSize: theme.fontSizes.base,
-});
-
-const getTableStyle = (theme: Theme) => ({
-  width: "100%" as const,
-  borderCollapse: "collapse" as const,
-  fontSize: theme.fontSizes.sm,
-});
-
-const getTableHeaderStyle = (theme: Theme) => ({
-  textAlign: "left" as const,
-  padding: theme.spacing.sm,
-  borderBottom: `2px solid ${theme.colors.border}`,
-  color: theme.colors.text.secondary,
-  fontWeight: theme.fontWeights.semibold,
-});
-
-const getTableCellStyle = (theme: Theme) => ({
-  padding: theme.spacing.sm,
-  borderBottom: `1px solid ${theme.colors.border}`,
-  color: theme.colors.text.primary,
-});
-
-const getSelectStyle = (theme: Theme) => ({
-  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-  borderRadius: theme.borderRadius.md,
-  border: `1px solid ${theme.colors.border}`,
-  background: theme.colors.surface,
-  color: theme.colors.text.primary,
-  fontSize: theme.fontSizes.base,
-  minWidth: "280px",
-});
-
-const getBadgeStyle = (theme: Theme, variant: "ok" | "mismatch" | "pending" | "open" | "in_progress" | "resolved") => {
-  const colors: Record<string, string> = {
-    ok: theme.colors.status.success,
-    mismatch: theme.colors.status.error,
-    pending: theme.colors.status.warning,
-    open: theme.colors.status.warning,
-    in_progress: theme.colors.status.info,
-    resolved: theme.colors.status.success,
-  };
-  return {
-    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-    borderRadius: theme.borderRadius.full,
-    fontSize: theme.fontSizes.xs,
-    fontWeight: theme.fontWeights.medium,
-    backgroundColor: colors[variant] + "22",
-    color: colors[variant],
-  };
-};
+const tabToSlug = (tab: string) => tab.replace(/\s+/g, "-");
+const slugToTab = (slug: string) => slug.replace(/-/g, " ");
 
 const OfficialHomePage: React.FC = () => {
   const { theme } = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
   const baseTabs = ["overview", "investigations"] as const;
-  const tabs = MOCK_USER_IS_ADMIN ? (["overview", "audit logs", "investigations"] as const) : baseTabs;
-  const [activeTab, setActiveTab] = useState<string>(tabs[0]);
+  const tabs = MOCK_USER_IS_ADMIN ? (["overview", "audit logs", "investigations", "manage officials"] as const) : baseTabs;
+
+  const tabFromUrl = searchParams.get("tab");
+  const tabFromSlug = tabFromUrl ? slugToTab(tabFromUrl) : null;
+  const resolvedTab: string =
+    tabFromSlug && (tabs as readonly string[]).includes(tabFromSlug) ? tabFromSlug : tabs[0];
+
+  const [activeTab, setActiveTab] = useState<string>(resolvedTab);
   const [selectedElectionId, setSelectedElectionId] = useState<string>(MOCK_CONCLUDED_ELECTIONS[0]?.id ?? "");
   const [reportErrorModalOpen, setReportErrorModalOpen] = useState(false);
   const [reportErrorContext, setReportErrorContext] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", tabToSlug(activeTab));
+        return next;
+      },
+      { replace: true }
+    );
+  }, [activeTab, setSearchParams]);
 
   const selectedElection = MOCK_CONCLUDED_ELECTIONS.find((e) => e.id === selectedElectionId);
   const pageWrapper = getPageContentWrapperStyle(theme);
@@ -270,7 +227,7 @@ const OfficialHomePage: React.FC = () => {
                             <td style={getTableCellStyle(theme)}>{row.votesCast.toLocaleString()}</td>
                             <td style={getTableCellStyle(theme)}>{row.votersWhoVoted.toLocaleString()}</td>
                             <td style={getTableCellStyle(theme)}>
-                              <span style={getBadgeStyle(theme, row.matchStatus)}>{row.matchStatus}</span>
+                              <span style={getStatusBadgeStyle(theme, row.matchStatus)}>{row.matchStatus}</span>
                             </td>
                             <td style={getTableCellStyle(theme)}>
                               <button
@@ -339,7 +296,7 @@ const OfficialHomePage: React.FC = () => {
                             {inv.id} · Reported {inv.reportedAt}
                           </p>
                         </div>
-                        <span style={getBadgeStyle(theme, inv.status)}>{inv.status.replace("_", " ")}</span>
+                        <span style={getStatusBadgeStyle(theme, inv.status)}>{inv.status.replace("_", " ")}</span>
                       </div>
                       <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0, fontStyle: "italic" }}>
                         Investigation workflow and actions to be implemented.
@@ -348,6 +305,13 @@ const OfficialHomePage: React.FC = () => {
                   ))}
                 </div>
               </section>
+            )}
+
+            {/* Manage officials — admin only */}
+            {activeTab === "manage officials" && MOCK_USER_IS_ADMIN && (
+              <>
+                <ManageOfficials />
+              </>
             )}
           </div>
         </>

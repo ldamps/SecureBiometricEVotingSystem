@@ -1,12 +1,12 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../styles/ThemeContext";
+import { SecondaryButton } from "../styles/ui";
 
 const OfficialNavbar: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
-  const { colors, spacing, fontSizes, fontWeights, layout } = theme;
-  const [showInfo, setShowInfo] = useState(false);
-
+  const { colors, spacing, fontSizes, fontWeights } = theme;
+  const navigate = useNavigate();
   return (
     <nav
       className="app-nav"
@@ -36,8 +36,9 @@ const OfficialNavbar: React.FC = () => {
         Election Official Portal
       </Link>
 
-      {/* Right side: theme toggle + info button */}
+      {/* Right side: theme toggle + logout button */}
       <div style={{ display: "flex", alignItems: "center", gap: spacing.md }}>
+        <SecondaryButton onClick={() => { navigate("/official/landing"); }}>Logout</SecondaryButton>
         {/* Light/Dark mode toggle */}
         <button
           onClick={toggleTheme}
