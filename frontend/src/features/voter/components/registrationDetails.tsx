@@ -1,7 +1,6 @@
-import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, getStepFormInputStyle } from "../../../styles/ui";
+import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, getStepFormInputStyle, getFirstSectionStyle, getPageTitleStyle, PrimaryButton } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
-import { PrimaryButton } from "../../../styles/ui";
 
 const NATIONALITY_OPTIONS = [
     { key: "nationalityBritish", label: "British" },
@@ -9,7 +8,27 @@ const NATIONALITY_OPTIONS = [
     { key: "nationalityOtherCountry", label: "Citizen of a different country" },
 ] as const;
 
-function RegistrationDetails({ next, back, state, setState }: { next: () => void; back: () => void; state: any; setState: (state: any) => void }) {
+function RegistrationDetails({
+    next,
+    back,
+    state,
+    setState,
+    progressStep = 2,
+    heading = "Registration: Identity Details",
+    showProgressBar = true,
+    primaryButtonLabel = "Next",
+    usePageLayout = false,
+}: {
+    next: () => void;
+    back: () => void;
+    state: any;
+    setState: (state: any) => void;
+    progressStep?: number;
+    heading?: string;
+    showProgressBar?: boolean;
+    primaryButtonLabel?: string;
+    usePageLayout?: boolean;
+}) {
     const { theme } = useTheme();
     const showOtherCountryInput = state.nationalityOtherCountry === true;
     const showPreviousNames = state.nameChanged === true;
@@ -45,12 +64,14 @@ function RegistrationDetails({ next, back, state, setState }: { next: () => void
         color: theme.colors?.text?.primary ?? "#111",
     });
 
-    return (
-        <div style={{ ...getVoterPageContentWrapperStyle(theme), maxWidth: "100%", margin: "0 auto" }}>
-            <div style={{ ...getCardStyle(theme), marginBottom: "1.75rem" }}>
-                <ProgressBar step={2} theme={theme} />
-                <h1 style={getStepTitleStyle(theme)}>Registration: Identity Details</h1>
-            </div>
+    const formContent = (
+        <>
+            {!usePageLayout && (
+                <div style={{ ...getCardStyle(theme), marginBottom: "1.75rem" }}>
+                    {showProgressBar && <ProgressBar step={progressStep} theme={theme} />}
+                    <h1 style={getStepTitleStyle(theme)}>{heading}</h1>
+                </div>
+            )}
 
             {baseFields.map((field) => (
                 <div key={field.key} style={{ ...getCardStyle(theme), marginBottom: "1rem" }}>
@@ -163,10 +184,29 @@ function RegistrationDetails({ next, back, state, setState }: { next: () => void
                     </>
                 )}
             </div>
-            <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center", gap: theme.spacing.md }}>
+            <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: usePageLayout ? "flex-start" : "center", gap: theme.spacing.md }}>
                 <PrimaryButton onClick={back}>Back</PrimaryButton>
-                <PrimaryButton onClick={next}>Next</PrimaryButton>
+                <PrimaryButton onClick={next}>{primaryButtonLabel}</PrimaryButton>
             </div>
+        </>
+    );
+
+    if (usePageLayout) {
+        return (
+            <div className="voter-update-registration-page voter-page-content" style={getVoterPageContentWrapperStyle(theme)}>
+                <header>
+                    <h1 style={getPageTitleStyle(theme)}>{heading}</h1>
+                </header>
+                <section style={getFirstSectionStyle(theme)}>
+                    {formContent}
+                </section>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ ...getVoterPageContentWrapperStyle(theme), maxWidth: "100%", margin: "0 auto" }}>
+            {formContent}
         </div>
     );
 }
