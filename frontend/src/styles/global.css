@@ -1,0 +1,163 @@
+/* Global styles for the e-voting platform */
+
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.875rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+
+p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+a {
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Navbar: brand title on one line, responsive padding and font size */
+.app-nav {
+  padding: 0 1.5rem;
+}
+.nav-brand {
+  font-size: 1.5rem;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .app-nav {
+    padding: 0 0.75rem;
+  }
+  .nav-brand {
+    font-size: 1rem;
+  }
+}
+@media (max-width: 480px) {
+  .app-nav {
+    padding: 0 0.5rem;
+  }
+  .nav-brand {
+    font-size: 1.2rem;
+  }
+}
+
+/* Voter page content: centred, 90% of page width, responsive margins and text */
+.voter-page-content {
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+@media (max-width: 768px) {
+  .voter-page-content {
+    width: 95%;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  .voter-page-content h1 {
+    font-size: 1.5rem !important;
+  }
+  .voter-page-content h2 {
+    font-size: 1.25rem !important;
+  }
+  .voter-page-content h3 {
+    font-size: 1.125rem !important;
+  }
+  .voter-page-content p,
+  .voter-page-content li {
+    font-size: 1rem !important;
+  }
+  .voter-page-content .button-base {
+    font-size: 1.125rem !important;
+  }
+}
+@media (max-width: 480px) {
+  .voter-page-content {
+    width: 96%;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  .voter-page-content h1 {
+    font-size: 1.25rem !important;
+  }
+  .voter-page-content h2 {
+    font-size: 1.125rem !important;
+  }
+  .voter-page-content h3 {
+    font-size: 1rem !important;
+  }
+  .voter-page-content .button-base {
+    font-size: 1rem !important;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Primary CTA button - standardized across pages; only the label changes. Uses theme variables set by ThemeContext. */
+.button-base {
+  background-color: var(--color-button);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.3;
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-md);
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  margin-bottom: var(--spacing-md);
+}
+
+.button-base:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
