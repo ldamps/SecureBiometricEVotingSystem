@@ -238,10 +238,6 @@ Go to: **GitHub repo → Settings → Secrets and variables → Actions**
 
 ### `backend/.env` (local development only — never commit)
 
-```
-DATABASE_URL=postgresql://evoting_app:PASSWORD@localhost:5432/evoting_db
-```
-
 On EC2, this file is written automatically by the deploy workflow from GitHub Secrets. AWS credentials are not included — the EC2 IAM role provides them.
 
 ### `.gitignore`
