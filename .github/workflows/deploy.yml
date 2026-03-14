@@ -1,0 +1,48 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # allows manual trigger from any branch via GitHub UI
+
+jobs:
+  deploy:
+    name: SSH deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------ #
+      # SSH into the EC2 instance, pull latest code, rebuild containers.
+      # No .sh files needed — all commands run inline via appleboy/ssh-action.
+      # ------------------------------------------------------------------ #
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USER }}/SecureBiometricEVotingSystem
+
+            # Pull latest code
+            git pull origin main
+
+            # Write the backend .env from GitHub Secrets
+            # AWS credentials are NOT stored here — the EC2 instance IAM role
+            # (LabRole) provides them automatically via the metadata service.
+            cat > backend/.env <<EOF
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            EOF
+
+            # Set the postgres password for docker-compose
+            export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+
+            # Rebuild and restart containers
+            docker compose down --remove-orphans
+            docker compose build --no-cache
+            docker compose up -d
+
+            # Run database migrations
+            docker compose exec -T backend alembic upgrade head
