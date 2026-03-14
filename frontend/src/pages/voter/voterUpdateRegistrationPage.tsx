@@ -5,7 +5,6 @@ import {
     getVoterPageContentWrapperStyle,
     PrimaryButton,
     SecondaryButton,
-    getCardStyle,
 } from "../../styles/ui";
 import { useTheme } from "../../styles/ThemeContext";
 import VoterIdentity from "../../features/voter/components/voterIdentity";

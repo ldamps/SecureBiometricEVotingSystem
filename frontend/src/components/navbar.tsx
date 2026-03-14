@@ -6,7 +6,7 @@ import { useTheme } from "../styles/ThemeContext";
 
 const Navbar: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
-  const { colors, spacing, fontSizes, fontWeights, layout } = theme;
+  const { colors, spacing, fontSizes, fontWeights } = theme;
   const [showInfo, setShowInfo] = useState(false);
 
   return (
