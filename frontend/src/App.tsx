@@ -7,10 +7,10 @@ import MainLayout from './layouts/mainLayout';
 
 // Voter pages:
 import VoterLandingPage from './pages/voter/voterLandingPage';
-import VoterAboutPage from '../../frontend/src/pages/voter/voterAboutPage';
-import VoterRegistrationPage from '../../frontend/src/pages/voter/voterRegistrationPage';
-import VoterVotingProcessPage from '../../frontend/src/pages/voter/voterVotingProcessPage';
-import VoterManageRegistrationPage from '../../frontend/src/pages/voter/voterManageRegistrationPage';
+import VoterAboutPage from './pages/voter/voterAboutPage';
+import VoterRegistrationPage from './pages/voter/voterRegistrationPage';
+import VoterVotingProcessPage from './pages/voter/voterVotingProcessPage';
+import VoterManageRegistrationPage from './pages/voter/voterManageRegistrationPage';
 import VoterCastingPage from './pages/voter/voterVotingPage';
 import VoteCastingPage from './pages/voter/voteCastingPage';
 import VoterRegisterPage from './pages/voter/voterRegisterPage';
