@@ -64,4 +64,5 @@ class Address(Base):
 
     # Database constraints + indexes ----------
     __table_args__ = (
+        
     )

@@ -28,16 +28,16 @@ class Voter(Base, TimestampMixin):
     national_insurance_number: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
+    passport_number: Mapped[str] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    passport_country: Mapped[str] = mapped_column(String(255), nullable=True)
     first_name: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     surname: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     previous_first_name: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
-    maiden_name: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+    previous_surname: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     date_of_birth: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     email: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)  # UK in ER
-    civil_servant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    council_employee: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    armed_forces_member: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     voter_reference: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    voter_status: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     constituency_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("constituency.constituency_id", ondelete="SET NULL"),
