@@ -1,0 +1,144 @@
+{
+	"info": {
+		"_postman_id": "secure-evoting-backend-001",
+		"name": "Secure Biometric E-Voting - Backend API",
+		"description": "Collection to test the Secure Biometric E-Voting System backend.\n\n**Base URL:** Uses variable `base_url` (default: http://localhost:8001). Change in collection or environment to match your server port.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8001"
+		},
+		{
+			"key": "voter_id",
+			"value": ""
+		}
+	],
+	"item": [
+		{
+			"name": "Root & Health",
+			"item": [
+				{
+					"name": "Root",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						},
+						"description": "API root - returns message and docs link."
+					}
+				},
+				{
+					"name": "Health (root)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Health check for deployment and monitoring (root-level)."
+					}
+				},
+				{
+					"name": "List constituencies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/constituencies",
+							"host": ["{{base_url}}"],
+							"path": ["constituencies"]
+						},
+						"description": "List all constituencies (DB-backed)."
+					}
+				}
+			]
+		},
+		{
+			"name": "API v1 - Health",
+			"item": [
+				{
+					"name": "Health check (v1)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "health"]
+						},
+						"description": "Versioned health check - liveness (status, version, stage). Only available if versioned API is mounted in main."
+					}
+				}
+			]
+		},
+		{
+			"name": "API v1 - Voter",
+			"item": [
+				{
+					"name": "Get voter by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/voter/{{voter_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "voter", "{{voter_id}}"]
+						},
+						"description": "Get voter details by voter ID (UUID). Set collection variable voter_id after registering a voter."
+					}
+				},
+				{
+					"name": "Register voter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Jane\",\n  \"surname\": \"Doe\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00\",\n  \"email\": \"jane.doe@example.com\",\n  \"national_insurance_number\": null,\n  \"passport_number\": null,\n  \"passport_country\": null,\n  \"consituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2026-12-31T23:59:59\",\n  \"registration_status\": \"pending\",\n  \"failed_auth_attempts\": 0,\n  \"locked_until\": null,\n  \"registered_at\": \"2025-03-16T12:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/voter/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "voter", "register"]
+						},
+						"description": "Register a new voter. Use a valid constituency UUID from GET /constituencies. Copy returned id into collection variable voter_id for other voter requests."
+					}
+				},
+				{
+					"name": "Update voter",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Jane\",\n  \"surname\": \"Smith\",\n  \"email\": \"jane.smith@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/voter/{{voter_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "voter", "{{voter_id}}"]
+						},
+						"description": "Update a voter's details. All body fields are optional. Uses collection variable voter_id."
+					}
+				}
+			]
+		}
+	]
+}
