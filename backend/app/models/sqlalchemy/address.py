@@ -1,15 +1,13 @@
-"""Address model - voter address (encrypted)."""
+# address.py - Address model for the e-voting system.
 
 from __future__ import annotations
-
 import enum
 import uuid
 from typing import TYPE_CHECKING
-
-from sqlalchemy import Enum as SAEnum, ForeignKey, String
+from datetime import datetime
+from sqlalchemy import Enum as SAEnum, ForeignKey, String, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from app.models.base.sqlalchemy_base import Base, EncryptedBytes
 
 if TYPE_CHECKING:
@@ -21,6 +19,12 @@ class AddressType(str, enum.Enum):
     OVERSEAS = "OVERSEAS" # Overseas address
     LOCAL_CURRENT = "LOCAL_CURRENT" # Current local address
     LOCAL_PAST = "LOCAL_PAST" # Past local address needed for those overseas
+
+class AddressStatus(str, enum.Enum):
+    """ Address Status """
+    PENDING = "PENDING" # Address is pending verification
+    ACTIVE = "ACTIVE" # Address is active (has been verified)
+    REJECTED = "REJECTED" # Address is rejected
 
 class Address(Base):
     """ 
@@ -51,6 +55,13 @@ class Address(Base):
     postcode: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     county: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
     country: Mapped[bytes | None] = mapped_column(EncryptedBytes, nullable=True)
+    address_status: Mapped[AddressStatus] = mapped_column(
+        SAEnum(AddressStatus, name="address_status_enum", create_constraint=True),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
 
     # RELATIONSHIPS ----------
 
@@ -64,5 +75,5 @@ class Address(Base):
 
     # Database constraints + indexes ----------
     __table_args__ = (
-        
+
     )

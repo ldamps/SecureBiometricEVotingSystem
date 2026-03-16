@@ -1,3 +1,4 @@
+# voter_service.py - Service layer for voter-related operations.
 
 import structlog
 from app.repository.voter_repo import VoterRepository

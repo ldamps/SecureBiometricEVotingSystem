@@ -1,10 +1,10 @@
-"""Voter model - registered voter."""
+# voter.py - Voter model for the e-voting system.
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
-
+import enum
 from sqlalchemy import Boolean, ForeignKey, SmallInteger, String, TIMESTAMP, func, CheckConstraint, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -14,6 +14,17 @@ from app.models.sqlalchemy.address import Address
 from app.models.sqlalchemy.biometric_template import BiometricTemplate
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.models.sqlalchemy.constituency import Constituency
+
+class VoterStatus(str, enum.Enum):
+    """
+    Voter status.
+    ** PENDING ** - Voter has not been verified.
+    ** SUSPENDED ** - Voter has been suspended due to too many failed authentication attempts.
+    ** ACTIVE ** - Voter is active and can vote.
+    """
+    PENDING = "PENDING"
+    SUSPENDED = "SUSPENDED"
+    ACTIVE = "ACTIVE"
 
 class Voter(Base, TimestampMixin):
     """Registered voter with encrypted PII and constituency."""
@@ -48,6 +59,7 @@ class Voter(Base, TimestampMixin):
     failed_auth_attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     registered_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    renew_by: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     
     # RELATIONSHIPS ----------

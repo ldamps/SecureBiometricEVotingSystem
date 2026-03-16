@@ -1,3 +1,5 @@
+# voter_repo.py - Repository layer for voter-related operations.
+
 from app.models.sqlalchemy.voter import Voter
 from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,9 +7,10 @@ from sqlalchemy import select
 import structlog
 from typing import Optional
 from uuid import UUID
-
-from backend.app.models.dto import voter
-from backend.app.application.core.exceptions import NotFoundError
+from datetime import datetime
+from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
+from app.application.core.exceptions import NotFoundError
+from app.models.sqlalchemy.voter import Voter
 
 logger = structlog.get_logger()
 
@@ -15,40 +18,76 @@ class VoterRepository:
     """Voter-specific repository operations."""
 
     def __init__(self):
-        super().__init__()
+        super().__init__(Voter)
 
     # INTERNAL HELPER METHODS ----------
     
     async def check_voter_exists(
         self,
-        first_name: str,
-        surname: str,
-        email: str,
-        national_insurance_number: Optional[str] = None,
-        passport_number: Optional[str] = None,
-        passport_country: Optional[str] = None,
     ) -> bool:
         """
-        Check if a voter exists using the email, first name, surname and optionally national insurance number or passport number + country.
+        Check if a voter exists.
         """
         try:
             pass
                
-            
-            
         except Exception:
             logger.exception(
                 "Failed to check if voter exists"
             )
             raise
 
-    # is account locked? has too many failed auth attempts?
+    async def check_voter_locked(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+    ) -> Optional[datetime]:
+        """
+        Check if a voter's account is locked.
+        """
+        try:
+            result = await session.execute(
+                select(Voter.locked_until).where(
+                    Voter.voter_id == voter_id
+                )
+            )
+            locked_until = result.scalar_one_or_none()
+            if not locked_until:
+                return None
+            else:
+                return locked_until
 
+        except Exception:
+            logger.exception(
+                "Failed to check if voter is locked",
+                voter_id=voter_id
+            )
+            raise
 
-    # renewal needed?
+    async def check_voter_renewal_needed(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+    ) -> Optional[datetime]:
+        """
+        Check if a voter's account needs to be renewed.
+        """
+        try:
+            result = await session.execute(
+                select(Voter.renew_by).where(
+                    Voter.voter_id == voter_id
+                )
+            )
+            renew_by = result.scalar_one_or_none()
+            return renew_by
+            
+        except Exception:
+            logger.exception(
+                "Failed to check if voter renewal is needed",
+                voter_id=voter_id
+            )
+            raise
 
-
-    # does registration with this email already exist?
     async def check_voter_email_exists(
         self, 
         session: AsyncSession,
@@ -76,11 +115,7 @@ class VoterRepository:
             )
             raise
 
-
-
-    
     # ------------------------------------------------------------
-
 
     # CRUD METHODS ----------
     async def register_voter(self, 
@@ -139,7 +174,6 @@ class VoterRepository:
                 voter_id=voter_id
             )
             raise
-
 
 
     async def update_voter_details(
