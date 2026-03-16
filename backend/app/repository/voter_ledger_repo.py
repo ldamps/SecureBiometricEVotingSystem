@@ -1,0 +1,1 @@
+# voter_ledger_repo.py - Repository layer for voter ledger-related operations.

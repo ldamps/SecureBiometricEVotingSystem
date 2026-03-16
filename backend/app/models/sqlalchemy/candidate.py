@@ -8,28 +8,23 @@ from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base
+from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
 
 
-class Candidate(Base):
+class Candidate(Base, UUIDPrimaryKeyMixin):
     """Candidate standing in an election for a constituency."""
 
     __tablename__ = "candidate"
 
-    candidate_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
     election_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("election.election_id", ondelete="CASCADE"),
+        ForeignKey("election.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     constituency_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("constituency.constituency_id", ondelete="CASCADE"),
+        ForeignKey("constituency.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

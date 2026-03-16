@@ -43,7 +43,7 @@ pip install -r requirements.txt
    ```
    This applies the initial migration and creates every table (constituency, election, voter, address, ballot_token, vote, seat_allocation, tally_result, etc.). For later schema changes, add new migrations with `alembic revision --autogenerate -m "description"` then `alembic upgrade head`.
 
-   **Note:** Use a virtual environment (`python3 -m venv venv` then `source venv/bin/activate`) and install dependencies with `pip install -r requirements.txt` so that `psycopg2-binary` and `alembic` are available.
+   **Note:** Run from the `backend` directory. Use a virtual environment (`python3 -m venv venv` then `source venv/bin/activate`) and install dependencies with `pip install -r requirements.txt` so that `psycopg2-binary` and `alembic` are available. If you don't activate the venv, run Alembic with it explicitly: `./venv/bin/alembic upgrade head`.
 
 ### 4. Run the server
 

@@ -88,3 +88,4 @@ class UpdateVoterPlainDTO(VoterBaseDTO):
 @dataclass
 class UpdateVoterEncryptedDTO(VoterBaseDTO):
     """DTO for updating voter details with encrypted values."""
+

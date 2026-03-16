@@ -9,34 +9,29 @@ from sqlalchemy import ForeignKey, String, Text, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base
+from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
 
 
-class Investigation(Base):
+class Investigation(Base, UUIDPrimaryKeyMixin):
     """Investigation raised from an error report; can be assigned and resolved by officials."""
 
     __tablename__ = "investigation"
 
-    investigation_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
     error_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("error_report.error_id", ondelete="CASCADE"),
+        ForeignKey("error_report.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     election_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("election.election_id", ondelete="CASCADE"),
+        ForeignKey("election.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     raised_by: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("election_official.official_id", ondelete="SET NULL"),
+        ForeignKey("election_official.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -47,14 +42,14 @@ class Investigation(Base):
     category: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("election_official.official_id", ondelete="SET NULL"),
+        ForeignKey("election_official.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("election_official.official_id", ondelete="SET NULL"),
+        ForeignKey("election_official.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

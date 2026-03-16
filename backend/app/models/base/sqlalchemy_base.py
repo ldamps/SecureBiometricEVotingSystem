@@ -47,7 +47,7 @@ class Base(DeclarativeBase):
 
 # Mixins ----------
 class UUIDPrimaryKeyMixin:
-    """Adds a UUID primary key column named `id`."""
+    """Adds a UUID primary key column named `id` (defaults to uuid4)."""
 
     id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

@@ -9,7 +9,7 @@ from sqlalchemy import Boolean, ForeignKey, SmallInteger, String, TIMESTAMP, fun
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base, EncryptedBytes, TimestampMixin
+from app.models.base.sqlalchemy_base import Base, EncryptedBytes, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.sqlalchemy.address import Address
 from app.models.sqlalchemy.biometric_template import BiometricTemplate
 from app.models.sqlalchemy.voter_ledger import VoterLedger
@@ -26,16 +26,11 @@ class VoterStatus(str, enum.Enum):
     SUSPENDED = "SUSPENDED"
     ACTIVE = "ACTIVE"
 
-class Voter(Base, TimestampMixin):
+class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Registered voter with encrypted PII and constituency."""
 
     __tablename__ = "voter"
 
-    voter_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
     national_insurance_number: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
@@ -51,7 +46,7 @@ class Voter(Base, TimestampMixin):
     voter_status: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     constituency_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("constituency.constituency_id", ondelete="SET NULL"),
+        ForeignKey("constituency.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

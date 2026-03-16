@@ -3,7 +3,7 @@
 from app.models.sqlalchemy.voter import Voter
 from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 import structlog
 from typing import Optional
 from uuid import UUID
@@ -48,7 +48,7 @@ class VoterRepository:
         try:
             result = await session.execute(
                 select(Voter.locked_until).where(
-                    Voter.voter_id == voter_id
+                    Voter.id == voter_id
                 )
             )
             locked_until = result.scalar_one_or_none()
@@ -75,7 +75,7 @@ class VoterRepository:
         try:
             result = await session.execute(
                 select(Voter.renew_by).where(
-                    Voter.voter_id == voter_id
+                    Voter.id == voter_id
                 )
             )
             renew_by = result.scalar_one_or_none()
@@ -135,8 +135,23 @@ class VoterRepository:
         Raises:
             DatabaseError: If there is an error creating the voter.
         """
+        try:
+            voter = dto.to_model()
+            session.add(voter)
+            await session.flush()
 
-        pass
+            logger.info(
+                "Voter created successfully",
+                voter_id=voter.id
+            )
+            return voter
+
+        except Exception:
+            logger.exception(
+                "Failed to create voter",
+                dto=dto
+            )
+            raise
 
 
     async def get_voter_by_id(
@@ -161,12 +176,13 @@ class VoterRepository:
         try:
             result = await session.execute(
                 select(Voter).where(
-                    Voter.voter_id == voter_id
+                    Voter.id == voter_id
                 )
             )
             voter = result.scalar_one_or_none()
             if not voter:
                 raise NotFoundError("Voter not found")
+            return voter
 
         except Exception:
             logger.exception(
@@ -184,6 +200,21 @@ class VoterRepository:
     ) -> Voter:
         """
         Update a voter's details by their voter ID.
+        Can only update the following fields:
+        - first name
+        - surname
+        - previous first name
+        - previous surname
+        - NI (only if the voter does not have an NI originally when they registered)
+        - Passport number
+        - Passport country
+        - Consituency ID (if current address has changed)
+        - Renew by date
+        - Registration status
+        - Failed authentication attempts
+        - Locked until
+        - Registered at
+        - Renew by
 
         Args:
             session (AsyncSession): The database session.
@@ -196,8 +227,58 @@ class VoterRepository:
         Raises:
             NotFoundError: If the voter is not found.
         """
-        pass
+        try:
+            allowed_fields = [
+                "first_name",
+                "surname",
+                "previous_first_name",
+                "previous_surname",
+                "national_insurance_number",
+                "passport_number",
+                "passport_country",
+                "consituency_id",
+                "renew_by",
+                "registration_status",
+                "failed_auth_attempts",
+                "locked_until",
+                "registered_at",
+                "renew_by",
+            ]
 
+            update_data = {
+                field: getattr(dto, field)
+                for field in allowed_fields
+                if getattr(dto, field) is not None
+            }
+
+            if not update_data:
+                raise ValueError("No valid fields to update")
+
+            stmt = (
+                update(Voter)
+                .where(Voter.id == voter_id)
+                .values(**update_data)
+                .returning(Voter)
+            )
+
+            result = await session.execute(stmt)
+            updated = result.scalar_one_or_none()
+
+            if not updated:
+                raise NotFoundError("Voter not found")
+
+            logger.info(
+                "Voter updated successfully",
+                voter_id=voter_id
+            )
+            return updated
+
+        except Exception:
+            logger.exception(
+                "Failed to update voter details",
+                dto=dto
+            )
+            raise
 
 
     # ------------------------------------------------------------
