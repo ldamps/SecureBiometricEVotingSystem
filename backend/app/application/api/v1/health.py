@@ -7,7 +7,7 @@ import structlog
 logger = structlog.get_logger()
 
 router = APIRouter(
-    prefix="health",
+    prefix="/health",
     tags=["health", "system"],
 )
 
@@ -30,6 +30,6 @@ async def health_check(request: Request) -> HealthResponse:
     """
     return HealthResponse(
         status="ok",
-        version=request.app.version,
-        stage=request.app.stage,
+        version=getattr(request.app, "version", "0.1.0"),
+        stage=getattr(request.app, "stage", "dev"),
     )

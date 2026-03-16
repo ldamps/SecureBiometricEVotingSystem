@@ -41,8 +41,7 @@ class VoterService:
                 dto,
             )
 
-            # Return voter
-            return voter
+            return VoterItem.from_orm_voter(voter)
             
         except Exception:
             logger.exception(
@@ -70,8 +69,8 @@ class VoterService:
                 self.session,
                 voter_id,
             )
-            return voter
-            
+            return VoterItem.from_orm_voter(voter)
+
         except Exception:
             logger.exception(
                 "Failed to get voter by ID",
@@ -82,10 +81,16 @@ class VoterService:
 
     async def update_voter_details(
         self,
-        dto: UpdateVoterPlainDTO
+        voter_id: UUID,
+        dto: UpdateVoterPlainDTO,
     ) -> VoterItem:
-        """ Update a voter's details. """
-        pass
+        """Update a voter's details."""
+        updated = await self.voter_repo.update_voter_details(
+            self.session,
+            voter_id,
+            dto,
+        )
+        return VoterItem.from_orm_voter(updated)
 
 
     async def check_voter_exists(

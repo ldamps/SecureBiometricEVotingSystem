@@ -1,4 +1,5 @@
 import structlog
+from app.repository.voter_repo import VoterRepository
 from app.service.voter_service import VoterService
 from app.models.sqlalchemy.voter import Voter
 from fastapi import Depends, Request
@@ -54,10 +55,9 @@ async def get_db(
 
 def get_voter_service(
     session: AsyncSession = Depends(get_db),
-    
 ) -> VoterService:
-    """ Get a voter service. """
-    return VoterService(session=session)
+    """Get a voter service."""
+    return VoterService(voter_repo=VoterRepository(), session=session)
 
 
 

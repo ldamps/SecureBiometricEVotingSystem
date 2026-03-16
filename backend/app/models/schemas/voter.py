@@ -2,10 +2,20 @@
 from app.models.base.pydantic_base import ResponseSchema, RequestSchema
 from pydantic import Field
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
+
+def voter_orm_to_item_dict(voter: Any) -> dict[str, Any]:
+    """Build a dict suitable for VoterItem from a Voter ORM instance (constituency_id -> consituency_id, bytes -> str)."""
+    d = voter.to_dict()
+    d["consituency_id"] = d.get("constituency_id")
+    for k, v in list(d.items()):
+        if isinstance(v, bytes):
+            d[k] = v.decode("utf-8", errors="replace")
+    return d
+
 
 class VoterItem(ResponseSchema):
-    """Voter response model."""
+    """Voter response model. Uses consituency_id (API) mapped from ORM attribute constituency_id."""
     id: str = Field(..., description="The unique identifier for the voter.")
     national_insurance_number: Optional[str] = Field(None, description="The national insurance number for the voter.")
     passport_number: Optional[str] = Field(None, description="The passport number for the voter.")
@@ -23,6 +33,11 @@ class VoterItem(ResponseSchema):
     locked_until: Optional[datetime] = Field(None, description="The date and time the voter was locked until.")
     registered_at: datetime = Field(..., description="The date and time the voter was registered.")
     renew_by: Optional[datetime] = Field(None, description="The date and time the voter's account needs to be renewed by.")
+
+    @classmethod
+    def from_orm_voter(cls, voter: Any) -> "VoterItem":
+        """Build VoterItem from a Voter ORM instance."""
+        return cls.model_validate(voter_orm_to_item_dict(voter))
 
 
 class VoterRegistrationRequest(RequestSchema):
@@ -42,8 +57,7 @@ class VoterRegistrationRequest(RequestSchema):
     failed_auth_attempts: int = Field(..., description="The number of failed authentication attempts for the voter.")
     locked_until: Optional[datetime] = Field(None, description="The date and time the voter was locked until.")
     registered_at: datetime = Field(..., description="The date and time the voter was registered.")
-    renew_by: Optional[datetime] = Field(None, description="The date and time the voter's account needs to be renewed by.")
-    
+
 
 class VoterUpdateRequest(RequestSchema):
     """Voter update request model."""

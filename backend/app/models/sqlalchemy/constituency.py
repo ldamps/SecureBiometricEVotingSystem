@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import Boolean, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
 
@@ -19,5 +19,9 @@ class Constituency(Base, UUIDPrimaryKeyMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Relationships ----------
+    voters: Mapped[list["Voter"]] = relationship(
+        "Voter",
+        back_populates="constituency",
+    )
 
     # Database constraints + indexes ----------

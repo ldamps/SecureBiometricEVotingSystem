@@ -33,5 +33,10 @@ class BiometricTemplate(Base, UUIDPrimaryKeyMixin):
     expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     # Relationships ----------
+    voter: Mapped["Voter"] = relationship(
+        "Voter",
+        back_populates="biometric_templates",
+        lazy="select",
+    )
 
     # Database constraints + indexes ----------

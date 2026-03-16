@@ -60,12 +60,11 @@ class Address(Base, UUIDPrimaryKeyMixin):
 
     # RELATIONSHIPS ----------
 
-    # voter -> address (one voter can have multiple addresses e.g. current + previous)
+    # Many-to-one: address belongs to one voter (delete-orphan only on the one side: Voter.addresses)
     voter: Mapped["Voter"] = relationship(
         "Voter",
         back_populates="addresses",
-        cascade="all, delete-orphan",
-        lazy="select"
+        lazy="select",
     )
 
     # Database constraints + indexes ----------

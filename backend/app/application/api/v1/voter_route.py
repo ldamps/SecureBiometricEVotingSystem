@@ -69,7 +69,7 @@ async def update_voter(
     Update a voter's (registration) details
     """
     dto = UpdateVoterPlainDTO.create_dto(body)
-    return await service.update_voter_details(dto)
+    return await service.update_voter_details(voter_id, dto)
 
 
 

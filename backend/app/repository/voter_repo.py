@@ -17,8 +17,8 @@ logger = structlog.get_logger()
 class VoterRepository:
     """Voter-specific repository operations."""
 
-    def __init__(self):
-        super().__init__(Voter)
+    def __init__(self) -> None:
+        pass
 
     # INTERNAL HELPER METHODS ----------
     
@@ -245,11 +245,13 @@ class VoterRepository:
                 "renew_by",
             ]
 
-            update_data = {
-                field: getattr(dto, field)
-                for field in allowed_fields
-                if getattr(dto, field) is not None
-            }
+            # DTO uses consituency_id (typo); Voter model uses constituency_id
+            column_map = {"consituency_id": "constituency_id"}
+            update_data = {}
+            for field in allowed_fields:
+                val = getattr(dto, field, None)
+                if val is not None:
+                    update_data[column_map.get(field, field)] = val
 
             if not update_data:
                 raise ValueError("No valid fields to update")

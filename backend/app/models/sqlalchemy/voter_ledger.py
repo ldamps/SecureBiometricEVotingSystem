@@ -32,5 +32,10 @@ class VoterLedger(Base, UUIDPrimaryKeyMixin):
     voted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     # Relationships ----------
+    voter: Mapped["Voter"] = relationship(
+        "Voter",
+        back_populates="voter_ledger",
+        lazy="select",
+    )
 
     # Database constraints + indexes ----------

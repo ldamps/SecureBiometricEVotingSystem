@@ -5,7 +5,7 @@ from app.application.constants import Resource
 def responses(resource: Resource) -> Dict[HTTPMethod, Dict[int, Dict[str, Any]]]:
     """Generate FastAPI response definitions for a resource and return a dictionary of HTTP methods and their responses."""
 
-    resource_str: str = resource.lower()
+    resource_str: str = resource.value.lower()
 
     return {
         HTTPMethod.GET: {

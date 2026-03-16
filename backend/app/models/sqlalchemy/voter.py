@@ -56,7 +56,6 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     registered_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     renew_by: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    
     # RELATIONSHIPS ----------
 
     # voter -> address (one voter can have multiple addresses i.g. current + previous)
@@ -79,11 +78,10 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         back_populates="voter",
         cascade="all, delete-orphan",
     )
-    # voter -> constituency (one voter can only be registered in one constituency)
+    # Many-to-one: voter belongs to one constituency (no delete-orphan on the many side)
     constituency: Mapped["Constituency"] = relationship(
         "Constituency",
         back_populates="voters",
-        cascade="all, delete-orphan",
     )
     # DATABASE CONSTRAINTS + INDEXES ----------
     __table_args__ = (
