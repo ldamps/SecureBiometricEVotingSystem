@@ -1,5 +1,11 @@
 import structlog
+from app.config import AWS_REGION, KMS_KEY_ID
+from app.infra.encryption.factory import get_encryption
+from app.repository.keys_manager_repo import KeysManagerRepository
 from app.repository.voter_repo import VoterRepository
+from app.service.encryption_mapper_service import EncryptionMapperService
+from app.service.encryption_service import EncryptionService
+from app.service.keys_manager_service import KeysManagerService
 from app.service.voter_service import VoterService
 from app.models.sqlalchemy.voter import Voter
 from fastapi import Depends, Request
@@ -53,11 +59,28 @@ async def get_db(
 
 # APP SERVICES ----------
 
+def get_keys_manager_service() -> KeysManagerService:
+    """DEK lifecycle (system org_id=None for voter PII)."""
+    return KeysManagerService(
+        encryption=get_encryption(),
+        keys_repo=KeysManagerRepository(),
+        kms_key_id=KMS_KEY_ID or "local-dev",
+        kms_key_region=AWS_REGION,
+    )
+
+
 def get_voter_service(
     session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
 ) -> VoterService:
     """Get a voter service."""
-    return VoterService(voter_repo=VoterRepository(), session=session)
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return VoterService(
+        voter_repo=VoterRepository(),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
 
 
 

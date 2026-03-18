@@ -9,6 +9,7 @@ How to use:
 """
 
 from app.models.sqlalchemy.constituency import Constituency
+from app.models.sqlalchemy.encryption_key import EncryptionKey
 from app.models.sqlalchemy.audit_log import AuditLog
 from app.models.sqlalchemy.election_official import ElectionOfficial
 from app.models.sqlalchemy.election import Election
@@ -33,6 +34,7 @@ __all__ = [
     "Constituency",
     "Election",
     "ElectionOfficial",
+    "EncryptionKey",
     "ErrorReport",
     "Investigation",
     "SeatAllocation",

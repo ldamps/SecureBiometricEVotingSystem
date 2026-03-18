@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import ClassVar, Optional
 from app.application.constants import Resource
 from uuid import UUID
+from app.models.base.sqlalchemy_base import EncryptedDBField
 from app.models.schemas.voter import VoterItem, VoterRegistrationRequest, VoterUpdateRequest
 from app.models.sqlalchemy.voter import Voter, VoterStatus
 
@@ -26,6 +27,60 @@ class VoterBaseDTO:
         "email",
         "voter_reference",
     ]
+
+
+@dataclass
+class VoterDecryptedDTO(VoterBaseDTO):
+    """Plaintext shape after decrypting a Voter ORM row (or all-null legacy/migrated row)."""
+
+    id: UUID
+    voter_status: str
+    registration_status: str
+    failed_auth_attempts: int
+    national_insurance_number: Optional[str] = None
+    passport_number: Optional[str] = None
+    passport_country: Optional[str] = None
+    first_name: Optional[str] = None
+    surname: Optional[str] = None
+    previous_first_name: Optional[str] = None
+    previous_surname: Optional[str] = None
+    date_of_birth: Optional[str] = None  # ISO string from decrypt
+    email: Optional[str] = None
+    voter_reference: Optional[str] = None
+    constituency_id: Optional[UUID] = None
+    locked_until: Optional[datetime] = None
+    registered_at: Optional[datetime] = None
+    renew_by: Optional[datetime] = None
+
+    def to_schema(self) -> VoterItem:
+        dob: Optional[datetime] = None
+        if self.date_of_birth:
+            s = self.date_of_birth.strip()
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            try:
+                dob = datetime.fromisoformat(s)
+            except ValueError:
+                pass
+        return VoterItem(
+            id=str(self.id),
+            national_insurance_number=self.national_insurance_number,
+            passport_number=self.passport_number,
+            passport_country=self.passport_country,
+            first_name=self.first_name,
+            surname=self.surname,
+            previous_first_name=self.previous_first_name,
+            maiden_name=self.previous_surname,
+            date_of_birth=dob,
+            email=self.email,
+            voter_reference=self.voter_reference,
+            consituency_id=str(self.constituency_id) if self.constituency_id else None,
+            registration_status=self.registration_status,
+            failed_auth_attempts=self.failed_auth_attempts,
+            locked_until=self.locked_until,
+            registered_at=self.registered_at,
+            renew_by=self.renew_by,
+        )
 
 
 @dataclass
@@ -86,46 +141,117 @@ class RegisterVoterPlainDTO(VoterBaseDTO):
             d["registration_status"] = VoterStatus(rs.upper()) if rs.upper() in ("PENDING", "SUSPENDED", "ACTIVE") else VoterStatus.PENDING
         return cls(**d)
 
-    def to_model(self) -> Voter:
-        """Build Voter ORM instance for persistence. EncryptedBytes fields stored as plain bytes for now."""
-        # DB constraint: registration_status IN ('pending', 'approved', 'rejected')
+@dataclass
+class RegisterVoterEncryptionPlainDTO(VoterBaseDTO):
+    """Plain values for field-level encryption during registration (see VoterService.register_voter)."""
+
+    first_name: str
+    surname: str
+    date_of_birth: str
+    email: str
+    voter_reference: str
+    voter_status: str
+    constituency_id: UUID
+    registration_status: str
+    failed_auth_attempts: int
+    registered_at: datetime
+    renew_by: datetime
+    national_insurance_number: Optional[str] = None
+    passport_number: Optional[str] = None
+    passport_country: Optional[str] = None
+    previous_first_name: Optional[str] = None
+    previous_surname: Optional[str] = None
+    locked_until: Optional[datetime] = None
+
+    @classmethod
+    def from_registration(cls, reg: "RegisterVoterPlainDTO") -> "RegisterVoterEncryptionPlainDTO":
         reg_status = (
-            self.registration_status.value.lower()
-            if hasattr(self.registration_status, "value")
-            else str(self.registration_status).lower()
+            reg.registration_status.value.lower()
+            if hasattr(reg.registration_status, "value")
+            else str(reg.registration_status).lower()
         )
-        # Ensure we use a value allowed by the DB constraint
         if reg_status not in ("pending", "approved", "rejected"):
             reg_status = "pending"
-        ni = self.national_insurance_number
-        if not ni or not ni.strip():
+        ni = reg.national_insurance_number
+        if not ni or not str(ni).strip():
             ni = f"NONE-{uuid_module.uuid4().hex}"
+        else:
+            ni = str(ni).strip()
         voter_ref = f"VR-{uuid_module.uuid4().hex[:16]}"
         now = datetime.now(timezone.utc)
-
-        def _enc(s: Optional[str]) -> Optional[bytes]:
-            return s.encode("utf-8") if s else None
-
-        return Voter(
-            national_insurance_number=ni,
-            passport_number=self.passport_number,
-            passport_country=self.passport_country,
-            first_name=_enc(self.first_name),
-            surname=_enc(self.surname),
-            previous_first_name=_enc(self.previous_first_name),
-            previous_surname=_enc(self.previous_surname),
-            date_of_birth=_enc(self.date_of_birth.isoformat() if self.date_of_birth else None),
-            email=_enc(self.email),
+        return cls(
+            first_name=reg.first_name,
+            surname=reg.surname,
+            date_of_birth=reg.date_of_birth.isoformat(),
+            email=reg.email,
             voter_reference=voter_ref,
             voter_status=reg_status,
-            constituency_id=self.consituency_id,
+            constituency_id=reg.consituency_id,
             registration_status=reg_status,
             failed_auth_attempts=0,
-            locked_until=None,
             registered_at=now,
-            renew_by=self.renew_by,
+            renew_by=reg.renew_by,
+            national_insurance_number=ni,
+            passport_number=reg.passport_number.strip() if reg.passport_number and reg.passport_number.strip() else None,
+            passport_country=reg.passport_country.strip() if reg.passport_country and reg.passport_country.strip() else None,
+            previous_first_name=reg.previous_first_name,
+            previous_surname=reg.previous_surname,
+            locked_until=None,
         )
 
+
+@dataclass
+class VoterPersistEncryptedDTO:
+    """Encrypted columns + metadata for a new Voter row (output of encrypt_dto)."""
+
+    voter_status: str = ""
+    constituency_id: Optional[UUID] = None
+    registration_status: str = ""
+    failed_auth_attempts: int = 0
+    locked_until: Optional[datetime] = None
+    registered_at: Optional[datetime] = None
+    renew_by: Optional[datetime] = None
+    national_insurance_number: Optional[EncryptedDBField] = None
+    national_insurance_number_search_token: Optional[str] = None
+    passport_number: Optional[EncryptedDBField] = None
+    passport_number_search_token: Optional[str] = None
+    passport_country: Optional[EncryptedDBField] = None
+    first_name: Optional[EncryptedDBField] = None
+    surname: Optional[EncryptedDBField] = None
+    previous_first_name: Optional[EncryptedDBField] = None
+    previous_surname: Optional[EncryptedDBField] = None
+    date_of_birth: Optional[EncryptedDBField] = None
+    email: Optional[EncryptedDBField] = None
+    email_search_token: Optional[str] = None
+    voter_reference: Optional[EncryptedDBField] = None
+    voter_reference_search_token: Optional[str] = None
+
+
+def voter_orm_from_persist_encrypted(row: VoterPersistEncryptedDTO) -> Voter:
+    """Build a Voter ORM instance from encrypted registration payload."""
+    return Voter(
+        national_insurance_number=row.national_insurance_number,
+        national_insurance_number_search_token=row.national_insurance_number_search_token,
+        passport_number=row.passport_number,
+        passport_number_search_token=row.passport_number_search_token,
+        passport_country=row.passport_country,
+        first_name=row.first_name,
+        surname=row.surname,
+        previous_first_name=row.previous_first_name,
+        previous_surname=row.previous_surname,
+        date_of_birth=row.date_of_birth,
+        email=row.email,
+        email_search_token=row.email_search_token,
+        voter_reference=row.voter_reference,
+        voter_reference_search_token=row.voter_reference_search_token,
+        voter_status=row.voter_status,
+        constituency_id=row.constituency_id,
+        registration_status=row.registration_status,
+        failed_auth_attempts=row.failed_auth_attempts,
+        locked_until=row.locked_until,
+        registered_at=row.registered_at,
+        renew_by=row.renew_by,
+    )
 
 
 @dataclass

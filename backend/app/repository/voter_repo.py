@@ -1,16 +1,14 @@
 # voter_repo.py - Repository layer for voter-related operations.
 
 from app.models.sqlalchemy.voter import Voter
-from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
+from app.models.dto.voter import UpdateVoterPlainDTO
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 import structlog
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
 from app.application.core.exceptions import NotFoundError
-from app.models.sqlalchemy.voter import Voter
 
 logger = structlog.get_logger()
 
@@ -118,39 +116,22 @@ class VoterRepository:
     # ------------------------------------------------------------
 
     # CRUD METHODS ----------
-    async def register_voter(self, 
-        session: AsyncSession, 
-        dto: RegisterVoterPlainDTO,
-    ) -> Voter:
+    async def register_voter(self, session: AsyncSession, voter: Voter) -> Voter:
         """
-        Register (create) a new voter.
-
-        Args:
-            session (AsyncSession): The database session.
-            dto (VoterCreateDTO): The DTO containing voter details.
-
-        Returns:
-            Voter: The created voter.
-        
-        Raises:
-            DatabaseError: If there is an error creating the voter.
+        Persist a new voter (caller builds ORM row, e.g. with encrypted PII).
         """
         try:
-            voter = dto.to_model()
             session.add(voter)
             await session.flush()
 
             logger.info(
                 "Voter created successfully",
-                voter_id=voter.id
+                voter_id=voter.id,
             )
             return voter
 
         except Exception:
-            logger.exception(
-                "Failed to create voter",
-                dto=dto
-            )
+            logger.exception("Failed to create voter")
             raise
 
 
