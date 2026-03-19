@@ -23,6 +23,7 @@ class VoterItem(ResponseSchema):
     national_insurance_number: Optional[str] = Field(None, description="The national insurance number for the voter.")
     passport_number: Optional[str] = Field(None, description="The passport number for the voter.")
     passport_country: Optional[str] = Field(None, description="The country of the voter's passport.")
+    passport_expiry_date: Optional[datetime] = Field(None, description="The expiry date of the voter's passport.")
     first_name: Optional[str] = Field(None, description="The first name of the voter.")
     surname: Optional[str] = Field(None, description="The surname of the voter.")
     previous_first_name: Optional[str] = Field(None, description="The previous first name of the voter.")
@@ -54,12 +55,10 @@ class VoterRegistrationRequest(RequestSchema):
     national_insurance_number: Optional[str] = Field(None, description="The national insurance number of the voter.")
     passport_number: Optional[str] = Field(None, description="The passport number of the voter.")
     passport_country: Optional[str] = Field(None, description="The country of the voter's passport.")
+    passport_expiry_date: Optional[datetime] = Field(None, description="The expiry date of the voter's passport.")
     consituency_id: str = Field(..., description="The constituency identifier for the voter.")
     renew_by: datetime = Field(..., description="The date and time the voter's account needs to be renewed by.")
     registration_status: str = Field(..., description="The registration status of the voter.")
-    failed_auth_attempts: int = Field(..., description="The number of failed authentication attempts for the voter.")
-    locked_until: Optional[datetime] = Field(None, description="The date and time the voter was locked until.")
-    registered_at: datetime = Field(..., description="The date and time the voter was registered.")
 
 
 class VoterUpdateRequest(RequestSchema):
@@ -72,6 +71,7 @@ class VoterUpdateRequest(RequestSchema):
     email: Optional[str] = Field(None, description="The email address of the voter.")
     passport_number: Optional[str] = Field(None, description="The passport number of the voter.")
     passport_country: Optional[str] = Field(None, description="The country of the voter's passport.")
+    passport_expiry_date: Optional[datetime] = Field(None, description="The expiry date of the voter's passport.")
     consituency_id: Optional[str] = Field(None, description="The constituency identifier for the voter.")
     renew_by: Optional[datetime] = Field(None, description="The date and time the voter's account needs to be renewed by.") 
     registration_status: Optional[str] = Field(None, description="The registration status of the voter.")

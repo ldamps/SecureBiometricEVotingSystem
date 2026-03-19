@@ -60,6 +60,7 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     passport_country: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
+    passport_expiry_date: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
 
     first_name: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
     surname: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)

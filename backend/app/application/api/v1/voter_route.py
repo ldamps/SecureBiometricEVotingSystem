@@ -68,8 +68,49 @@ async def update_voter(
     """
     Update a voter's (registration) details
     """
-    dto = UpdateVoterPlainDTO.create_dto(body)
+    dto = UpdateVoterPlainDTO.create_dto(body, voter_id)
     return await service.update_voter_details(voter_id, dto)
+
+
+
+# Verify a voter's identity
+@router.post(
+    "/{voter_id}/verify-identity",
+    responses=voter_responses,
+    response_model=VoterItem,
+    status_code=status.HTTP_200_OK
+)
+async def verify_voter_identity(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+):
+    """ Verify a voter's identity (i.e. their personal details) """
+    pass
+
+
+
+### VOTER ADDRESS ROUTES ###
+
+# get voter's addresses
+@router.get(
+    "/{voter_id}/addresses",
+)
+async def get_voter_addresses(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+):
+    """ Get all addresses for a voter """
+    pass
+
+
+# create a new address for a voter
+
+
+# update an address for a voter
+
+
+# delete an address for a voter
+
+
+### VOTER BIOMETRIC TEMPLATE ROUTES ###
 
 
 
