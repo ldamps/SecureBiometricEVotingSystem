@@ -30,6 +30,7 @@ class CreateAddress(
     postcode: str = Field(..., description="The postcode of the address.")
     county: str = Field(..., description="The county of the address.")
     country: str = Field(..., description="The country of the address.")
+    address_status: AddressStatus = Field(..., description="The status of the address.")
     renew_by: datetime = Field(..., description="The date and time the address needs to be renewed by.")
 
 class UpdateAddress(

@@ -3,11 +3,14 @@ from app.config import AWS_REGION, KMS_KEY_ID
 from app.infra.encryption.factory import get_encryption
 from app.repository.keys_manager_repo import KeysManagerRepository
 from app.repository.voter_repo import VoterRepository
+from app.repository.address_repo import AddressRepository
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.encryption_service import EncryptionService
 from app.service.keys_manager_service import KeysManagerService
 from app.service.voter_service import VoterService
+from app.service.address_service import AddressService
 from app.models.sqlalchemy.voter import Voter
+from app.models.sqlalchemy.address import Address
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from typing import AsyncGenerator
@@ -76,7 +79,20 @@ def get_voter_service(
     """Get a voter service."""
     mapper = EncryptionMapperService(EncryptionService(), keys_manager)
     return VoterService(
-        voter_repo=VoterRepository(),
+        voter_repo=VoterRepository(Voter),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
+
+def get_address_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> AddressService:
+    """Get an address service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return AddressService(
+        address_repo=AddressRepository(Address),
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,

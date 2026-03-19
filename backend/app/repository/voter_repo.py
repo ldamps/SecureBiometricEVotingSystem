@@ -5,7 +5,7 @@ from app.models.dto.voter import UpdateVoterPlainDTO
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 import structlog
-from typing import Optional
+from typing import Optional, Type
 from uuid import UUID
 from datetime import datetime
 from app.application.core.exceptions import NotFoundError
@@ -15,8 +15,8 @@ logger = structlog.get_logger()
 class VoterRepository:
     """Voter-specific repository operations."""
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, model: Type[Voter] = Voter) -> None:
+        self._model = model
 
     # INTERNAL HELPER METHODS ----------
     
@@ -72,8 +72,8 @@ class VoterRepository:
         """
         try:
             result = await session.execute(
-                select(Voter.renew_by).where(
-                    Voter.id == voter_id
+                select(self._model.renew_by).where(
+                    self._model.id == voter_id
                 )
             )
             renew_by = result.scalar_one_or_none()
@@ -96,8 +96,8 @@ class VoterRepository:
         """
         try:
             result = await session.execute(
-                select(Voter).where(
-                    Voter.email == email
+                select(self._model).where(
+                    self._model.email == email
                 )
             )
             voter = result.scalar_one_or_none()
@@ -156,8 +156,8 @@ class VoterRepository:
 
         try:
             result = await session.execute(
-                select(Voter).where(
-                    Voter.id == voter_id
+                select(self._model).where(
+                    self._model.id == voter_id
                 )
             )
             voter = result.scalar_one_or_none()
@@ -217,7 +217,7 @@ class VoterRepository:
                 "national_insurance_number",
                 "passport_number",
                 "passport_country",
-                "consituency_id",
+                "constituency_id",
                 "renew_by",
                 "registration_status",
                 "failed_auth_attempts",
@@ -226,8 +226,8 @@ class VoterRepository:
                 "renew_by",
             ]
 
-            # DTO uses consituency_id (typo); Voter model uses constituency_id
-            column_map = {"consituency_id": "constituency_id"}
+            # DTO uses constituency_id (typo); Voter model uses constituency_id
+            column_map = {"constituency_id": "constituency_id"}
             update_data = {}
             for field in allowed_fields:
                 val = getattr(dto, field, None)
@@ -238,10 +238,10 @@ class VoterRepository:
                 raise ValueError("No valid fields to update")
 
             stmt = (
-                update(Voter)
-                .where(Voter.id == voter_id)
+                update(self._model)
+                .where(self._model.id == voter_id)
                 .values(**update_data)
-                .returning(Voter)
+                .returning(self._model)
             )
 
             result = await session.execute(stmt)

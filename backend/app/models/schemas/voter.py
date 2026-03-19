@@ -3,11 +3,12 @@ from app.models.base.pydantic_base import ResponseSchema, RequestSchema
 from pydantic import Field
 from datetime import datetime
 from typing import Any, Optional
+from uuid import UUID
 
 def voter_orm_to_item_dict(voter: Any) -> dict[str, Any]:
-    """Build a dict suitable for VoterItem from a Voter ORM instance (constituency_id -> consituency_id, bytes -> str)."""
+    """Build a dict suitable for VoterItem from a Voter ORM instance (constituency_id -> constituency_id, bytes -> str)."""
     d = voter.to_dict()
-    d["consituency_id"] = d.get("constituency_id")
+    d["constituency_id"] = d.get("constituency_id")
     for k, v in list(d.items()):
         if isinstance(v, bytes):
             d[k] = v.decode("utf-8", errors="replace")
@@ -15,7 +16,7 @@ def voter_orm_to_item_dict(voter: Any) -> dict[str, Any]:
 
 
 class VoterItem(ResponseSchema):
-    """Voter response model. Uses consituency_id (API) mapped from ORM attribute constituency_id.
+    """Voter response model. Uses constituency_id (API) mapped from ORM attribute constituency_id.
 
     Encrypted fields may be null after DB migration or until re-registration.
     """
@@ -31,7 +32,7 @@ class VoterItem(ResponseSchema):
     date_of_birth: Optional[datetime] = Field(None, description="The date of birth of the voter.")
     email: Optional[str] = Field(None, description="The email address of the voter.")
     voter_reference: Optional[str] = Field(None, description="The voter reference for the voter.")
-    consituency_id: Optional[str] = Field(None, description="The constituency identifier for the voter.")
+    constituency_id: Optional[UUID] = Field(None, description="The constituency identifier for the voter.")
     registration_status: str = Field(..., description="The registration status of the voter.")
     failed_auth_attempts: int = Field(..., description="The number of failed authentication attempts for the voter.")
     locked_until: Optional[datetime] = Field(None, description="The date and time the voter was locked until.")
@@ -56,7 +57,7 @@ class VoterRegistrationRequest(RequestSchema):
     passport_number: Optional[str] = Field(None, description="The passport number of the voter.")
     passport_country: Optional[str] = Field(None, description="The country of the voter's passport.")
     passport_expiry_date: Optional[datetime] = Field(None, description="The expiry date of the voter's passport.")
-    consituency_id: str = Field(..., description="The constituency identifier for the voter.")
+    constituency_id: UUID = Field(..., description="The constituency identifier for the voter.")
     renew_by: datetime = Field(..., description="The date and time the voter's account needs to be renewed by.")
     registration_status: str = Field(..., description="The registration status of the voter.")
 
@@ -72,7 +73,7 @@ class VoterUpdateRequest(RequestSchema):
     passport_number: Optional[str] = Field(None, description="The passport number of the voter.")
     passport_country: Optional[str] = Field(None, description="The country of the voter's passport.")
     passport_expiry_date: Optional[datetime] = Field(None, description="The expiry date of the voter's passport.")
-    consituency_id: Optional[str] = Field(None, description="The constituency identifier for the voter.")
+    constituency_id: Optional[UUID] = Field(None, description="The constituency identifier for the voter.")
     renew_by: Optional[datetime] = Field(None, description="The date and time the voter's account needs to be renewed by.") 
     registration_status: Optional[str] = Field(None, description="The registration status of the voter.")
     failed_auth_attempts: Optional[int] = Field(None, description="The number of failed authentication attempts for the voter.")

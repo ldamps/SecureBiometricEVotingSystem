@@ -66,10 +66,13 @@ class CreateAddressPlainDTO(AddressBaseDTO):
     postcode: str = ""
     county: str = ""
     country: str = ""
+    address_status: str = "PENDING"
+    renew_by: Optional[datetime] = None
 
     @classmethod
-    def create_dto(cls, data: CreateAddress, voter_id: UUID) -> "CreateAddressPlainDTO":
-        return cls(**data.model_dump(), voter_id=voter_id)
+    def create_dto(cls, data: CreateAddress) -> "CreateAddressPlainDTO":
+        return cls(**data.model_dump())
+
 
 
 @dataclass
@@ -103,10 +106,6 @@ class UpdateAddressPlainDTO(AddressBaseDTO):
     county: Optional[str] = None
     country: Optional[str] = None
     address_status: Optional[str] = None
-
-    @classmethod
-    def create_dto(cls, data: UpdateAddress, address_id: UUID, voter_id: UUID) -> "UpdateAddressPlainDTO":
-        return cls(**data.model_dump(), address_id=address_id, voter_id=voter_id)
 
 
 @dataclass

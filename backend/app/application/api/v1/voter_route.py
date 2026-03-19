@@ -9,6 +9,11 @@ from app.service.voter_service import VoterService
 from app.application.api.dependencies import get_voter_service
 from app.models.schemas.voter import VoterItem, VoterRegistrationRequest, VoterUpdateRequest
 from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
+from app.models.dto.address import CreateAddressPlainDTO
+from app.service.address_service import AddressService
+from app.application.api.dependencies import get_address_service
+from app.models.schemas.address import CreateAddress, AddressItem
+from typing import List
 
 voter_responses = responses(Resource.VOTER)
 logger = structlog.get_logger()
@@ -28,6 +33,7 @@ router = APIRouter(
 async def get_voter_by_voter_id(
     voter_id: UUID = Path(..., description="The unique identifier for the voter."),
     service: VoterService = Depends(get_voter_service),
+    address_service: AddressService = Depends(get_address_service),
 ) -> VoterItem:
     """
     Get voter details by voter ID
@@ -90,18 +96,53 @@ async def verify_voter_identity(
 
 ### VOTER ADDRESS ROUTES ###
 
-# get voter's addresses
+# list voter's addresses
 @router.get(
     "/{voter_id}/addresses",
+    responses=voter_responses,
+    response_model=List[AddressItem],
+    status_code=status.HTTP_200_OK
 )
 async def get_voter_addresses(
     voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    service: AddressService = Depends(get_address_service),
 ):
     """ Get all addresses for a voter """
-    pass
+    return await service.get_all_addresses_by_voter_id(voter_id)
+
+
+
+# get an address by ID
+@router.get(
+    "/{voter_id}/addresses/{address_id}",
+    responses=voter_responses,
+    response_model=AddressItem,
+    status_code=status.HTTP_200_OK
+)
+async def get_voter_address_by_id(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    address_id: UUID = Path(..., description="The unique identifier for the address."),
+    service: AddressService = Depends(get_address_service),
+):
+    """ Get an address by ID """
+    return await service.get_address_by_id(voter_id, address_id)
 
 
 # create a new address for a voter
+@router.post(
+    "/{voter_id}/address",
+    responses=voter_responses,
+    response_model=AddressItem,
+    status_code=status.HTTP_201_CREATED
+)
+async def create_voter_address(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    body: CreateAddress = Body(..., description="The address creation request."),
+    service: AddressService = Depends(get_address_service),
+):
+    """ Create a new address for a voter """
+    dto = CreateAddressPlainDTO.create_dto(body)
+    return await service.create_address(dto)
 
 
 # update an address for a voter

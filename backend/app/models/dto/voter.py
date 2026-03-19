@@ -88,7 +88,7 @@ class VoterDTO(VoterBaseDTO):
             date_of_birth=dob,
             email=self.email,
             voter_reference=self.voter_reference,
-            consituency_id=str(self.constituency_id) if self.constituency_id else None,
+            constituency_id=self.constituency_id,
             registration_status=self.registration_status,
             failed_auth_attempts=self.failed_auth_attempts,
             locked_until=self.locked_until,
@@ -99,20 +99,29 @@ class VoterDTO(VoterBaseDTO):
 
 @dataclass
 class RegisterVoterPlainDTO(VoterBaseDTO):
-    """Plaintext fields provided by the client for voter registration."""
+    """Plaintext fields provided by the client for voter registration.
+
+    Includes both client-provided fields and service-computed fields
+    (voter_reference, voter_status, timestamps) needed for encryption.
+    """
     first_name: str = ""
     surname: str = ""
     previous_first_name: Optional[str] = None
     previous_surname: Optional[str] = None
-    date_of_birth: Optional[datetime] = None
+    date_of_birth: Optional[str] = None
     email: str = ""
     national_insurance_number: Optional[str] = None
     passport_number: Optional[str] = None
     passport_country: Optional[str] = None
-    passport_expiry_date: Optional[datetime] = None
-    consituency_id: Optional[UUID] = None
-    renew_by: Optional[datetime] = None
+    passport_expiry_date: Optional[str] = None
+    voter_reference: Optional[str] = None
+    voter_status: Optional[str] = None
+    constituency_id: Optional[UUID] = None
     registration_status: Optional[str] = None
+    failed_auth_attempts: int = 0
+    registered_at: Optional[datetime] = None
+    renew_by: Optional[datetime] = None
+    locked_until: Optional[datetime] = None
 
     @classmethod
     def create_dto(cls, data: VoterRegistrationRequest) -> "RegisterVoterPlainDTO":
@@ -163,7 +172,7 @@ class UpdateVoterPlainDTO(VoterBaseDTO):
     passport_number: Optional[str] = None
     passport_country: Optional[str] = None
     passport_expiry_date: Optional[datetime] = None
-    consituency_id: Optional[UUID] = None
+    constituency_id: Optional[UUID] = None
     renew_by: Optional[datetime] = None
     registration_status: Optional[str] = None
     failed_auth_attempts: Optional[int] = None
@@ -193,7 +202,7 @@ class UpdateVoterEncryptedDTO(VoterBaseDTO):
     email_search_token: Optional[str] = None
     voter_reference: Optional[EncryptedDBField] = None
     voter_reference_search_token: Optional[str] = None
-    consituency_id: Optional[UUID] = None
+    constituency_id: Optional[UUID] = None
     renew_by: Optional[datetime] = None
     registration_status: Optional[str] = None
     failed_auth_attempts: Optional[int] = None
