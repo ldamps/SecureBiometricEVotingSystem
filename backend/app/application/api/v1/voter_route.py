@@ -114,7 +114,7 @@ async def get_voter_addresses(
 
 # get an address by ID
 @router.get(
-    "/{voter_id}/addresses/{address_id}",
+    "/{voter_id}/address/{address_id}",
     responses=voter_responses,
     response_model=AddressItem,
     status_code=status.HTTP_200_OK
