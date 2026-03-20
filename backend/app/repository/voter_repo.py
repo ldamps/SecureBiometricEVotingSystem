@@ -215,15 +215,15 @@ class VoterRepository:
                 "previous_first_name",
                 "previous_surname",
                 "national_insurance_number",
-                "passport_number",
-                "passport_country",
+                "nationality_category",
+                "immigration_status",
+                "immigration_status_expiry",
                 "constituency_id",
                 "renew_by",
                 "registration_status",
                 "failed_auth_attempts",
                 "locked_until",
                 "registered_at",
-                "renew_by",
             ]
 
             # DTO uses constituency_id (typo); Voter model uses constituency_id

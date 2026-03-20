@@ -13,6 +13,7 @@ from app.models.sqlalchemy.encryption_key import EncryptionKey
 from app.models.sqlalchemy.audit_log import AuditLog
 from app.models.sqlalchemy.election_official import ElectionOfficial
 from app.models.sqlalchemy.election import Election
+from app.models.sqlalchemy.voter_passport import VoterPassport
 from app.models.sqlalchemy.voter import Voter
 from app.models.sqlalchemy.address import Address
 from app.models.sqlalchemy.biometric_template import BiometricTemplate
@@ -41,5 +42,6 @@ __all__ = [
     "TallyResult",
     "Voter",
     "VoterLedger",
+    "VoterPassport",
     "Vote",
 ]

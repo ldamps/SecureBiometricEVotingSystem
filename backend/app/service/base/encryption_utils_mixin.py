@@ -10,10 +10,13 @@ import structlog
 from app.models.base.sqlalchemy_base import EncryptedDBField
 from app.models.dto.address import AddressBaseDTO, AddressDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
+from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
 from app.models.schemas.address import AddressItem
 from app.models.schemas.voter import VoterItem
+from app.models.schemas.voter_passport import VoterPassportItem
 from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
 from app.models.sqlalchemy.voter import Voter
+from app.models.sqlalchemy.voter_passport import VoterPassport
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.encryption_service import EncryptionArgs
 from app.service.keys_manager_service import KeysManagerService
@@ -67,21 +70,9 @@ def prepare_voter_registration_plain_fields(dto: RegisterVoterPlainDTO) -> dict:
         registered_at=now,
         renew_by=dto.renew_by,
         national_insurance_number=ni,
-        passport_number=(
-            dto.passport_number.strip()
-            if dto.passport_number and dto.passport_number.strip()
-            else None
-        ),
-        passport_country=(
-            dto.passport_country.strip()
-            if dto.passport_country and dto.passport_country.strip()
-            else None
-        ),
-        passport_expiry_date=(
-            dto.passport_expiry_date
-            if isinstance(dto.passport_expiry_date, str)
-            else (dto.passport_expiry_date.isoformat() if dto.passport_expiry_date else None)
-        ),
+        nationality_category=dto.nationality_category,
+        immigration_status=dto.immigration_status,
+        immigration_status_expiry=dto.immigration_status_expiry,
         previous_first_name=dto.previous_first_name,
         previous_surname=dto.previous_surname,
         locked_until=None,
@@ -107,9 +98,6 @@ def voter_orm_to_dto_unencrypted_row(voter: Voter) -> VoterDTO:
         registration_status=voter.registration_status,
         failed_auth_attempts=voter.failed_auth_attempts,
         national_insurance_number=enc_plain("national_insurance_number"),
-        passport_number=enc_plain("passport_number"),
-        passport_country=enc_plain("passport_country"),
-        passport_expiry_date=enc_plain("passport_expiry_date"),
         first_name=enc_plain("first_name"),
         surname=enc_plain("surname"),
         previous_first_name=enc_plain("previous_first_name"),
@@ -118,9 +106,37 @@ def voter_orm_to_dto_unencrypted_row(voter: Voter) -> VoterDTO:
         email=enc_plain("email"),
         voter_reference=enc_plain("voter_reference"),
         constituency_id=voter.constituency_id,
+        nationality_category=voter.nationality_category,
+        immigration_status=voter.immigration_status,
+        immigration_status_expiry=voter.immigration_status_expiry,
         locked_until=voter.locked_until,
         registered_at=voter.registered_at,
         renew_by=voter.renew_by,
+    )
+
+
+def passport_orm_to_dto_unencrypted_row(passport: VoterPassport) -> VoterPassportDTO:
+    """Map passport ORM row when encrypted JSONB columns are NULL (e.g. post-migration)."""
+
+    def enc_plain(name: str) -> Optional[str]:
+        v = getattr(passport, name, None)
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v
+        if isinstance(v, (bytes, bytearray)):
+            return v.decode("utf-8", errors="replace") if v else None
+        return None
+
+    return VoterPassportDTO(
+        id=passport.id,
+        voter_id=passport.voter_id,
+        passport_number=enc_plain("passport_number"),
+        issuing_country=enc_plain("issuing_country"),
+        expiry_date=enc_plain("expiry_date"),
+        is_primary=passport.is_primary,
+        created_at=passport.created_at,
+        updated_at=passport.updated_at,
     )
 
 
@@ -340,4 +356,14 @@ class EncryptionUtilsMixin:
             base_dto_class=AddressBaseDTO,
             session=session,
             map_unencrypted_row=address_orm_to_dto_unencrypted_row,
+        )
+
+    async def passport_model_to_schema_item(self, passport: VoterPassport, session: Any) -> VoterPassportItem:
+        """VoterPassport ORM model → API schema (decrypt when JSONB present, else legacy plaintext columns)."""
+        return await self._orm_to_schema_item(
+            passport,
+            plain_dto_class=VoterPassportDTO,
+            base_dto_class=VoterPassportBaseDTO,
+            session=session,
+            map_unencrypted_row=passport_orm_to_dto_unencrypted_row,
         )

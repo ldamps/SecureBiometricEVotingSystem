@@ -6,9 +6,12 @@ from app.application.constants import Resource
 from uuid import UUID
 import structlog
 from app.service.voter_service import VoterService
-from app.application.api.dependencies import get_voter_service
+from app.service.voter_passport_service import VoterPassportService
+from app.application.api.dependencies import get_voter_service, get_voter_passport_service
 from app.models.schemas.voter import VoterItem, VoterRegistrationRequest, VoterUpdateRequest, VerifyIdentityRequest, VerifyIdentityResponse
+from app.models.schemas.voter_passport import VoterPassportItem, CreateVoterPassportRequest, UpdateVoterPassportRequest
 from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
+from app.models.dto.voter_passport import CreateVoterPassportPlainDTO, UpdateVoterPassportPlainDTO
 from app.models.dto.address import CreateAddressPlainDTO, UpdateAddressPlainDTO
 from app.service.address_service import AddressService
 from app.application.api.dependencies import get_address_service
@@ -53,10 +56,11 @@ async def register_voter(
     service: VoterService = Depends(get_voter_service),
 ):
     """
-    Register a new voter
+    Register a new voter.
+    Requires either a national insurance number or at least one passport entry.
     """
     dto = RegisterVoterPlainDTO.create_dto(body)
-    return await service.register_voter(dto)
+    return await service.register_voter(dto, passport_entries=body.passports or None)
 
 
 # Update a voter's (registration) details
@@ -137,11 +141,13 @@ async def get_voter_address_by_id(
     status_code=status.HTTP_201_CREATED
 )
 async def create_voter_address(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
     body: CreateAddress = Body(..., description="The address creation request."),
     service: AddressService = Depends(get_address_service),
 ):
     """ Create a new address for a voter """
     dto = CreateAddressPlainDTO.create_dto(body)
+    dto.voter_id = voter_id
     return await service.create_address(dto)
 
 
@@ -176,6 +182,89 @@ async def delete_voter_address(
 ):
     """ Delete an address for a voter """
     await service.delete_address(voter_id, address_id)
+
+
+### VOTER PASSPORT ROUTES ###
+
+# list voter's passports
+@router.get(
+    "/{voter_id}/passports",
+    responses=voter_responses,
+    response_model=List[VoterPassportItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_voter_passports(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    service: VoterPassportService = Depends(get_voter_passport_service),
+):
+    """Get all passport entries for a voter."""
+    return await service.get_all_passports_by_voter_id(voter_id)
+
+
+# get a passport by ID
+@router.get(
+    "/{voter_id}/passport/{passport_id}",
+    responses=voter_responses,
+    response_model=VoterPassportItem,
+    status_code=status.HTTP_200_OK,
+)
+async def get_voter_passport_by_id(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    passport_id: UUID = Path(..., description="The unique identifier for the passport entry."),
+    service: VoterPassportService = Depends(get_voter_passport_service),
+):
+    """Get a passport entry by ID."""
+    return await service.get_passport_by_id(voter_id, passport_id)
+
+
+# create a new passport entry for a voter
+@router.post(
+    "/{voter_id}/passport",
+    responses=voter_responses,
+    response_model=VoterPassportItem,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_voter_passport(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    body: CreateVoterPassportRequest = Body(..., description="The passport creation request."),
+    service: VoterPassportService = Depends(get_voter_passport_service),
+):
+    """Create a new passport entry for a voter."""
+    dto = CreateVoterPassportPlainDTO.create_dto(body, voter_id)
+    return await service.create_passport(dto)
+
+
+# update a passport entry for a voter
+@router.patch(
+    "/{voter_id}/passport/{passport_id}",
+    responses=voter_responses,
+    response_model=VoterPassportItem,
+    status_code=status.HTTP_200_OK,
+)
+async def update_voter_passport(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    passport_id: UUID = Path(..., description="The unique identifier for the passport entry."),
+    body: UpdateVoterPassportRequest = Body(..., description="The passport update request."),
+    service: VoterPassportService = Depends(get_voter_passport_service),
+):
+    """Update a passport entry for a voter."""
+    dto = UpdateVoterPassportPlainDTO.create_dto(body, passport_id, voter_id)
+    return await service.update_passport(dto)
+
+
+# delete a passport entry for a voter
+@router.delete(
+    "/{voter_id}/passport/{passport_id}",
+    responses=voter_responses,
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_voter_passport(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    passport_id: UUID = Path(..., description="The unique identifier for the passport entry."),
+    service: VoterPassportService = Depends(get_voter_passport_service),
+):
+    """Delete a passport entry for a voter."""
+    await service.delete_passport(voter_id, passport_id)
 
 
 ### VOTER BIOMETRIC TEMPLATE ROUTES ###

@@ -22,7 +22,6 @@ class AddressItem(ResponseSchema):
 class CreateAddress(
     RequestSchema
 ):
-    voter_id: UUID = Field(..., description="The unique identifier for the voter.")
     address_type: AddressType = Field(..., description="The type of address.")
     address_line1: str = Field(..., description="The first line of the address.")
     address_line2: str = Field(..., description="The second line of the address.")

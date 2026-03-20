@@ -17,9 +17,6 @@ class VoterBaseDTO:
     __resource__: ClassVar[Resource] = Resource.VOTER
     __encrypted_fields__: ClassVar[list[str]] = [
         "national_insurance_number",
-        "passport_number",
-        "passport_country",
-        "passport_expiry_date",
         "first_name",
         "surname",
         "previous_first_name",
@@ -39,9 +36,6 @@ class VoterDTO(VoterBaseDTO):
     registration_status: str
     failed_auth_attempts: int
     national_insurance_number: Optional[str] = None
-    passport_number: Optional[str] = None
-    passport_country: Optional[str] = None
-    passport_expiry_date: Optional[str] = None
     first_name: Optional[str] = None
     surname: Optional[str] = None
     previous_first_name: Optional[str] = None
@@ -50,9 +44,14 @@ class VoterDTO(VoterBaseDTO):
     email: Optional[str] = None
     voter_reference: Optional[str] = None
     constituency_id: Optional[UUID] = None
+    nationality_category: str = ""
+    immigration_status: Optional[str] = None
+    immigration_status_expiry: Optional[datetime] = None
     locked_until: Optional[datetime] = None
     registered_at: Optional[datetime] = None
     renew_by: Optional[datetime] = None
+    # passports are populated externally (not an encrypted field)
+    _passports_schema: Optional[list] = None
 
     def to_schema(self) -> VoterItem:
         dob: Optional[datetime] = None
@@ -65,22 +64,9 @@ class VoterDTO(VoterBaseDTO):
             except ValueError:
                 pass
 
-        ped: Optional[datetime] = None
-        if self.passport_expiry_date:
-            s = self.passport_expiry_date.strip()
-            if s.endswith("Z"):
-                s = s[:-1] + "+00:00"
-            try:
-                ped = datetime.fromisoformat(s)
-            except ValueError:
-                pass
-
         return VoterItem(
             id=str(self.id),
             national_insurance_number=self.national_insurance_number,
-            passport_number=self.passport_number,
-            passport_country=self.passport_country,
-            passport_expiry_date=ped,
             first_name=self.first_name,
             surname=self.surname,
             previous_first_name=self.previous_first_name,
@@ -89,11 +75,15 @@ class VoterDTO(VoterBaseDTO):
             email=self.email,
             voter_reference=self.voter_reference,
             constituency_id=self.constituency_id,
+            nationality_category=self.nationality_category,
+            immigration_status=self.immigration_status,
+            immigration_status_expiry=self.immigration_status_expiry,
             registration_status=self.registration_status,
             failed_auth_attempts=self.failed_auth_attempts,
             locked_until=self.locked_until,
             registered_at=self.registered_at,
             renew_by=self.renew_by,
+            passports=self._passports_schema or [],
         )
 
 
@@ -111,11 +101,11 @@ class RegisterVoterPlainDTO(VoterBaseDTO):
     date_of_birth: Optional[str] = None
     email: str = ""
     national_insurance_number: Optional[str] = None
-    passport_number: Optional[str] = None
-    passport_country: Optional[str] = None
-    passport_expiry_date: Optional[str] = None
     voter_reference: Optional[str] = None
     voter_status: Optional[str] = None
+    nationality_category: str = ""
+    immigration_status: Optional[str] = None
+    immigration_status_expiry: Optional[datetime] = None
     constituency_id: Optional[UUID] = None
     registration_status: Optional[str] = None
     failed_auth_attempts: int = 0
@@ -125,7 +115,8 @@ class RegisterVoterPlainDTO(VoterBaseDTO):
 
     @classmethod
     def create_dto(cls, data: VoterRegistrationRequest) -> "RegisterVoterPlainDTO":
-        return cls(**data.model_dump())
+        d = data.model_dump(exclude={"passports"})
+        return cls(**d)
 
 
 @dataclass
@@ -138,12 +129,11 @@ class RegisterVoterEncryptedDTO(VoterBaseDTO):
     locked_until: Optional[datetime] = None
     registered_at: Optional[datetime] = None
     renew_by: Optional[datetime] = None
+    nationality_category: str = ""
+    immigration_status: Optional[str] = None
+    immigration_status_expiry: Optional[datetime] = None
     national_insurance_number: Optional[EncryptedDBField] = None
     national_insurance_number_search_token: Optional[str] = None
-    passport_number: Optional[EncryptedDBField] = None
-    passport_number_search_token: Optional[str] = None
-    passport_country: Optional[EncryptedDBField] = None
-    passport_expiry_date: Optional[EncryptedDBField] = None
     first_name: Optional[EncryptedDBField] = None
     surname: Optional[EncryptedDBField] = None
     previous_first_name: Optional[EncryptedDBField] = None
@@ -169,9 +159,9 @@ class UpdateVoterPlainDTO(VoterBaseDTO):
     date_of_birth: Optional[datetime] = None
     email: Optional[str] = None
     national_insurance_number: Optional[str] = None
-    passport_number: Optional[str] = None
-    passport_country: Optional[str] = None
-    passport_expiry_date: Optional[datetime] = None
+    nationality_category: Optional[str] = None
+    immigration_status: Optional[str] = None
+    immigration_status_expiry: Optional[datetime] = None
     constituency_id: Optional[UUID] = None
     renew_by: Optional[datetime] = None
     registration_status: Optional[str] = None
@@ -189,10 +179,6 @@ class UpdateVoterEncryptedDTO(VoterBaseDTO):
     voter_id: Optional[UUID] = None
     national_insurance_number: Optional[EncryptedDBField] = None
     national_insurance_number_search_token: Optional[str] = None
-    passport_number: Optional[EncryptedDBField] = None
-    passport_number_search_token: Optional[str] = None
-    passport_country: Optional[EncryptedDBField] = None
-    passport_expiry_date: Optional[EncryptedDBField] = None
     first_name: Optional[EncryptedDBField] = None
     surname: Optional[EncryptedDBField] = None
     previous_first_name: Optional[EncryptedDBField] = None
@@ -202,6 +188,9 @@ class UpdateVoterEncryptedDTO(VoterBaseDTO):
     email_search_token: Optional[str] = None
     voter_reference: Optional[EncryptedDBField] = None
     voter_reference_search_token: Optional[str] = None
+    nationality_category: Optional[str] = None
+    immigration_status: Optional[str] = None
+    immigration_status_expiry: Optional[datetime] = None
     constituency_id: Optional[UUID] = None
     renew_by: Optional[datetime] = None
     registration_status: Optional[str] = None

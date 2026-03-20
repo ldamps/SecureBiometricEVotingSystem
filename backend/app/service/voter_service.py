@@ -2,7 +2,7 @@
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from app.models.sqlalchemy.voter import Voter
@@ -14,9 +14,16 @@ from app.models.dto.voter import (
     VoterDTO,
     VoterBaseDTO,
 )
+from app.models.dto.voter_passport import (
+    CreateVoterPassportPlainDTO,
+    CreateVoterPassportEncryptedDTO,
+    VoterPassportDTO,
+)
 from app.models.dto.address import AddressDTO, AddressBaseDTO
-from app.models.schemas.voter import VoterItem, VerifyIdentityRequest, VerifyIdentityResponse
+from app.models.schemas.voter import VoterItem, VoterRegistrationRequest, VerifyIdentityRequest, VerifyIdentityResponse
+from app.models.schemas.voter_passport import PassportEntry
 from app.repository.voter_repo import VoterRepository
+from app.repository.voter_passport_repo import VoterPassportRepository
 from app.repository.address_repo import AddressRepository
 from app.service.base.encryption_utils_mixin import (
     EncryptionUtilsMixin,
@@ -42,16 +49,22 @@ class VoterService(EncryptionUtilsMixin):
         encryption_mapper: EncryptionMapperService,
         voter: Optional[Voter] = None,
         address_repo: Optional[AddressRepository] = None,
+        passport_repo: Optional[VoterPassportRepository] = None,
     ):
         self.voter_repo = voter_repo
         self.address_repo = address_repo or AddressRepository()
+        self.passport_repo = passport_repo or VoterPassportRepository()
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
         self.voter = voter
 
-    async def register_voter(self, dto: RegisterVoterPlainDTO) -> VoterItem:
-        """Create a new voter with encrypted JSONB fields and search tokens."""
+    async def register_voter(
+        self,
+        dto: RegisterVoterPlainDTO,
+        passport_entries: List[PassportEntry] | None = None,
+    ) -> VoterItem:
+        """Create a new voter with encrypted JSONB fields, search tokens, and passport entries."""
         try:
             await self._keys_manager.init_org_keys(self.session, org_id=None)
             args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
@@ -64,16 +77,54 @@ class VoterService(EncryptionUtilsMixin):
             )
             voter = enc_row.to_model()
             voter = await self.voter_repo.register_voter(self.session, voter)
-            return await self.voter_model_to_schema_item(voter, self.session)
+
+            # Create passport entries if provided
+            passport_schemas = []
+            if passport_entries:
+                for entry in passport_entries:
+                    passport_plain = CreateVoterPassportPlainDTO(
+                        voter_id=voter.id,
+                        passport_number=entry.passport_number,
+                        issuing_country=entry.issuing_country,
+                        expiry_date=entry.expiry_date.isoformat() if entry.expiry_date else None,
+                        is_primary=entry.is_primary,
+                    )
+                    passport_enc = await self._mapper.encrypt_dto(
+                        passport_plain, CreateVoterPassportEncryptedDTO, args, self.session
+                    )
+                    passport_model = passport_enc.to_model()
+                    passport_model = await self.passport_repo.create_passport(
+                        self.session, passport_model
+                    )
+                    passport_dto = await self._mapper.decrypt_model(
+                        passport_model, VoterPassportDTO, args, self.session
+                    )
+                    passport_schemas.append(passport_dto.to_schema())
+
+            voter_item = await self.voter_model_to_schema_item(voter, self.session)
+            voter_item.passports = passport_schemas
+            return voter_item
         except Exception:
             logger.exception("Failed to register voter", dto=dto)
             raise
 
     async def get_voter_by_id(self, voter_id: UUID) -> VoterItem:
-        """Get a voter by their ID."""
+        """Get a voter by their ID, including their passport entries."""
         try:
             voter = await self.voter_repo.get_voter_by_id(self.session, voter_id)
-            return await self.voter_model_to_schema_item(voter, self.session)
+            voter_item = await self.voter_model_to_schema_item(voter, self.session)
+
+            # Fetch and decrypt passport entries
+            passports = await self.passport_repo.get_all_passports_by_voter_id(
+                self.session, voter_id
+            )
+            if passports:
+                voter_item.passports = [
+                    await self.passport_model_to_schema_item(p, self.session)
+                    for p in passports
+                ]
+
+            return voter_item
         except Exception:
             logger.exception("Failed to get voter by ID", voter_id=voter_id)
             raise
