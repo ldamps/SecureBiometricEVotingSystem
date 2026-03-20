@@ -1,9 +1,10 @@
 from uuid import UUID
 from typing import List
+from datetime import datetime, timezone, timedelta
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.dto.address import AddressDTO, CreateAddressEncryptedDTO, CreateAddressPlainDTO
+from app.models.dto.address import AddressDTO, CreateAddressEncryptedDTO, CreateAddressPlainDTO, UpdateAddressPlainDTO, DeleteAddressDTO
 from app.models.schemas.address import AddressItem
 from app.repository.address_repo import AddressRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
@@ -34,6 +35,8 @@ class AddressService(EncryptionUtilsMixin):
     ) -> AddressItem:
         """Create a new address with encrypted fields."""
         try:
+            dto.renew_by = datetime.now(timezone.utc) + timedelta(days=730)
+
             await self._keys_manager.init_org_keys(self.session, org_id=None)
             args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
 
@@ -84,3 +87,30 @@ class AddressService(EncryptionUtilsMixin):
         except Exception:
             logger.exception("Failed to get all addresses by voter ID", voter_id=voter_id)
             raise
+
+    async def update_address(
+        self,
+        dto: UpdateAddressPlainDTO,
+    ) -> AddressItem:
+        """Update an address."""
+        dto.renew_by = datetime.now(timezone.utc) + timedelta(days=730)
+        updated = await self.address_repo.update_address(
+            self.session,
+            dto.address_id,
+            dto,
+        )
+        return await self.address_model_to_schema_item(updated, self.session)
+
+    async def delete_address(
+        self,
+        voter_id: UUID,
+        address_id: UUID,
+    ) -> None:
+        """Delete an address."""
+        await self.address_repo.delete_address(
+            self.session,
+            address_id,
+            voter_id,
+        )
+
+        

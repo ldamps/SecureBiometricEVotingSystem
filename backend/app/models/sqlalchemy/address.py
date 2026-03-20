@@ -64,6 +64,7 @@ class Address(Base, UUIDPrimaryKeyMixin):
         nullable=False,
         index=True,
     )
+    renew_by: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
 

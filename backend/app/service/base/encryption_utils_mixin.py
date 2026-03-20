@@ -154,6 +154,7 @@ def address_orm_to_dto_unencrypted_row(address: Address) -> AddressDTO:
         county=enc_plain("county"),
         country=enc_plain("country"),
         address_status=_address_enum_value(address.address_status),
+        renew_by=address.renew_by,
         created_at=address.created_at,
         updated_at=address.updated_at,
     )

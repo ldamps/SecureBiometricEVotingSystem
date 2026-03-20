@@ -9,10 +9,10 @@ from app.service.voter_service import VoterService
 from app.application.api.dependencies import get_voter_service
 from app.models.schemas.voter import VoterItem, VoterRegistrationRequest, VoterUpdateRequest
 from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
-from app.models.dto.address import CreateAddressPlainDTO
+from app.models.dto.address import CreateAddressPlainDTO, UpdateAddressPlainDTO
 from app.service.address_service import AddressService
 from app.application.api.dependencies import get_address_service
-from app.models.schemas.address import CreateAddress, AddressItem
+from app.models.schemas.address import CreateAddress, AddressItem, UpdateAddress
 from typing import List
 
 voter_responses = responses(Resource.VOTER)
@@ -136,7 +136,6 @@ async def get_voter_address_by_id(
     status_code=status.HTTP_201_CREATED
 )
 async def create_voter_address(
-    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
     body: CreateAddress = Body(..., description="The address creation request."),
     service: AddressService = Depends(get_address_service),
 ):
@@ -146,9 +145,36 @@ async def create_voter_address(
 
 
 # update an address for a voter
+@router.patch(
+    "/{voter_id}/address/{address_id}",
+    responses=voter_responses,
+    response_model=AddressItem,
+    status_code=status.HTTP_200_OK
+)
+async def update_voter_address(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    address_id: UUID = Path(..., description="The unique identifier for the address."),
+    body: UpdateAddress = Body(..., description="The address update request."),
+    service: AddressService = Depends(get_address_service),
+):
+    """ Update an address for a voter """
+    dto = UpdateAddressPlainDTO.create_dto(body, address_id)
+    return await service.update_address(dto)
 
 
 # delete an address for a voter
+@router.delete(
+    "/{voter_id}/address/{address_id}",
+    responses=voter_responses,
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_voter_address(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    address_id: UUID = Path(..., description="The unique identifier for the address."),
+    service: AddressService = Depends(get_address_service),
+):
+    """ Delete an address for a voter """
+    await service.delete_address(voter_id, address_id)
 
 
 ### VOTER BIOMETRIC TEMPLATE ROUTES ###

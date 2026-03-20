@@ -38,6 +38,7 @@ class AddressDTO(AddressBaseDTO):
     county: Optional[str] = None
     country: Optional[str] = None
     address_status: Optional[str] = None
+    renew_by: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -52,6 +53,7 @@ class AddressDTO(AddressBaseDTO):
             county=self.county,
             country=self.country,
             address_status=self.address_status,
+            renew_by=self.renew_by,
         )
 
 
@@ -81,6 +83,7 @@ class CreateAddressEncryptedDTO(AddressBaseDTO):
     voter_id: Optional[UUID] = None
     address_type: Optional[str] = None
     address_status: str = "PENDING"
+    renew_by: Optional[datetime] = None
     address_line1: Optional[EncryptedDBField] = None
     address_line2: Optional[EncryptedDBField] = None
     town: Optional[EncryptedDBField] = None
@@ -106,6 +109,11 @@ class UpdateAddressPlainDTO(AddressBaseDTO):
     county: Optional[str] = None
     country: Optional[str] = None
     address_status: Optional[str] = None
+    renew_by: Optional[datetime] = None
+
+    @classmethod
+    def create_dto(cls, data: UpdateAddress, address_id: UUID) -> "UpdateAddressPlainDTO":
+        return cls(**data.model_dump(), address_id=address_id)
 
 
 @dataclass
