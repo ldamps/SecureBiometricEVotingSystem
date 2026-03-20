@@ -7,7 +7,7 @@ from uuid import UUID
 import structlog
 from app.service.voter_service import VoterService
 from app.application.api.dependencies import get_voter_service
-from app.models.schemas.voter import VoterItem, VoterRegistrationRequest, VoterUpdateRequest
+from app.models.schemas.voter import VoterItem, VoterRegistrationRequest, VoterUpdateRequest, VerifyIdentityRequest, VerifyIdentityResponse
 from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
 from app.models.dto.address import CreateAddressPlainDTO, UpdateAddressPlainDTO
 from app.service.address_service import AddressService
@@ -81,16 +81,17 @@ async def update_voter(
 
 # Verify a voter's identity
 @router.post(
-    "/{voter_id}/verify-identity",
+    "/verify-identity",
     responses=voter_responses,
-    response_model=VoterItem,
+    response_model=VerifyIdentityResponse,
     status_code=status.HTTP_200_OK
 )
 async def verify_voter_identity(
-    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    body: VerifyIdentityRequest = Body(..., description="The voter identity verification request."),
+    service: VoterService = Depends(get_voter_service),
 ):
-    """ Verify a voter's identity (i.e. their personal details) """
-    pass
+    """ Verify a voter's identity by matching their name and address details against registered voters. """
+    return await service.verify_voter_identity(body)
 
 
 

@@ -151,4 +151,23 @@ class AddressRepository:
         except Exception:
             logger.exception("Failed to delete address", address_id=address_id, voter_id=voter_id)
             raise
+    async def get_addresses_by_postcode_token(
+        self,
+        session: AsyncSession,
+        postcode_search_token: str,
+    ) -> List[Address]:
+        """Get all addresses matching a postcode search token."""
+        try:
+            result = await session.execute(
+                select(self._model).where(
+                    self._model.postcode_search_token == postcode_search_token
+                )
+            )
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception(
+                "Failed to get addresses by postcode search token"
+            )
+            raise
+
     # ------------------------------------------------------------

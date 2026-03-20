@@ -62,6 +62,22 @@ class VoterRegistrationRequest(RequestSchema):
     registration_status: str = Field(..., description="The registration status of the voter.")
 
 
+class VerifyIdentityRequest(RequestSchema):
+    """Request model for verifying a voter's identity by name and address."""
+    full_name: str = Field(..., description="The voter's full name (first name and surname).")
+    address_line1: str = Field(..., description="Address line 1.")
+    address_line2: Optional[str] = Field(None, description="Address line 2.")
+    city: str = Field(..., description="City or town.")
+    postcode: str = Field(..., description="Postcode.")
+
+
+class VerifyIdentityResponse(ResponseSchema):
+    """Response model for a successful identity verification."""
+    verified: bool = Field(..., description="Whether the voter's identity was verified.")
+    voter_id: Optional[str] = Field(None, description="The voter's ID if verified.")
+    message: str = Field(..., description="A message describing the verification result.")
+
+
 class VoterUpdateRequest(RequestSchema):
     """Voter update request model."""
     first_name: Optional[str] = Field(None, description="The first name of the voter.")
