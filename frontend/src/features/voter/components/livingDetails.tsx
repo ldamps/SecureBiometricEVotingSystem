@@ -2,6 +2,7 @@ import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getSt
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
 import { PrimaryButton } from "../../../styles/ui";
+import UK_COUNTIES from "../constants/ukCounties";
 
 const UK_REGIONS = [
     { key: "england",        label: "England" },
@@ -95,15 +96,30 @@ function LivingDetails({
                             <label htmlFor={f.key} style={getStepLabelStyle(theme)}>
                                 {f.label}{f.required ? "" : " (optional)"}
                             </label>
-                            <input
-                                type="text"
-                                id={f.key}
-                                name={f.key}
-                                placeholder={f.placeholder}
-                                value={state[f.key] || ""}
-                                onChange={(e) => set({ [f.key]: e.target.value })}
-                                style={getStepFormInputStyle(theme)}
-                            />
+                            {f.key === "prevAddrCounty" ? (
+                                <select
+                                    id={f.key}
+                                    name={f.key}
+                                    value={state[f.key] || ""}
+                                    onChange={(e) => set({ [f.key]: e.target.value })}
+                                    style={getStepFormInputStyle(theme)}
+                                >
+                                    <option value="">Select a county</option>
+                                    {UK_COUNTIES.map((county) => (
+                                        <option key={county} value={county}>{county}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    id={f.key}
+                                    name={f.key}
+                                    placeholder={f.placeholder}
+                                    value={state[f.key] || ""}
+                                    onChange={(e) => set({ [f.key]: e.target.value })}
+                                    style={getStepFormInputStyle(theme)}
+                                />
+                            )}
                         </div>
                     ))}
                 </div>

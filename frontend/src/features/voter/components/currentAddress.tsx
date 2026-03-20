@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, getStepFormInputStyle, getFirstSectionStyle, getPageTitleStyle, PrimaryButton, SecondaryButton } from "../../../styles/ui";
 import ProgressBar from "./progressBar";
 import { useTheme } from "../../../styles/ThemeContext";
+import UK_COUNTIES from "../constants/ukCounties";
 
 function CurrentAddress({
     next,
@@ -54,15 +55,30 @@ function CurrentAddress({
                     <label htmlFor={field.key} style={getStepLabelStyle(theme)}>
                         {field.label}
                     </label>
-                    <input
-                        type="text"
-                        id={field.key}
-                        name={field.key}
-                        placeholder={field.placeholder}
-                        value={state[field.key] || ""}
-                        onChange={(e) => setState({ ...state, [field.key]: e.target.value })}
-                        style={getStepFormInputStyle(theme)}
-                    />
+                    {field.key === "county" ? (
+                        <select
+                            id={field.key}
+                            name={field.key}
+                            value={state[field.key] || ""}
+                            onChange={(e) => setState({ ...state, [field.key]: e.target.value })}
+                            style={getStepFormInputStyle(theme)}
+                        >
+                            <option value="">Select a county</option>
+                            {UK_COUNTIES.map((county) => (
+                                <option key={county} value={county}>{county}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <input
+                            type="text"
+                            id={field.key}
+                            name={field.key}
+                            placeholder={field.placeholder}
+                            value={state[field.key] || ""}
+                            onChange={(e) => setState({ ...state, [field.key]: e.target.value })}
+                            style={getStepFormInputStyle(theme)}
+                        />
+                    )}
                 </div>
             ))}
             <div style={{ ...getCardStyle(theme), marginBottom: "1rem" }}>
