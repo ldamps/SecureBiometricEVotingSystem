@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-
+from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from app.models.base.sqlalchemy_base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from app.models.sqlalchemy.voter_ledger import VoterLedger
 
 
 class Election(Base, UUIDPrimaryKeyMixin, TimestampMixin):

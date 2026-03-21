@@ -21,6 +21,8 @@ from typing import AsyncGenerator
 from sqlalchemy.exc import IntegrityError, DBAPIError
 from app.service.voter_ledger_service import VoterLedgerService
 from app.repository.voter_ledger_repo import VoterLedgerRepository
+from app.service.constituency_service import ConstituencyService
+from app.repository.constituency_repo import ConstituencyRepository
 
 
 logger = structlog.get_logger()
@@ -128,6 +130,15 @@ def get_voter_ledger_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+    )
+
+def get_constituency_service(
+    session: AsyncSession = Depends(get_db),
+) -> ConstituencyService:
+    """Get a constituency service (read-only, no encryption needed)."""
+    return ConstituencyService(
+        constituency_repo=ConstituencyRepository(),
+        session=session,
     )
 
 # ------------------------------------------------------------
