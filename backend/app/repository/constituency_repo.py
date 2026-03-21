@@ -30,6 +30,18 @@ class ConstituencyRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_name(self, session: AsyncSession, name: str) -> Optional[Constituency]:
+        """Return a single active constituency by exact name match (case-insensitive)."""
+        from sqlalchemy import func as sa_func
+        result = await session.execute(
+            select(Constituency)
+            .where(
+                sa_func.lower(Constituency.name) == name.strip().lower(),
+                Constituency.is_active.is_(True),
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def get_by_country(self, session: AsyncSession, country: str) -> list[Constituency]:
         """Return all active constituencies for a given country."""
         result = await session.execute(

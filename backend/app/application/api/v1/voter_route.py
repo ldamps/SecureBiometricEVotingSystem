@@ -1,8 +1,9 @@
 # app/application/api/v1/voter_route.py - Voter route definitions
 
-from fastapi import APIRouter, status, Path, Depends, Body
+from fastapi import APIRouter, HTTPException, status, Path, Depends, Body
 from app.application.api.responses import responses
 from app.application.constants import Resource
+from app.application.core.exceptions import ValidationError
 from uuid import UUID
 import structlog
 from app.service.voter_service import VoterService
@@ -150,10 +151,18 @@ async def create_voter_address(
     body: CreateAddress = Body(..., description="The address creation request."),
     service: AddressService = Depends(get_address_service),
 ):
-    """ Create a new address for a voter """
-    dto = CreateAddressPlainDTO.create_dto(body)
-    dto.voter_id = voter_id
-    return await service.create_address(dto)
+    """ Create a new address for a voter.
+
+    If the address type is LOCAL_CURRENT, the voter's constituency is
+    automatically resolved from the county field and any existing current
+    address is demoted to PAST.
+    """
+    try:
+        dto = CreateAddressPlainDTO.create_dto(body)
+        dto.voter_id = voter_id
+        return await service.create_address(dto)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # update an address for a voter
@@ -169,9 +178,17 @@ async def update_voter_address(
     body: UpdateAddress = Body(..., description="The address update request."),
     service: AddressService = Depends(get_address_service),
 ):
-    """ Update an address for a voter """
-    dto = UpdateAddressPlainDTO.create_dto(body, address_id)
-    return await service.update_address(dto)
+    """ Update an address for a voter.
+
+    If the county changes on a LOCAL_CURRENT address the voter's
+    constituency is automatically re-resolved.
+    """
+    try:
+        dto = UpdateAddressPlainDTO.create_dto(body, address_id)
+        dto.voter_id = voter_id
+        return await service.update_address(dto)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # delete an address for a voter
@@ -185,8 +202,15 @@ async def delete_voter_address(
     address_id: UUID = Path(..., description="The unique identifier for the address."),
     service: AddressService = Depends(get_address_service),
 ):
-    """ Delete an address for a voter """
-    await service.delete_address(voter_id, address_id)
+    """ Delete an address for a voter.
+
+    Current local addresses (LOCAL_CURRENT) cannot be deleted — create a
+    new current address first, which will automatically demote the old one.
+    """
+    try:
+        await service.delete_address(voter_id, address_id)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 ### VOTER PASSPORT ROUTES ###

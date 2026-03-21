@@ -3,7 +3,7 @@
 from dataclasses import asdict
 
 from app.models.sqlalchemy.address import Address
-from typing import Type, List
+from typing import Type, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from uuid import UUID
@@ -151,6 +151,46 @@ class AddressRepository:
         except Exception:
             logger.exception("Failed to delete address", address_id=address_id, voter_id=voter_id)
             raise
+    async def get_current_address_by_voter_id(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+    ) -> Optional[Address]:
+        """Get the voter's LOCAL_CURRENT address, or None if they don't have one."""
+        from app.models.sqlalchemy.address import AddressType
+        try:
+            result = await session.execute(
+                select(self._model).where(
+                    self._model.voter_id == voter_id,
+                    self._model.address_type == AddressType.LOCAL_CURRENT,
+                )
+            )
+            return result.scalar_one_or_none()
+        except Exception:
+            logger.exception("Failed to get current address", voter_id=voter_id)
+            raise
+
+    async def demote_current_address(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+    ) -> None:
+        """Change any existing LOCAL_CURRENT address for the voter to PAST."""
+        from app.models.sqlalchemy.address import AddressType
+        try:
+            stmt = (
+                update(self._model)
+                .where(
+                    self._model.voter_id == voter_id,
+                    self._model.address_type == AddressType.LOCAL_CURRENT,
+                )
+                .values(address_type=AddressType.PAST)
+            )
+            await session.execute(stmt)
+        except Exception:
+            logger.exception("Failed to demote current address", voter_id=voter_id)
+            raise
+
     async def get_addresses_by_postcode_token(
         self,
         session: AsyncSession,

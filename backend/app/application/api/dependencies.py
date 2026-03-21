@@ -23,6 +23,7 @@ from app.service.voter_ledger_service import VoterLedgerService
 from app.repository.voter_ledger_repo import VoterLedgerRepository
 from app.service.constituency_service import ConstituencyService
 from app.repository.constituency_repo import ConstituencyRepository
+from app.models.sqlalchemy.voter import Voter
 
 
 logger = structlog.get_logger()
@@ -104,6 +105,8 @@ def get_address_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        constituency_repo=ConstituencyRepository(),
+        voter_repo=VoterRepository(Voter),
     )
 
 def get_voter_passport_service(

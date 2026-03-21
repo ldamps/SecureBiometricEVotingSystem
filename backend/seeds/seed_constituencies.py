@@ -212,6 +212,17 @@ def seed() -> None:
             })
             rows_inserted += result.rowcount
 
+        # Overseas
+        result = conn.execute(insert_sql, {
+            "id": str(uuid4()),
+            "name": "Overseas",
+            "country": "Overseas",
+            "county": None,
+            "region": None,
+            "is_active": True,
+        })
+        rows_inserted += result.rowcount
+
     print(f"Seeding complete: {rows_inserted} constituencies inserted.")
 
 

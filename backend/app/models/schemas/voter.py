@@ -66,7 +66,6 @@ class VoterRegistrationRequest(RequestSchema):
     nationality_category: str = Field(..., description="The nationality category of the voter.")
     immigration_status: Optional[str] = Field(None, description="The immigration status (non-British voters only).")
     immigration_status_expiry: Optional[datetime] = Field(None, description="When the immigration status expires.")
-    constituency_id: UUID = Field(..., description="The constituency identifier for the voter.")
     renew_by: datetime = Field(..., description="The date and time the voter's account needs to be renewed by.")
     registration_status: str = Field(..., description="The registration status of the voter.")
 

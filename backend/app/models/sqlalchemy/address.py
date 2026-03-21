@@ -18,7 +18,7 @@ class AddressType(str, enum.Enum):
     """ Address Type """
     OVERSEAS = "OVERSEAS" # Overseas address
     LOCAL_CURRENT = "LOCAL_CURRENT" # Current local address
-    LOCAL_PAST = "LOCAL_PAST" # Past local address needed for those overseas
+    PAST = "PAST" # Past local address needed for those overseas
 
 class AddressStatus(str, enum.Enum):
     """ Address Status """

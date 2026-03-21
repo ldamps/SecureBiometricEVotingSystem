@@ -115,6 +115,27 @@ class VoterRepository:
 
     # ------------------------------------------------------------
 
+    async def update_constituency(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+        constituency_id: UUID,
+    ) -> None:
+        """Set the voter's constituency_id."""
+        try:
+            stmt = (
+                update(self._model)
+                .where(self._model.id == voter_id)
+                .values(constituency_id=constituency_id)
+            )
+            result = await session.execute(stmt)
+            if result.rowcount == 0:
+                raise NotFoundError("Voter not found")
+            logger.info("Voter constituency updated", voter_id=voter_id, constituency_id=constituency_id)
+        except Exception:
+            logger.exception("Failed to update voter constituency", voter_id=voter_id)
+            raise
+
     # CRUD METHODS ----------
     async def register_voter(self, session: AsyncSession, voter: Voter) -> Voter:
         """
