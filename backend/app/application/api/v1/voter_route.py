@@ -17,6 +17,11 @@ from app.service.address_service import AddressService
 from app.application.api.dependencies import get_address_service
 from app.models.schemas.address import CreateAddress, AddressItem, UpdateAddress
 from typing import List
+from app.service.voter_ledger_service import VoterLedgerService
+from app.application.api.dependencies import get_voter_ledger_service
+from app.models.schemas.voter_ledger import VoterLedgerItem
+from app.models.dto.voter_ledger import CreateVoterLedgerPlainDTO, CreateVoterLedgerRequest
+
 
 voter_responses = responses(Resource.VOTER)
 logger = structlog.get_logger()
@@ -271,3 +276,49 @@ async def delete_voter_passport(
 
 
 
+### VOTER LEDGER ROUTES ###
+
+# get a voter ledger entry by ID
+@router.get(
+    "/{voter_id}/ledger/{voter_ledger_id}",
+    responses=voter_responses,
+    response_model=VoterLedgerItem,
+    status_code=status.HTTP_200_OK,
+)
+async def get_voter_ledger_entry_by_id(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    voter_ledger_id: UUID = Path(..., description="The unique identifier for the voter ledger entry."),
+    service: VoterLedgerService = Depends(get_voter_ledger_service),
+):
+    """Get a voter ledger entry by ID."""
+    return await service.get_voter_ledger_entry_by_id(voter_id, voter_ledger_id)
+
+# list voter's ledger entries
+@router.get(
+    "/{voter_id}/ledger",
+    responses=voter_responses,
+    response_model=List[VoterLedgerItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_voter_ledger_entries(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    service: VoterLedgerService = Depends(get_voter_ledger_service),
+):
+    """Get all voter ledger entries for a voter."""
+    return await service.get_all_voter_ledger_entries_by_voter_id(voter_id)
+
+# create voter ledger entry
+@router.post(
+    "/{voter_id}/ledger",
+    responses=voter_responses,
+    response_model=VoterLedgerItem,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_voter_ledger_entry(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    body: CreateVoterLedgerRequest = Body(..., description="The voter ledger creation request."),
+    service: VoterLedgerService = Depends(get_voter_ledger_service),
+):
+    """Create a voter ledger entry."""
+    dto = CreateVoterLedgerPlainDTO.create_dto(body, voter_id)
+    return await service.create_voter_ledger(dto)

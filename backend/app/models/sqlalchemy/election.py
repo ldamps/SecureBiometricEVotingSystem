@@ -33,4 +33,9 @@ class Election(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # Relationships ----------
 
+    voter_ledger: Mapped[list["VoterLedger"]] = relationship(
+        "VoterLedger",
+        back_populates="election",
+    )
+
     # Database constraints + indexes ----------

@@ -14,10 +14,13 @@ from app.service.voter_passport_service import VoterPassportService
 from app.models.sqlalchemy.voter import Voter
 from app.models.sqlalchemy.address import Address
 from app.models.sqlalchemy.voter_passport import VoterPassport
+from app.models.sqlalchemy.voter_ledger import VoterLedger
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from typing import AsyncGenerator
 from sqlalchemy.exc import IntegrityError, DBAPIError
+from app.service.voter_ledger_service import VoterLedgerService
+from app.repository.voter_ledger_repo import VoterLedgerRepository
 
 
 logger = structlog.get_logger()
@@ -114,7 +117,18 @@ def get_voter_passport_service(
         encryption_mapper=mapper,
     )
 
-
+def get_voter_ledger_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> VoterLedgerService:
+    """Get a voter ledger service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return VoterLedgerService(
+        voter_ledger_repo=VoterLedgerRepository(VoterLedger),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
 
 # ------------------------------------------------------------
 
