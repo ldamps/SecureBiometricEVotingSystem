@@ -1,0 +1,660 @@
+{
+	"info": {
+		"_postman_id": "e57608d7-df50-4949-9660-d3c1a889b75b",
+		"name": "Secure Biometric E-Voting - Backend API",
+		"description": "Collection to test the Secure Biometric E-Voting System backend.\n\n**Base URL:** Uses variable `base_url` (default: http://localhost:8001). Change in collection or environment to match your server port.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48255022"
+	},
+	"item": [
+		{
+			"name": "Root & Health",
+			"item": [
+				{
+					"name": "Root",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "API root - returns message and docs link."
+					},
+					"response": []
+				},
+				{
+					"name": "Health (root)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Health check for deployment and monitoring (root-level)."
+					},
+					"response": []
+				},
+				{
+					"name": "List constituencies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/constituencies",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"constituencies"
+							]
+						},
+						"description": "List all constituencies (DB-backed)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Health",
+			"item": [
+				{
+					"name": "Health check (v1)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						},
+						"description": "Versioned health check - liveness (status, version, stage). Only available if versioned API is mounted in main."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Voter",
+			"item": [
+				{
+					"name": "Address",
+					"item": [
+						{
+							"name": "Create address",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"address_type\": \"LOCAL_CURRENT\",\n  \"address_line1\": \"11 Downing Street\",\n  \"town\": \"London\",\n  \"postcode\": \"SW1A 2AA\",\n  \"county\": \"Greater London\",\n  \"country\": \"England\",\n  \"address_status\": \"PENDING\"\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"address"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get address",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"address",
+										"{{address_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List addresses",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/addresses",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"addresses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update address",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"address_type\": \"LOCAL_CURRENT\",\n  \"address_line1\": \"42 Test Street\",\n  \"address_line2\": \"Flat 3\",\n  \"town\": \"Aberdeen\",\n  \"postcode\": \"AB10 1AA\",\n  \"county\": \"Aberdeenshire\",\n  \"country\": \"Scotland\",\n  \"address_status\": \"ACTIVE\"\n}\n\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"address",
+										"{{address_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete address",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"voter_id\": \"9fe5b1ff-af2b-4cfe-97c9-9ac3bfadfed6\",\n    \"address_type\": \"LOCAL_CURRENT\",\n    \"address_line1\": \"10 Downing Street\",\n    \"address_line2\": \"Westminster\",\n    \"town\": \"London\",\n    \"postcode\": \"SW1A 2AA\",\n    \"county\": \"Greater London\",\n    \"country\": \"United Kingdom\",\n    \"address_status\": \"PENDING\",\n    \"renew_by\": \"2027-12-31T23:59:59\"\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"address",
+										"{{address_id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Biometrics",
+					"item": []
+				},
+				{
+					"name": "Passport",
+					"item": [
+						{
+							"name": "Add passport",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"passport_number\": \"AU9912834\",\n  \"issuing_country\": \"AUS\",\n  \"expiry_date\": \"2032-01-15T00:00:00Z\",\n  \"is_primary\": false\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passport",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"passport"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List passports",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passports",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"passports"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update passport",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"is_primary\": true,\n  \"expiry_date\": \"2033-06-01T00:00:00Z\"\n}\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passport/{{passport_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"passport",
+										"{{passport_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete passport",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passport/{{passport_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"passport",
+										"{{passport_id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Voter Ledger",
+					"item": [
+						{
+							"name": "Get voter ledger by ID",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger/{{voter_ledger_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"ledger",
+										"{{voter_ledger_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List voter's vote ledgers",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"ledger"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create voter ledger",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"election_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"voted_at\": \"2026-03-21T10:30:00Z\"\n}\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"voter",
+										"{{voter_id}}",
+										"ledger"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Get voter by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/voter/{{voter_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"voter",
+								"{{voter_id}}"
+							]
+						},
+						"description": "Get voter details by voter ID (UUID). Set collection variable voter_id after registering a voter."
+					},
+					"response": []
+				},
+				{
+					"name": "Register voter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"c2e2eec7-0998-4333-8c8c-63145723a0a2\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/voter/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"voter",
+								"register"
+							]
+						},
+						"description": "Register a new voter. Use a valid constituency UUID from GET /constituencies. Copy returned id into collection variable voter_id for other voter requests."
+					},
+					"response": []
+				},
+				{
+					"name": "Update voter",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Jane\",\n  \"surname\": \"Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"nationality_category\": \"COMMONWEALTH_LEAVE_TO_REMAIN\",\n  \"immigration_status\": \"LIMITED_LEAVE_TO_REMAIN\",\n  \"immigration_status_expiry\": \"2027-09-01T00:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/voter/{{voter_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"voter",
+								"{{voter_id}}"
+							]
+						},
+						"description": "Update a voter's details. All body fields are optional. Uses collection variable voter_id."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Voter",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"full_name\": \"John Doe\",\n    \"address_line1\": \"123 High Street\",\n    \"address_line2\": \"Flat 2\",\n    \"city\": \"London\",\n    \"postcode\": \"SW1A 1AA\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/voter/verify-identity",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"voter",
+								"verify-identity"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Election",
+			"item": []
+		},
+		{
+			"name": "API v1 - Election Official",
+			"item": []
+		},
+		{
+			"name": "API v1 - Constituencies",
+			"item": [
+				{
+					"name": "List constituencies",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"election_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"voted_at\": \"2026-03-21T10:30:00Z\"\n}\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/constituency",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"constituency"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get constituency by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/constituency/{{constituency_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"constituency",
+								"{{constituency_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8001"
+		},
+		{
+			"key": "voter_id",
+			"value": ""
+		}
+	]
+}
