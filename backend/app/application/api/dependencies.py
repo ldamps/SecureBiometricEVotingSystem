@@ -21,6 +21,9 @@ from typing import AsyncGenerator
 from sqlalchemy.exc import IntegrityError, DBAPIError
 from app.service.voter_ledger_service import VoterLedgerService
 from app.repository.voter_ledger_repo import VoterLedgerRepository
+from app.service.election_service import ElectionService
+from app.repository.election_repo import ElectionRepository
+from app.models.sqlalchemy.election import Election
 from app.service.constituency_service import ConstituencyService
 from app.repository.constituency_repo import ConstituencyRepository
 from app.models.sqlalchemy.voter import Voter
@@ -130,6 +133,19 @@ def get_voter_ledger_service(
     mapper = EncryptionMapperService(EncryptionService(), keys_manager)
     return VoterLedgerService(
         voter_ledger_repo=VoterLedgerRepository(VoterLedger),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
+
+def get_election_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> ElectionService:
+    """Get an election service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return ElectionService(
+        election_repo=ElectionRepository(Election),
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,

@@ -9,12 +9,15 @@ import structlog
 
 from app.models.base.sqlalchemy_base import EncryptedDBField
 from app.models.dto.address import AddressBaseDTO, AddressDTO
+from app.models.dto.election import ElectionBaseDTO, ElectionDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
 from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
 from app.models.schemas.address import AddressItem
+from app.models.schemas.election import ElectionItem
 from app.models.schemas.voter import VoterItem
 from app.models.schemas.voter_passport import VoterPassportItem
 from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
+from app.models.sqlalchemy.election import Election
 from app.models.sqlalchemy.voter import Voter
 from app.models.sqlalchemy.voter_passport import VoterPassport
 from app.service.encryption_mapper_service import EncryptionMapperService
@@ -173,6 +176,21 @@ def address_orm_to_dto_unencrypted_row(address: Address) -> AddressDTO:
         renew_by=address.renew_by,
         created_at=address.created_at,
         updated_at=address.updated_at,
+    )
+
+
+def election_orm_to_dto_unencrypted_row(election: Election) -> ElectionDTO:
+    """Map election ORM row to a plaintext DTO (elections have no encrypted fields)."""
+    return ElectionDTO(
+        id=election.id,
+        title=election.title,
+        election_type=election.election_type,
+        scope=election.scope,
+        allocation_method=election.allocation_method,
+        status=election.status,
+        voting_opens=election.voting_opens,
+        voting_closes=election.voting_closes,
+        created_by=election.created_by,
     )
 
 
@@ -366,4 +384,14 @@ class EncryptionUtilsMixin:
             base_dto_class=VoterPassportBaseDTO,
             session=session,
             map_unencrypted_row=passport_orm_to_dto_unencrypted_row,
+        )
+
+    async def election_model_to_schema_item(self, election: Election, session: Any) -> ElectionItem:
+        """Election ORM model → API schema (elections have no encrypted fields)."""
+        return await self._orm_to_schema_item(
+            election,
+            plain_dto_class=ElectionDTO,
+            base_dto_class=ElectionBaseDTO,
+            session=session,
+            map_unencrypted_row=election_orm_to_dto_unencrypted_row,
         )
