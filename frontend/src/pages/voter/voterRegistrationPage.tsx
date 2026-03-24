@@ -77,6 +77,10 @@ const VoterRegistrationPage: React.FC = () => {
             </p>
             <br />
             <p style={cardTextStyle}>
+              You will also be asked to provide your passport details, if you have not registered with your National Insurance number, you will need to provide your passport details as part of the registration process.
+            </p>
+            <br />
+            <p style={cardTextStyle}>
               You will also be asked to register biometrics as part of the registration process.
             </p>
           </div>
@@ -88,6 +92,8 @@ const VoterRegistrationPage: React.FC = () => {
               <br />
               <br />
               Please note, it is a criminal offence to register while pretending to be someone else.
+              <br />
+              If you have been found guilty of fraudulently registering to vote, you may be subject to a fine of up to £1,000 and/or imprisonment for up to 14 years.
             </p>
           </div>
         </div>
