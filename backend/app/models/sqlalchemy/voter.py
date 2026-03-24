@@ -72,9 +72,8 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     __tablename__ = "voter"
 
-    # ------------------------------------------------------------------ #
-    #  Encrypted PII fields                                                #
-    # ------------------------------------------------------------------ #
+    # Encrypted PII fields
+
 
     national_insurance_number: Mapped[EncryptedDBField | None] = mapped_column(
         EncryptedColumn, nullable=True
@@ -100,9 +99,7 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(64), nullable=True, unique=True, index=True
     )
 
-    # ------------------------------------------------------------------ #
-    #  Non-encrypted fields                                                #
-    # ------------------------------------------------------------------ #
+    # Non-encrypted fields
 
     voter_status: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     constituency_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -117,9 +114,7 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     registered_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     renew_by: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    # ------------------------------------------------------------------ #
-    #  Nationality & immigration status                                    #
-    # ------------------------------------------------------------------ #
+    # Nationality & immigration status
 
     nationality_category: Mapped[str] = mapped_column(
         String(50), nullable=False, index=True

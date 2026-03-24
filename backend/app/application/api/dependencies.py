@@ -27,6 +27,15 @@ from app.models.sqlalchemy.election import Election
 from app.service.constituency_service import ConstituencyService
 from app.repository.constituency_repo import ConstituencyRepository
 from app.models.sqlalchemy.voter import Voter
+from app.service.party_service import PartyService
+from app.repository.party_repo import PartyRepository
+from app.models.sqlalchemy.party import Party
+from app.service.candidate_service import CandidateService
+from app.repository.candidate_repo import CandidateRepository
+from app.models.sqlalchemy.candidate import Candidate
+from app.service.referendum_service import ReferendumService
+from app.repository.referendum_repo import ReferendumRepository
+from app.models.sqlalchemy.referendum import Referendum
 
 
 logger = structlog.get_logger()
@@ -158,6 +167,45 @@ def get_constituency_service(
     return ConstituencyService(
         constituency_repo=ConstituencyRepository(),
         session=session,
+    )
+
+def get_party_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> PartyService:
+    """Get a party service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return PartyService(
+        party_repo=PartyRepository(Party),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
+
+def get_candidate_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> CandidateService:
+    """Get a candidate service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return CandidateService(
+        candidate_repo=CandidateRepository(Candidate),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
+
+def get_referendum_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> ReferendumService:
+    """Get a referendum service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return ReferendumService(
+        referendum_repo=ReferendumRepository(Referendum),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
     )
 
 # ------------------------------------------------------------

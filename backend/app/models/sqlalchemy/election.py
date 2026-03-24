@@ -14,6 +14,7 @@ from app.models.base.sqlalchemy_base import Base, TimestampMixin, UUIDPrimaryKey
 if TYPE_CHECKING:
     from app.models.sqlalchemy.voter_ledger import VoterLedger
     from app.models.sqlalchemy.election_official import ElectionOfficial
+    from app.models.sqlalchemy.candidate import Candidate
 
 
 class ElectionType(str, enum.Enum):
@@ -76,6 +77,11 @@ class Election(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     creator: Mapped["ElectionOfficial | None"] = relationship(
         "ElectionOfficial",
         foreign_keys=[created_by],
+    )
+
+    candidates: Mapped[list["Candidate"]] = relationship(
+        "Candidate",
+        back_populates="election",
     )
 
     # Database constraints + indexes ----------

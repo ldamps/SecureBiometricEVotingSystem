@@ -9,15 +9,24 @@ import structlog
 
 from app.models.base.sqlalchemy_base import EncryptedDBField
 from app.models.dto.address import AddressBaseDTO, AddressDTO
+from app.models.dto.candidate import CandidateBaseDTO, CandidateDTO
 from app.models.dto.election import ElectionBaseDTO, ElectionDTO
+from app.models.dto.party import PartyBaseDTO, PartyDTO
+from app.models.dto.referendum import ReferendumBaseDTO, ReferendumDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
 from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
 from app.models.schemas.address import AddressItem
+from app.models.schemas.candidate import CandidateItem
 from app.models.schemas.election import ElectionItem
+from app.models.schemas.party import PartyItem
+from app.models.schemas.referendum import ReferendumItem
 from app.models.schemas.voter import VoterItem
 from app.models.schemas.voter_passport import VoterPassportItem
 from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
+from app.models.sqlalchemy.candidate import Candidate
 from app.models.sqlalchemy.election import Election
+from app.models.sqlalchemy.party import Party
+from app.models.sqlalchemy.referendum import Referendum
 from app.models.sqlalchemy.voter import Voter
 from app.models.sqlalchemy.voter_passport import VoterPassport
 from app.service.encryption_mapper_service import EncryptionMapperService
@@ -176,6 +185,46 @@ def address_orm_to_dto_unencrypted_row(address: Address) -> AddressDTO:
         renew_by=address.renew_by,
         created_at=address.created_at,
         updated_at=address.updated_at,
+    )
+
+
+def candidate_orm_to_dto_unencrypted_row(candidate: Candidate) -> CandidateDTO:
+    """Map candidate ORM row to a plaintext DTO (candidates have no encrypted fields)."""
+    return CandidateDTO(
+        id=candidate.id,
+        election_id=candidate.election_id,
+        constituency_id=candidate.constituency_id,
+        first_name=candidate.first_name,
+        last_name=candidate.last_name,
+        party_id=candidate.party_id,
+        is_active=candidate.is_active,
+    )
+
+
+def party_orm_to_dto_unencrypted_row(party: Party) -> PartyDTO:
+    """Map party ORM row to a plaintext DTO (parties have no encrypted fields)."""
+    return PartyDTO(
+        id=party.id,
+        party_name=party.party_name,
+        abbreviation=party.abbreviation,
+        is_active=party.is_active,
+        created_at=party.created_at,
+        updated_at=party.updated_at,
+    )
+
+
+def referendum_orm_to_dto_unencrypted_row(referendum: Referendum) -> ReferendumDTO:
+    """Map referendum ORM row to a plaintext DTO (referendums have no encrypted fields)."""
+    return ReferendumDTO(
+        id=referendum.id,
+        title=referendum.title,
+        question=referendum.question,
+        description=referendum.description,
+        scope=referendum.scope,
+        status=referendum.status,
+        voting_opens=referendum.voting_opens,
+        voting_closes=referendum.voting_closes,
+        is_active=referendum.is_active,
     )
 
 
@@ -394,4 +443,34 @@ class EncryptionUtilsMixin:
             base_dto_class=ElectionBaseDTO,
             session=session,
             map_unencrypted_row=election_orm_to_dto_unencrypted_row,
+        )
+
+    async def candidate_model_to_schema_item(self, candidate: Candidate, session: Any) -> CandidateItem:
+        """Candidate ORM model → API schema (candidates have no encrypted fields)."""
+        return await self._orm_to_schema_item(
+            candidate,
+            plain_dto_class=CandidateDTO,
+            base_dto_class=CandidateBaseDTO,
+            session=session,
+            map_unencrypted_row=candidate_orm_to_dto_unencrypted_row,
+        )
+
+    async def party_model_to_schema_item(self, party: Party, session: Any) -> PartyItem:
+        """Party ORM model → API schema (parties have no encrypted fields)."""
+        return await self._orm_to_schema_item(
+            party,
+            plain_dto_class=PartyDTO,
+            base_dto_class=PartyBaseDTO,
+            session=session,
+            map_unencrypted_row=party_orm_to_dto_unencrypted_row,
+        )
+
+    async def referendum_model_to_schema_item(self, referendum: Referendum, session: Any) -> ReferendumItem:
+        """Referendum ORM model → API schema (referendums have no encrypted fields)."""
+        return await self._orm_to_schema_item(
+            referendum,
+            plain_dto_class=ReferendumDTO,
+            base_dto_class=ReferendumBaseDTO,
+            session=session,
+            map_unencrypted_row=referendum_orm_to_dto_unencrypted_row,
         )
