@@ -1,0 +1,95 @@
+<!-- HTML Template - confirming your vote has been cast-->
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Vote Confirmation</title>
+        <style>
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                font-family: Arial, sans-serif;
+                font-size: 16px;
+                line-height: 1.5;
+                color: #333;
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            .content {
+                margin-bottom: 20px;
+            }
+            .footer {
+                text-align: center;
+                margin-top: 20px;
+                font-size: 12px;
+                color: #666;
+            }
+            ul {
+                list-style-type: disc;
+                margin-left: 20px;
+            }
+            li {
+                margin-bottom: 10px;
+            }
+            p {
+                margin-bottom: 10px;
+            }
+            br {
+                margin-bottom: 10px;
+            }
+            h1 {
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+            a {
+                color: #000;
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
+            .button {
+                background-color: #000;
+                color: #fff;
+                padding: 10px 20px;
+                border-radius: 5px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Thank you for voting in {{ election_name }}</h1>
+            </div>
+            <div class="content">
+                <p>Your vote has been cast successfully.</p>
+                Please note that you can only vote once. Now you have submitted your vote, you will not be able to change your vote or revote in this election.
+                <br />
+                <br />
+                Election results will be published after the election has closed and the results have been verified by the Official UK Voting Platform's Election Officials.
+                <br />
+                <br />
+                Please contact the Official UK Voting Platform's Election Officials if:
+                <ul>
+                    <li>You have any questions about the voting process</li>
+                    <li>You know of any voter fraud or malpractice</li>
+                </ul>
+                <br />
+                Thank you for your participation in the voting process.
+                <br />
+                <br />
+                Best regards,
+                <br />
+                The Official UK Voting Platform Team
+            </div>
+            <div class="footer">
+                &copy; Official UK Voting Platform. All rights reserved.
+            </div>
+        </div>
+    </body>
+</html>
+
