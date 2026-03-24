@@ -24,6 +24,7 @@ from app.models.sqlalchemy import (  # noqa: F401
     Constituency,
     Election,
     ElectionOfficial,
+    EncryptionKey,
     ErrorReport,
     Investigation,
     SeatAllocation,

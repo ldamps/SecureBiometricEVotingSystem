@@ -3,16 +3,30 @@ FastAPI backend for Secure Biometric E-Voting System.
 Run with: uvicorn main:app --reload
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app.db import get_db
+from app.db import get_db, init_async_db, dispose_async_db
+from app.application.api import register_all_versions
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize async DB for versioned API (voter, etc.) and dispose on shutdown."""
+    session_factory = init_async_db()
+    app.state.session_factory = session_factory
+    yield
+    await dispose_async_db()
+
 
 app = FastAPI(
     title="Secure Biometric E-Voting System API",
     description="Backend API for the Secure Biometric Electronic Voting System",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Allow React frontend (default CRA port) to call the API
@@ -23,6 +37,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount versioned API (e.g. /api/v1/health, /api/v1/voter/...)
+register_all_versions(app)
 
 
 @app.get("/")

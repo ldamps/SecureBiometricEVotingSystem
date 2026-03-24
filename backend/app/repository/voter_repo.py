@@ -1,24 +1,22 @@
 # voter_repo.py - Repository layer for voter-related operations.
 
 from app.models.sqlalchemy.voter import Voter
-from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
+from app.models.dto.voter import UpdateVoterPlainDTO
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 import structlog
-from typing import Optional
+from typing import Optional, Type
 from uuid import UUID
 from datetime import datetime
-from app.models.dto.voter import RegisterVoterPlainDTO, UpdateVoterPlainDTO
 from app.application.core.exceptions import NotFoundError
-from app.models.sqlalchemy.voter import Voter
 
 logger = structlog.get_logger()
 
 class VoterRepository:
     """Voter-specific repository operations."""
 
-    def __init__(self):
-        super().__init__(Voter)
+    def __init__(self, model: Type[Voter] = Voter) -> None:
+        self._model = model
 
     # INTERNAL HELPER METHODS ----------
     
@@ -74,8 +72,8 @@ class VoterRepository:
         """
         try:
             result = await session.execute(
-                select(Voter.renew_by).where(
-                    Voter.id == voter_id
+                select(self._model.renew_by).where(
+                    self._model.id == voter_id
                 )
             )
             renew_by = result.scalar_one_or_none()
@@ -98,8 +96,8 @@ class VoterRepository:
         """
         try:
             result = await session.execute(
-                select(Voter).where(
-                    Voter.email == email
+                select(self._model).where(
+                    self._model.email == email
                 )
             )
             voter = result.scalar_one_or_none()
@@ -117,40 +115,44 @@ class VoterRepository:
 
     # ------------------------------------------------------------
 
+    async def update_constituency(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+        constituency_id: UUID,
+    ) -> None:
+        """Set the voter's constituency_id."""
+        try:
+            stmt = (
+                update(self._model)
+                .where(self._model.id == voter_id)
+                .values(constituency_id=constituency_id)
+            )
+            result = await session.execute(stmt)
+            if result.rowcount == 0:
+                raise NotFoundError("Voter not found")
+            logger.info("Voter constituency updated", voter_id=voter_id, constituency_id=constituency_id)
+        except Exception:
+            logger.exception("Failed to update voter constituency", voter_id=voter_id)
+            raise
+
     # CRUD METHODS ----------
-    async def register_voter(self, 
-        session: AsyncSession, 
-        dto: RegisterVoterPlainDTO,
-    ) -> Voter:
+    async def register_voter(self, session: AsyncSession, voter: Voter) -> Voter:
         """
-        Register (create) a new voter.
-
-        Args:
-            session (AsyncSession): The database session.
-            dto (VoterCreateDTO): The DTO containing voter details.
-
-        Returns:
-            Voter: The created voter.
-        
-        Raises:
-            DatabaseError: If there is an error creating the voter.
+        Persist a new voter (caller builds ORM row, e.g. with encrypted PII).
         """
         try:
-            voter = dto.to_model()
             session.add(voter)
             await session.flush()
 
             logger.info(
                 "Voter created successfully",
-                voter_id=voter.id
+                voter_id=voter.id,
             )
             return voter
 
         except Exception:
-            logger.exception(
-                "Failed to create voter",
-                dto=dto
-            )
+            logger.exception("Failed to create voter")
             raise
 
 
@@ -175,8 +177,8 @@ class VoterRepository:
 
         try:
             result = await session.execute(
-                select(Voter).where(
-                    Voter.id == voter_id
+                select(self._model).where(
+                    self._model.id == voter_id
                 )
             )
             voter = result.scalar_one_or_none()
@@ -234,31 +236,33 @@ class VoterRepository:
                 "previous_first_name",
                 "previous_surname",
                 "national_insurance_number",
-                "passport_number",
-                "passport_country",
-                "consituency_id",
+                "nationality_category",
+                "immigration_status",
+                "immigration_status_expiry",
+                "constituency_id",
                 "renew_by",
                 "registration_status",
                 "failed_auth_attempts",
                 "locked_until",
                 "registered_at",
-                "renew_by",
             ]
 
-            update_data = {
-                field: getattr(dto, field)
-                for field in allowed_fields
-                if getattr(dto, field) is not None
-            }
+            # DTO uses constituency_id (typo); Voter model uses constituency_id
+            column_map = {"constituency_id": "constituency_id"}
+            update_data = {}
+            for field in allowed_fields:
+                val = getattr(dto, field, None)
+                if val is not None:
+                    update_data[column_map.get(field, field)] = val
 
             if not update_data:
                 raise ValueError("No valid fields to update")
 
             stmt = (
-                update(Voter)
-                .where(Voter.id == voter_id)
+                update(self._model)
+                .where(self._model.id == voter_id)
                 .values(**update_data)
-                .returning(Voter)
+                .returning(self._model)
             )
 
             result = await session.execute(stmt)

@@ -5,7 +5,6 @@ from .voter import(
     RegisterVoterPlainDTO,
     RegisterVoterEncryptedDTO,
     UpdateVoterPlainDTO,
-    UpdateVoterEncryptedDTO,
 )
 
 
@@ -15,5 +14,4 @@ __all__: list[str] = [
     "RegisterVoterPlainDTO",
     "RegisterVoterEncryptedDTO",
     "UpdateVoterPlainDTO",
-    "UpdateVoterEncryptedDTO",
 ]

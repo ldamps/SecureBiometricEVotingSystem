@@ -28,5 +28,5 @@ class ResponseSchema(BaseSchema):
         return str(v) if v is not None else v
 
 
-def RequestSchema(BaseSchema):
+class RequestSchema(BaseSchema):
     pass

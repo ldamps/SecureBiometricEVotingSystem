@@ -12,4 +12,9 @@ class Resource(Enum):
     VOTE = "vote"
     SEAT_ALLOCATION = "seat_allocation"
     TALLY_RESULT = "tally_result"
-    
+    VOTER_PASSPORT = "voter_passport"
+    VOTER_LEDGER = "voter_ledger"
+    OFFICIAL = "official"
+    CANDIDATE = "candidate"
+    PARTY = "party"
+    REFERENDUM = "referendum"

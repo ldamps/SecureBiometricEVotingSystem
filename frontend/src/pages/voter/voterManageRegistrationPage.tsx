@@ -38,7 +38,6 @@ const VoterManageRegistrationPage: React.FC = () => {
             <li>Your email address</li>
             <li>Renewing your biometric details</li>
             <li>Your nationality (if you live in the UK)</li>
-            <li>Your occupation (if you are a crown servant, British Council employee or member of the armed forces)</li>
           </ul>
           If you have not registered to vote yet, you can <a href="/voter/register" style={linkStyle}>register to vote here</a>.
         </div>
