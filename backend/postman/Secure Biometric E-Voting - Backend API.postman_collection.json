@@ -584,11 +584,254 @@
 		},
 		{
 			"name": "API v1 - Election",
-			"item": []
+			"item": [
+				{
+					"name": "Candidates",
+					"item": [
+						{
+							"name": "Get all candidates for an election",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/election/{{election_id}}/candidates",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"election",
+										"{{election_id}}",
+										"candidates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create candidate for an election",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"constituency_id\": \"b45f32ca-deab-4450-9ca0-9a1af5b3f16b\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Smith\",\n  \"party_id\": \"2319162e-da8d-40ee-8f0d-f0d03582f910\"\n}\n\n\n\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/election/{{election_id}}/candidates",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"election",
+										"{{election_id}}",
+										"candidates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update candidate",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"is_active\": true\n}\n\n\n\n\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/election/{{election_id}}/candidates/{{candidate_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"election",
+										"{{election_id}}",
+										"candidates",
+										"{{candidate_id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Get election",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/election/{{election_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"election",
+								"{{election_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all elections",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/election",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"election"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create election",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/election",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"election"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update election",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"CLOSED\"\n}\n\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/election/{{election_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"election",
+								"{{election_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
-			"name": "API v1 - Election Official",
-			"item": []
+			"name": "API v1 - Officials",
+			"item": [
+				{
+					"name": "Get election official by ID",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/official/{{offiical_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"official",
+								"{{offiical_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all election officers",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Get all election admins",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Create election official",
+					"request": {
+						"method": "POST",
+						"header": []
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "API v1 - Constituencies",
@@ -639,6 +882,357 @@
 								"v1",
 								"constituency",
 								"{{constituency_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Party",
+			"item": [
+				{
+					"name": "Create party",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update party",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_name\": \"Labour Party UK\",\n  \"abbreviation\": \"LAB\",\n  \"is_active\": true\n}\n\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party/{{party_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party",
+								"{{party_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all parties",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get party by ID",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party/{{party_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party",
+								"{{party_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get candidates by party",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party/{{party_id}}/candidates",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party",
+								"{{party_id}}",
+								"candidates"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Soft delete party",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party/{{party_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party",
+								"{{party_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all deleted parties",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party/deleted/all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party",
+								"deleted",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Restore deleted party",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\n\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/party/{{party_id}}/restore",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"party",
+								"{{party_id}}",
+								"restore"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Referendum",
+			"item": [
+				{
+					"name": "Create referendum",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Scottish Independence Referendum\",\n  \"question\": \"Should Scotland be an independent country?\",\n  \"description\": \"A referendum on whether Scotland should leave the United Kingdom.\",\n  \"scope\": \"NATIONAL\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-06-01T08:00:00Z\",\n  \"voting_closes\": \"2026-06-01T22:00:00Z\"\n}\n\n\n\n\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/referendum",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"referendum"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all referendums",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/referendum",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"referendum"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get referendum by id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/referendum/{{referendum_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"referendum",
+								"{{referendum_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update referendum",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"question\": \"Should Scotland remain part of the United Kingdom?\",\n  \"status\": \"CLOSED\",\n  \"voting_closes\": \"2026-06-01T20:00:00Z\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/referendum/{{referendum_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"referendum",
+								"{{referendum_id}}"
 							]
 						}
 					},
