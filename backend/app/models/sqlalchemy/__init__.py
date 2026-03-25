@@ -25,6 +25,9 @@ from app.models.sqlalchemy.vote import Vote
 from app.models.sqlalchemy.tally_result import TallyResult
 from app.models.sqlalchemy.error_report import ErrorReport
 from app.models.sqlalchemy.investigation import Investigation
+from app.models.sqlalchemy.party import Party
+from app.models.sqlalchemy.referendum import Referendum
+from app.models.sqlalchemy.referendum_vote import ReferendumVote
 
 __all__ = [
     "Address",
@@ -38,6 +41,9 @@ __all__ = [
     "EncryptionKey",
     "ErrorReport",
     "Investigation",
+    "Party",
+    "Referendum",
+    "ReferendumVote",
     "SeatAllocation",
     "TallyResult",
     "Voter",

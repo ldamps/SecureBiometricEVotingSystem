@@ -36,6 +36,11 @@ from app.models.sqlalchemy.candidate import Candidate
 from app.service.referendum_service import ReferendumService
 from app.repository.referendum_repo import ReferendumRepository
 from app.models.sqlalchemy.referendum import Referendum
+from app.service.voting_service import VotingService
+from app.repository.vote_repo import VoteRepository
+from app.repository.referendum_vote_repo import ReferendumVoteRepository
+from app.repository.ballot_token_repo import BallotTokenRepository
+from app.repository.tally_result_repo import TallyResultRepository
 
 
 logger = structlog.get_logger()
@@ -190,6 +195,25 @@ def get_candidate_service(
     mapper = EncryptionMapperService(EncryptionService(), keys_manager)
     return CandidateService(
         candidate_repo=CandidateRepository(Candidate),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
+
+def get_voting_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> VotingService:
+    """Get a voting service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return VotingService(
+        vote_repo=VoteRepository(),
+        referendum_vote_repo=ReferendumVoteRepository(),
+        ballot_token_repo=BallotTokenRepository(),
+        voter_ledger_repo=VoterLedgerRepository(VoterLedger),
+        tally_result_repo=TallyResultRepository(),
+        election_repo=ElectionRepository(Election),
+        referendum_repo=ReferendumRepository(Referendum),
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
