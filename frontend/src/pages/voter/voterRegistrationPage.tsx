@@ -149,8 +149,9 @@ const VoterRegistrationPage: React.FC = () => {
         </div>
 
         <div style={{ textAlign: "center", marginTop: spacing.xl }}>
-          <PrimaryButton onClick={() => navigate("/voter/registeration")}>Register to Vote</PrimaryButton>
+          <PrimaryButton onClick={() => navigate("/voter/registration")}>Register to Vote</PrimaryButton>
         </div>
+        <br />
       </div>
     </div>
   );

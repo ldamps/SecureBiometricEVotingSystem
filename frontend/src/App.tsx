@@ -37,7 +37,7 @@ const App: React.FC = () => {
             <Route path="/voter/manage-registration" element={<VoterManageRegistrationPage />} />
             <Route path="/voter/voting" element={<VoterCastingPage />} />
             <Route path="/voter/vote-casting" element={<VoteCastingPage />} />  
-            <Route path="/voter/registeration" element={<VoterRegisterPage />} />
+            <Route path="/voter/registration" element={<VoterRegisterPage />} />
             <Route path="/voter/update-registration" element={<VoterUpdateRegistrationPage />} />
             
             {/* Official routes */}
