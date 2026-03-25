@@ -18,3 +18,4 @@ class Resource(Enum):
     CANDIDATE = "candidate"
     PARTY = "party"
     REFERENDUM = "referendum"
+    BIOMETRIC = "biometric"

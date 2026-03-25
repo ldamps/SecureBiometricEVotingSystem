@@ -41,6 +41,9 @@ from app.repository.vote_repo import VoteRepository
 from app.repository.referendum_vote_repo import ReferendumVoteRepository
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.tally_result_repo import TallyResultRepository
+from app.service.biometric_service import BiometricService
+from app.repository.biometric_credentials_repo import BiometricCredentialsRepository
+from app.repository.biometric_challenge_repo import BiometricChallengeRepository
 
 
 logger = structlog.get_logger()
@@ -219,6 +222,16 @@ def get_voting_service(
         encryption_mapper=mapper,
     )
 
+def get_biometric_service(
+    session: AsyncSession = Depends(get_db),
+) -> BiometricService:
+    """Get a biometric service (match-on-device, no encryption needed)."""
+    return BiometricService(
+        credentials_repo=BiometricCredentialsRepository(),
+        challenge_repo=BiometricChallengeRepository(),
+        session=session,
+    )
+
 def get_referendum_service(
     session: AsyncSession = Depends(get_db),
     keys_manager: KeysManagerService = Depends(get_keys_manager_service),
@@ -231,6 +244,8 @@ def get_referendum_service(
         keys_manager=keys_manager,
         encryption_mapper=mapper,
     )
+
+
 
 # ------------------------------------------------------------
 

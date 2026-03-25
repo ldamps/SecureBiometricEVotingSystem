@@ -158,8 +158,8 @@ class VoterService(EncryptionUtilsMixin):
         """Get a voter's addresses."""
         pass
 
-    async def get_user_biometric_templates(self, voter_id: UUID):
-        """Get a voter's biometric templates."""
+    async def get_user_device_credentials(self, voter_id: UUID):
+        """Get a voter's enrolled device credentials."""
         pass
 
     async def get_user_voter_ledger(self, voter_id: UUID):
