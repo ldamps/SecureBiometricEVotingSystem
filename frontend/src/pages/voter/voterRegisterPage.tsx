@@ -17,6 +17,8 @@ const VoterRegisterPage: React.FC = () => {
         dateOfBirth: "",
         nationalInsuranceNumber: "",
         passportNumber: "",
+        passportCountry: "",
+        passportExpiryDate: "",
         nationalityBritish: false,
         nationalityIrish: false,
         nationalityOtherCountry: false,

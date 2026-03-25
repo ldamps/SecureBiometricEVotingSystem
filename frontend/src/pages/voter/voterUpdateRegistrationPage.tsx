@@ -31,6 +31,8 @@ const initialState: Record<string, unknown> = {
     dateOfBirth: "",
     nationalInsuranceNumber: "",
     passportNumber: "",
+    passportCountry: "",
+    passportExpiryDate: "",
     nationalityBritish: false,
     nationalityIrish: false,
     nationalityOtherCountry: false,
