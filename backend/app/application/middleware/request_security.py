@@ -24,7 +24,12 @@ class RequestSecurityMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         # 1. Gateway-origin check (production only)
-        if REQUIRE_GATEWAY and not request.headers.get("X-Forwarded-For"):
+        #    Exempt /health so Docker health checks work without the gateway.
+        if (
+            REQUIRE_GATEWAY
+            and request.url.path != "/health"
+            and not request.headers.get("X-Forwarded-For")
+        ):
             return JSONResponse(
                 {"detail": "Direct access not allowed"}, status_code=403
             )
