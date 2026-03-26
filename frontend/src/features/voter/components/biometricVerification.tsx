@@ -130,7 +130,7 @@ function BiometricVerification({
             setError(err.message || "Failed to create verification challenge.");
             setStatus(BiometricVerificationStatus.FAILED);
         }
-    }, [state, setState]);
+    }, [state, setState, isMobile]);
 
     const handleCancel = () => {
         if (pollRef.current) clearInterval(pollRef.current);
