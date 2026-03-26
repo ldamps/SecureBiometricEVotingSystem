@@ -24,8 +24,13 @@ class ElectionType(str, enum.Enum):
     ** REFERENDUM ** - Referendum.
     ** LOCAL ** - Local election.
     """
-    ELECTION = "ELECTION"
-    REFERENDUM = "REFERENDUM"
+    GENERAL = "GENERAL"
+    LOCAL = "LOCAL"
+    SCOTTISH_PARLIAMENT = "SCOTTISH_PARLIAMENT"
+    NORTHERN_IRELAND_ASSEMBLY = "NORTHERN_IRELAND_ASSEMBLY"
+    WELSH_PARLIAMENT = "WELSH_PARLIAMENT"
+    MAYORS = "MAYORS"
+    POLICE_AND_CRIME_COMMISSIONER = "POLICE_AND_CRIME_COMMISSIONER"
 
 class ElectionScope(str, enum.Enum):
     """

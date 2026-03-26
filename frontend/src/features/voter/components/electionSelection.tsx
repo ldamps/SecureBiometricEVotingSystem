@@ -3,17 +3,30 @@ import { getCardStyle, getVoterPageContentWrapperStyle, getStepTitleStyle, getSt
 import ProgressBar from "./progressBar";
 import { useTheme } from "../../../styles/ThemeContext";
 import { PrimaryButton } from "../../../styles/ui";
+import { ElectionApiRepository } from "../repositories/election-api.repository";
+import { Election, ElectionStatus } from "../model/election.model";
+import { useEffect, useState } from "react";
 
-const ELECTIONS = [
-    { id: 1, name: "General Election 2024" },
-    { id: 2, name: "Local Election 2024" },
-    { id: 3, name: "European Election 2024" },
-    { id: 4, name: "Referendum 2024" },
-    { id: 5, name: "Other" },
-] // TODO: Replace with actual elections
+const electionApiRepository = new ElectionApiRepository();
+
+async function getElections(): Promise<Election[]> {
+    const elections = await electionApiRepository.listElections();
+    return elections.filter((election) => election.status === ElectionStatus.OPEN);
+}
 
 function ElectionSelection({next, state, setState}: {next: () => void, state: any, setState: (state: any) => void}) {
     const { theme } = useTheme();
+    const [elections, setElections] = useState<Election[]>([]);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        getElections()
+            .then(setElections)
+            .catch((err: Error) => {
+                setError(err.message || "Failed to load elections.");
+            });
+    }, []);
+
     return (
         <div style={{ ...getVoterPageContentWrapperStyle(theme), maxWidth: "100%", margin: "0 auto" }}>
             <div style={{...getCardStyle(theme), marginBottom: "1.75rem"}}>
@@ -21,11 +34,19 @@ function ElectionSelection({next, state, setState}: {next: () => void, state: an
             </div>
             <h2 style={getStepTitleStyle(theme)}>Select an Election</h2>
             <p style={getStepDescStyle(theme)}>Please select the election you wish to vote in.</p>
-            {ELECTIONS.map(e => {
-                const selected = state.election === e.id;
+            {error && (
+                <p style={{ color: theme.colors.status.error, marginBottom: "1rem" }}>{error}</p>
+            )}
+            {!error && elections.length === 0 && (
+                <p style={{ color: theme.colors.text.secondary, marginBottom: "1rem" }}>
+                    No open elections are available right now.
+                </p>
+            )}
+            {elections.map(election => {
+                const selected = state.election === election.id;
                 return (
                     <label
-                        key={e.id}
+                        key={election.id}
                         style={{
                             ...getCardStyle(theme),
                             marginBottom: "1rem",
@@ -38,17 +59,17 @@ function ElectionSelection({next, state, setState}: {next: () => void, state: an
                         <input
                             type="radio"
                             name="election"
-                            value={e.id}
+                            value={election.id}
                             checked={!!selected}
-                            onChange={() => setState({...state, election: e.id})}
+                            onChange={() => setState({...state, election: election.id})}
                             style={{ accentColor: theme.colors.button }}
                         />
-                        <span style={{ fontSize: theme.fontSizes.base, color: theme.colors.text.primary }}>{e.name}</span>
+                        <span style={{ fontSize: theme.fontSizes.base, color: theme.colors.text.primary }}>{election.title}</span>
                     </label>
                 );
             })}
             <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center" }}>
-                <PrimaryButton onClick={next}>Next</PrimaryButton>
+                <PrimaryButton onClick={next} disabled={!state.election}>Next</PrimaryButton>
             </div>
         </div>
     )
