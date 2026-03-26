@@ -24,7 +24,7 @@ services:
     env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-evoting_app}:${POSTGRES_PASSWORD:-evoting_local_dev}@db:5432/${POSTGRES_DB:-evoting_db}
-      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:80,http://localhost:8088,http://frontend}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-https://localhost,https://localhost:443,http://localhost,http://localhost:80,http://localhost:8088,https://frontend,http://frontend}"
       REQUIRE_GATEWAY: "true"
     depends_on:
       db:
@@ -55,6 +55,7 @@ services:
     # Host 8088 avoids clashing with another service bound to 80 (e.g. system nginx/apache).
     ports:
       - "8088:80"
+      - "443:443"
     restart: unless-stopped
 
 volumes:

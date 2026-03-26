@@ -40,7 +40,7 @@ jobs:
             export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
 
             # Set CORS to allow the public EC2 URL (phone QR codes need this)
-            export CORS_ALLOWED_ORIGINS="http://${{ secrets.EC2_HOST }},http://${{ secrets.EC2_HOST }}:8088,http://localhost,http://localhost:8088,http://frontend"
+            export CORS_ALLOWED_ORIGINS="https://${{ secrets.EC2_HOST }},https://${{ secrets.EC2_HOST }}:443,http://${{ secrets.EC2_HOST }},http://${{ secrets.EC2_HOST }}:8088,https://localhost,http://localhost,http://localhost:8088,https://frontend,http://frontend"
 
             # Rebuild and restart containers
             docker compose down --remove-orphans
