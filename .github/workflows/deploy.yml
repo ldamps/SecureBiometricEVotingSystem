@@ -59,16 +59,16 @@ jobs:
             MAX_RETRIES=12
             RETRY_INTERVAL=5
 
-            # Check frontend is serving (port 80 returns 301→HTTPS, so --max-redirect=0 and accept 301)
+            # Check frontend is serving (port 80 is mapped to host; expect 301→HTTPS)
             FRONTEND_OK=false
             for i in $(seq 1 $MAX_RETRIES); do
-              HTTP_CODE=$(docker compose exec -T frontend wget --spider --max-redirect=0 -S http://127.0.0.1:80/ 2>&1 | grep "HTTP/" | awk '{print $2}' || echo "000")
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://127.0.0.1:80/ || echo "000")
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ]; then
                 echo "    Frontend: OK (HTTP $HTTP_CODE)"
                 FRONTEND_OK=true
                 break
               fi
-              echo "    Frontend not ready (attempt $i/$MAX_RETRIES)..."
+              echo "    Frontend not ready (attempt $i/$MAX_RETRIES, got $HTTP_CODE)..."
               sleep $RETRY_INTERVAL
             done
 
