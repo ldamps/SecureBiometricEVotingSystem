@@ -53,7 +53,7 @@ jobs:
         run: npm run build
 
   docker-build:
-    name: Docker – build both images
+    name: Docker – build all images
     runs-on: ubuntu-latest
     needs: [backend-lint, frontend-build]
     steps:
@@ -64,3 +64,9 @@ jobs:
 
       - name: Build frontend image
         run: docker build -t evoting-frontend ./frontend
+
+      - name: Build gateway image
+        run: docker build -t evoting-gateway ./gateway
+
+      - name: Validate docker-compose config
+        run: docker compose config --quiet
