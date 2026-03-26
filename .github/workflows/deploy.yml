@@ -59,18 +59,27 @@ jobs:
             MAX_RETRIES=12
             RETRY_INTERVAL=5
 
-            # Check frontend is serving
+            # Check frontend is serving (port 80 returns 301→HTTPS, so --max-redirect=0 and accept 301)
+            FRONTEND_OK=false
             for i in $(seq 1 $MAX_RETRIES); do
-              HTTP_CODE=$(docker compose exec -T frontend wget -qO- -S http://127.0.0.1:80/ 2>&1 | grep "HTTP/" | awk '{print $2}' || echo "000")
+              HTTP_CODE=$(docker compose exec -T frontend wget --spider --max-redirect=0 -S http://127.0.0.1:80/ 2>&1 | grep "HTTP/" | awk '{print $2}' || echo "000")
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ]; then
                 echo "    Frontend: OK (HTTP $HTTP_CODE)"
+                FRONTEND_OK=true
                 break
               fi
               echo "    Frontend not ready (attempt $i/$MAX_RETRIES)..."
               sleep $RETRY_INTERVAL
             done
 
+            if [ "$FRONTEND_OK" != "true" ]; then
+              echo "ERROR: Frontend health check failed after $MAX_RETRIES attempts"
+              docker compose logs --tail=30 frontend
+              exit 1
+            fi
+
             # Check backend readiness (DB connectivity)
+            READY="000"
             for i in $(seq 1 $MAX_RETRIES); do
               READY=$(docker compose exec -T backend python -c "import urllib.request; r=urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready'); print(r.status)" 2>/dev/null || echo "000")
               if [ "$READY" = "200" ]; then
