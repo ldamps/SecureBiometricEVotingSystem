@@ -29,8 +29,10 @@ from app.models.schemas.biometric import (
     VerifyBiometricResponse,
     DeviceCredentialItem,
 )
+from app.application.core.exceptions import ValidationError
 from app.repository.biometric_credentials_repo import BiometricCredentialsRepository
 from app.repository.biometric_challenge_repo import BiometricChallengeRepository
+from app.repository.voter_repo import VoterRepository
 
 logger = structlog.get_logger()
 
@@ -45,10 +47,12 @@ class BiometricService:
         self,
         credentials_repo: BiometricCredentialsRepository,
         challenge_repo: BiometricChallengeRepository,
+        voter_repo: VoterRepository,
         session: AsyncSession,
     ):
         self.credentials_repo = credentials_repo
         self.challenge_repo = challenge_repo
+        self.voter_repo = voter_repo
         self.session = session
 
 
@@ -60,6 +64,9 @@ class BiometricService:
         active credential, it is deactivated first (re-enrollment).
         """
         voter_id = UUID(request.voter_id)
+
+        # Verify the voter exists before enrolling
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
         # Validate the public key parses as ECDSA P-256
         self._parse_public_key(request.public_key_pem)
@@ -100,6 +107,9 @@ class BiometricService:
     ) -> CreateChallengeResponse:
         """Generate a fresh random challenge for the voter's device to sign."""
         voter_id = UUID(request.voter_id)
+
+        # Verify the voter exists before creating a challenge
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
         # 32 random bytes → 64 hex chars
         challenge_bytes = os.urandom(32)
@@ -221,9 +231,12 @@ class BiometricService:
     @staticmethod
     def _parse_public_key(pem: str) -> ec.EllipticCurvePublicKey:
         """Parse and validate a PEM-encoded ECDSA P-256 public key."""
-        key = serialization.load_pem_public_key(pem.encode("utf-8"))
+        try:
+            key = serialization.load_pem_public_key(pem.encode("utf-8"))
+        except (ValueError, Exception) as exc:
+            raise ValidationError(f"Invalid PEM public key: {exc}") from exc
         if not isinstance(key, ec.EllipticCurvePublicKey):
-            raise ValueError("Key is not an elliptic-curve public key")
+            raise ValidationError("Key is not an elliptic-curve public key")
         if not isinstance(key.curve, ec.SECP256R1):
-            raise ValueError("Key must use the P-256 (secp256r1) curve")
+            raise ValidationError("Key must use the P-256 (secp256r1) curve")
         return key

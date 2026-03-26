@@ -229,6 +229,7 @@ def get_biometric_service(
     return BiometricService(
         credentials_repo=BiometricCredentialsRepository(),
         challenge_repo=BiometricChallengeRepository(),
+        voter_repo=VoterRepository(Voter),
         session=session,
     )
 
