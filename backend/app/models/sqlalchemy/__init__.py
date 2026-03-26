@@ -9,12 +9,14 @@ How to use:
 """
 
 from app.models.sqlalchemy.constituency import Constituency
+from app.models.sqlalchemy.encryption_key import EncryptionKey
 from app.models.sqlalchemy.audit_log import AuditLog
 from app.models.sqlalchemy.election_official import ElectionOfficial
 from app.models.sqlalchemy.election import Election
+from app.models.sqlalchemy.voter_passport import VoterPassport
 from app.models.sqlalchemy.voter import Voter
 from app.models.sqlalchemy.address import Address
-from app.models.sqlalchemy.biometric_template import BiometricTemplate
+from app.models.sqlalchemy.biometric_credentials import DeviceCredential, BiometricChallenge
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.candidate import Candidate
@@ -23,21 +25,30 @@ from app.models.sqlalchemy.vote import Vote
 from app.models.sqlalchemy.tally_result import TallyResult
 from app.models.sqlalchemy.error_report import ErrorReport
 from app.models.sqlalchemy.investigation import Investigation
+from app.models.sqlalchemy.party import Party
+from app.models.sqlalchemy.referendum import Referendum
+from app.models.sqlalchemy.referendum_vote import ReferendumVote
 
 __all__ = [
     "Address",
     "AuditLog",
     "BallotToken",
-    "BiometricTemplate",
+    "BiometricChallenge",
+    "DeviceCredential",
     "Candidate",
     "Constituency",
     "Election",
     "ElectionOfficial",
+    "EncryptionKey",
     "ErrorReport",
     "Investigation",
+    "Party",
+    "Referendum",
+    "ReferendumVote",
     "SeatAllocation",
     "TallyResult",
     "Voter",
     "VoterLedger",
+    "VoterPassport",
     "Vote",
 ]

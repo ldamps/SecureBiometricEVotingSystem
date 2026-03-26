@@ -70,18 +70,16 @@ const VoterRegistrationPage: React.FC = () => {
           <div style={cardStyle}>
             <h2 style={cardTitleStyle}>Before you start</h2>
             <p style={cardTextStyle}>
-              You'll be asked for your National Insurance number (but you can still register if you do not have one).
+              You will be asked to register to vote using your National Insurance (NI) number or your valid passport details.
             </p>
             <p style={{ ...cardTextStyle, marginBottom: 0 }}>
               <a href="https://www.gov.uk/find-national-insurance-number" style={linkStyle}>Find your National Insurance number here on Gov.UK</a>.
+              <br />
+              <a href="https://www.gov.uk/get-a-passport" style={linkStyle}>Apply for a passport here on Gov.UK</a>.
             </p>
             <br />
             <p style={cardTextStyle}>
-              You will also be asked to provide your passport details, if you have not registered with your National Insurance number, you will need to provide your passport details as part of the registration process.
-            </p>
-            <br />
-            <p style={cardTextStyle}>
-              You will also be asked to register biometrics as part of the registration process.
+              Additionally, you will be asked to register biometrics as part of the registration process and to prove your address using a valid proof of address document.
             </p>
           </div>
           <div style={cardStyle}>
@@ -89,6 +87,8 @@ const VoterRegistrationPage: React.FC = () => {
             <p style={cardTextStyle}>
               You can register to vote up to 2 years before you reach voting age —{" "}
               <a href="/voter/voting-process" style={linkStyle}>check the rules around voting in the UK</a>.
+              <br />
+              To check if you are eligible to register to vote, please visit the <a href="/voter/voting-process" style={linkStyle}>The Voting Process</a> page.
               <br />
               <br />
               Please note, it is a criminal offence to register while pretending to be someone else.
@@ -149,8 +149,9 @@ const VoterRegistrationPage: React.FC = () => {
         </div>
 
         <div style={{ textAlign: "center", marginTop: spacing.xl }}>
-          <PrimaryButton onClick={() => navigate("/voter/registeration")}>Register to Vote</PrimaryButton>
+          <PrimaryButton onClick={() => navigate("/voter/registration")}>Register to Vote</PrimaryButton>
         </div>
+        <br />
       </div>
     </div>
   );

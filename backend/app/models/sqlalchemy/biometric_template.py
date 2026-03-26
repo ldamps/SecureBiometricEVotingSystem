@@ -9,22 +9,17 @@ from sqlalchemy import Boolean, Float, ForeignKey, SmallInteger, String, TIMESTA
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base
+from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
 
 
-class BiometricTemplate(Base):
+class BiometricTemplate(Base, UUIDPrimaryKeyMixin):
     """Biometric template (e.g. fingerprint/face) for a voter."""
 
     __tablename__ = "biometric_template"
 
-    biometric_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
     voter_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("voter.voter_id", ondelete="CASCADE"),
+        ForeignKey("voter.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -38,5 +33,10 @@ class BiometricTemplate(Base):
     expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     # Relationships ----------
+    voter: Mapped["Voter"] = relationship(
+        "Voter",
+        back_populates="biometric_templates",
+        lazy="select",
+    )
 
     # Database constraints + indexes ----------

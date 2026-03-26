@@ -9,28 +9,23 @@ from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base
+from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
 
 
-class SeatAllocation(Base):
+class SeatAllocation(Base, UUIDPrimaryKeyMixin):
     """Seat allocation for an election/constituency; verified by an official."""
 
     __tablename__ = "seat_allocation"
 
-    allocation_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
     election_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("election.election_id", ondelete="CASCADE"),
+        ForeignKey("election.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     constituency_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("constituency.constituency_id", ondelete="CASCADE"),
+        ForeignKey("constituency.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -39,7 +34,7 @@ class SeatAllocation(Base):
     counts_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     verified_by: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("election_official.official_id", ondelete="SET NULL"),
+        ForeignKey("election_official.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

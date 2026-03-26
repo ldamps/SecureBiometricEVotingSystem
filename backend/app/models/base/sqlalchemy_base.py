@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from sqlalchemy import LargeBinary, MetaData, inspect, TIMESTAMP, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 
 # Alembic-friendly naming conventions
 NAMING_CONVENTION = {
@@ -47,7 +48,7 @@ class Base(DeclarativeBase):
 
 # Mixins ----------
 class UUIDPrimaryKeyMixin:
-    """Adds a UUID primary key column named `id`."""
+    """Adds a UUID primary key column named `id` (defaults to uuid4)."""
 
     id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -75,14 +76,80 @@ class TimestampMixin(CreatedAtMixin):
         onupdate=func.timezone("utc", func.now()),
     )
 
-# Encrypted Column Type ----------
+# Encrypted Column Types ----------
 
 
 class EncryptedBytes(TypeDecorator):
-    """Stores encrypted binary data. Uses LargeBinary at DB level; encryption can be applied in app layer."""
+    """Legacy: stores encrypted binary data as LargeBinary. Kept for backward compatibility."""
 
     impl = LargeBinary
     cache_ok = True
+
+
+@dataclass
+class EncryptedDBField:
+    """Structured encrypted value stored as JSONB.
+
+    All binary values are lowercase hex strings.
+    The GCM tag (16 bytes) is stored separately from the ciphertext so the
+    wire format is explicit and easy to audit.
+    """
+
+    ciphertext: str            # hex — raw ciphertext (excludes GCM tag)
+    nonce: str                 # hex — 12-byte AES-GCM nonce
+    tag: str                   # hex — 16-byte AES-GCM authentication tag
+    dek_version: int           # which DEK version was used
+    search_token: Optional[str] = None  # hex — HMAC-SHA256 blind index (searchable fields only)
+
+    def to_dict(self) -> dict:
+        d = {
+            "ciphertext": self.ciphertext,
+            "nonce": self.nonce,
+            "tag": self.tag,
+            "dek_version": self.dek_version,
+        }
+        if self.search_token is not None:
+            d["search_token"] = self.search_token
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "EncryptedDBField":
+        return cls(
+            ciphertext=data["ciphertext"],
+            nonce=data["nonce"],
+            tag=data["tag"],
+            dek_version=data["dek_version"],
+            search_token=data.get("search_token"),
+        )
+
+
+class EncryptedColumn(TypeDecorator):
+    """SQLAlchemy TypeDecorator that stores an EncryptedDBField (or a list of them) as JSONB.
+
+    Usage in a model:
+        field: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
+    """
+
+    impl = JSONB
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, list):
+            return [v.to_dict() if isinstance(v, EncryptedDBField) else v for v in value]
+        if isinstance(value, EncryptedDBField):
+            return value.to_dict()
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, list):
+            return [EncryptedDBField.from_dict(v) if isinstance(v, dict) else v for v in value]
+        if isinstance(value, dict):
+            return EncryptedDBField.from_dict(value)
+        return value
 
 
 __all__ = {
@@ -91,5 +158,7 @@ __all__ = {
     "CreatedAtMixin",
     "TimestampMixin",
     "EncryptedBytes",
+    "EncryptedDBField",
+    "EncryptedColumn",
     "NAMING_CONVENTION",
 }

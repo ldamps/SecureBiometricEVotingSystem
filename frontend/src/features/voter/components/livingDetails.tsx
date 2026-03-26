@@ -2,6 +2,7 @@ import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getSt
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
 import { PrimaryButton } from "../../../styles/ui";
+import UK_COUNTIES from "../constants/ukCounties";
 
 const UK_REGIONS = [
     { key: "england",        label: "England" },
@@ -11,12 +12,21 @@ const UK_REGIONS = [
     { key: "overseas",       label: "British citizen living overseas" },
 ] as const;
 
+/** Last UK address country — four nations only (matches radio region labels). */
+const UK_NATION_OPTIONS = [
+    { value: "England", label: "England" },
+    { value: "Scotland", label: "Scotland" },
+    { value: "Wales", label: "Wales" },
+    { value: "Northern Ireland", label: "Northern Ireland" },
+] as const;
+
 const PREVIOUS_ADDRESS_FIELDS = [
     { key: "prevAddrLine1",    label: "Address Line 1",         placeholder: "House number and street", required: true  },
     { key: "prevAddrLine2",    label: "Address Line 2",         placeholder: "Flat, apartment, etc.",   required: false },
     { key: "prevAddrCity",     label: "City / Town",            placeholder: "e.g. London",             required: true  },
     { key: "prevAddrPostcode", label: "Postcode",               placeholder: "e.g. SW1A 1AA",           required: true  },
     { key: "prevAddrCounty",   label: "County",                 placeholder: "e.g. Surrey",             required: false },
+    { key: "prevAddrCountry",  label: "Country",                placeholder: "",                        required: true },
 ] as const;
 
 function LivingDetails({
@@ -75,6 +85,7 @@ function LivingDetails({
                                     prevAddrCity: "",
                                     prevAddrPostcode: "",
                                     prevAddrCounty: "",
+                                    prevAddrCountry: "",
                                 })
                             }
                             style={{ marginRight: theme.spacing.sm, cursor: "pointer" }}
@@ -95,15 +106,43 @@ function LivingDetails({
                             <label htmlFor={f.key} style={getStepLabelStyle(theme)}>
                                 {f.label}{f.required ? "" : " (optional)"}
                             </label>
-                            <input
-                                type="text"
-                                id={f.key}
-                                name={f.key}
-                                placeholder={f.placeholder}
-                                value={state[f.key] || ""}
-                                onChange={(e) => set({ [f.key]: e.target.value })}
-                                style={getStepFormInputStyle(theme)}
-                            />
+                            {f.key === "prevAddrCounty" ? (
+                                <select
+                                    id={f.key}
+                                    name={f.key}
+                                    value={state[f.key] || ""}
+                                    onChange={(e) => set({ [f.key]: e.target.value })}
+                                    style={getStepFormInputStyle(theme)}
+                                >
+                                    <option value="">Select a county</option>
+                                    {UK_COUNTIES.map((county) => (
+                                        <option key={county} value={county}>{county}</option>
+                                    ))}
+                                </select>
+                            ) : f.key === "prevAddrCountry" ? (
+                                <select
+                                    id={f.key}
+                                    name={f.key}
+                                    value={state[f.key] || ""}
+                                    onChange={(e) => set({ [f.key]: e.target.value })}
+                                    style={getStepFormInputStyle(theme)}
+                                >
+                                    <option value="">Select a country</option>
+                                    {UK_NATION_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    id={f.key}
+                                    name={f.key}
+                                    placeholder={f.placeholder}
+                                    value={state[f.key] || ""}
+                                    onChange={(e) => set({ [f.key]: e.target.value })}
+                                    style={getStepFormInputStyle(theme)}
+                                />
+                            )}
                         </div>
                     ))}
                 </div>
