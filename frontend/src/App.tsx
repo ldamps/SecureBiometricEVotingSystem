@@ -20,6 +20,10 @@ import VoterUpdateRegistrationPage from './pages/voter/voterUpdateRegistrationPa
 import OfficialLandingPage from './pages/official/officialLandingPage';
 import OfficialHomePage from './pages/official/officialHomePage';
 
+// Mobile biometric pages (accessed via QR code from phone/tablet)
+import MobileEnrollPage from './pages/biometric/mobileEnrollPage';
+import MobileVerifyPage from './pages/biometric/mobileVerifyPage';
+
 // Shared pages
 
 const App: React.FC = () => {
@@ -44,6 +48,10 @@ const App: React.FC = () => {
             <Route path="/official/landing" element={<OfficialLandingPage />} />
             <Route path="/official/home" element={<OfficialHomePage />} />
             
+            {/* Mobile biometric routes (accessed via QR code on phone/tablet) */}
+            <Route path="/biometric/enroll" element={<MobileEnrollPage />} />
+            <Route path="/biometric/verify" element={<MobileVerifyPage />} />
+
             {/* Shared routes */}
 
           </Route>

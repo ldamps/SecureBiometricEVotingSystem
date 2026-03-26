@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { PrimaryButton, SecondaryButton, getCardStyle, getStepTitleStyle, getStepDescStyle, getFirstSectionStyle, getPageTitleStyle, getVoterPageContentWrapperStyle } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
@@ -6,6 +7,19 @@ import { BiometricEnrollmentStatus } from "../model/biometric.model";
 import { BiometricApiRepository } from "../repositories/biometric-api.repository";
 
 const biometricApi = new BiometricApiRepository();
+
+/**
+ * Detect whether the current device supports biometric capture directly
+ * (phones, tablets, iPads). Uses touch capability + mobile/tablet UA as
+ * heuristics — this covers phones, iPads, Android tablets, etc.
+ */
+function isMobileOrTablet(): boolean {
+    if (typeof window === "undefined") return false;
+    const hasTouchScreen = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const ua = navigator.userAgent || "";
+    const mobileTabletUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini|Tablet|Silk/i.test(ua);
+    return hasTouchScreen && mobileTabletUA;
+}
 
 /** Interval (ms) at which the laptop polls for enrollment completion. */
 const POLL_INTERVAL = 3000;
@@ -85,10 +99,20 @@ function BiometricRegistration({
      *
      * Example deep link:  evoting://enroll?voter_id=<uuid>
      */
+    const isMobile = isMobileOrTablet();
+
     const handleStartEnrollment = () => {
         setError(null);
-        const deepLink = `evoting://enroll?voter_id=${encodeURIComponent(state.voterId)}`;
-        setQrPayload(deepLink);
+        // Use a web URL so any device with a browser can open it
+        const enrollUrl = `${window.location.origin}/biometric/enroll?voter_id=${encodeURIComponent(state.voterId)}`;
+        setQrPayload(enrollUrl);
+
+        if (isMobile) {
+            // On mobile/tablet — navigate directly to the enrollment page
+            window.location.href = enrollUrl;
+            return;
+        }
+
         setEnrollmentStatus(BiometricEnrollmentStatus.WAITING_FOR_DEVICE);
         startPolling();
     };
@@ -157,28 +181,14 @@ function BiometricRegistration({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            backgroundColor: theme.colors.surface || "#ffffff",
+                            backgroundColor: "#ffffff",
                             padding: "12px",
                         }}>
-                            {/* TODO: render a real QR code here for production
-                              In production, render a real QR code here using a
-                            */}
-                            <div style={{ textAlign: "center" }}>
-                                <div style={{
-                                    width: "160px",
-                                    height: "160px",
-                                    backgroundColor: theme.colors.background || "#f5f5f5",
-                                    border: `1px dashed ${theme.colors.border || "#ccc"}`,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    marginBottom: "8px",
-                                }}>
-                                    <span style={{ fontSize: "0.75rem", color: theme.colors.text.secondary, wordBreak: "break-all", padding: "4px" }}>
-                                        QR: {qrPayload}
-                                    </span>
-                                </div>
-                            </div>
+                            <QRCodeSVG
+                                value={qrPayload}
+                                size={196}
+                                level="M"
+                            />
                         </div>
 
                         <p style={{

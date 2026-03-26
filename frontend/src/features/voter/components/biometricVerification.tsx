@@ -2,6 +2,7 @@
 // User must be on their phone to use biometric verification.
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import ProgressBar from "./progressBar";
 import {
     getVoterPageContentWrapperStyle,
@@ -18,6 +19,18 @@ import { BiometricVerificationStatus } from "../model/biometric.model";
 import { BiometricApiRepository } from "../repositories/biometric-api.repository";
 
 const biometricApi = new BiometricApiRepository();
+
+/**
+ * Detect whether the current device supports biometric capture directly
+ * (phones, tablets, iPads).
+ */
+function isMobileOrTablet(): boolean {
+    if (typeof window === "undefined") return false;
+    const hasTouchScreen = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const ua = navigator.userAgent || "";
+    const mobileTabletUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini|Tablet|Silk/i.test(ua);
+    return hasTouchScreen && mobileTabletUA;
+}
 
 const POLL_INTERVAL = 2000;
 
@@ -62,6 +75,8 @@ function BiometricVerification({
      * verification check.  In a production system, this would use a
      * WebSocket or SSE push, but polling works for the MVP.
      */
+    const isMobile = isMobileOrTablet();
+
     const handleStartVerification = useCallback(async () => {
         setError(null);
         setStatus(BiometricVerificationStatus.CHALLENGE_ISSUED);
@@ -72,6 +87,14 @@ function BiometricVerification({
             });
             setChallengeId(challenge.id);
             setChallengeHex(challenge.challenge);
+
+            if (isMobile) {
+                // On mobile/tablet — navigate directly to the verification page
+                const verifyUrl = `${window.location.origin}/biometric/verify?challenge_id=${encodeURIComponent(challenge.id)}&voter_id=${encodeURIComponent(state.voterId)}`;
+                window.location.href = verifyUrl;
+                return;
+            }
+
             setStatus(BiometricVerificationStatus.AWAITING_DEVICE);
 
             // Start polling — the mobile app will call POST /biometric/verify
@@ -175,28 +198,14 @@ function BiometricVerification({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            backgroundColor: theme.colors.surface || "#ffffff",
+                            backgroundColor: "#ffffff",
                             padding: "12px",
                         }}>
-                            {/*
-                              In production, render a real QR code:
-                              <QRCodeSVG value={qrPayload} size={196} />
-                            */}
-                            <div style={{ textAlign: "center" }}>
-                                <div style={{
-                                    width: "160px",
-                                    height: "160px",
-                                    backgroundColor: theme.colors.background || "#f5f5f5",
-                                    border: `1px dashed ${theme.colors.border || "#ccc"}`,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}>
-                                    <span style={{ fontSize: "0.7rem", color: theme.colors.text.secondary, wordBreak: "break-all", padding: "4px" }}>
-                                        QR: evoting://verify?challenge_id={challengeId}
-                                    </span>
-                                </div>
-                            </div>
+                            <QRCodeSVG
+                                value={`${window.location.origin}/biometric/verify?challenge_id=${encodeURIComponent(challengeId)}&voter_id=${encodeURIComponent(state.voterId)}`}
+                                size={196}
+                                level="M"
+                            />
                         </div>
 
                         <p style={{
@@ -206,7 +215,7 @@ function BiometricVerification({
                             textAlign: "center",
                             maxWidth: "320px",
                         }}>
-                            Open the voting app on your phone and scan this code.
+                            Scan this QR code with your phone or tablet camera.
                             Complete the face + ear check on your device.
                         </p>
 
