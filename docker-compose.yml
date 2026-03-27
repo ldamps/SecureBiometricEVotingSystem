@@ -9,54 +9,144 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-evoting_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Host 5433 avoids clashing with a local Postgres on 5432; backend still uses db:5432 on the compose network.
-    ports:
-      - "5433:5432"
+    # DB is only accessible from the internal network — not exposed to host in production.
+    # For local dev access, use: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+    networks:
+      - internal
     restart: unless-stopped
     healthcheck:
-      # pg_isready defaults the DB name to the username; our DB is POSTGRES_DB (evoting_db).
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-evoting_app} -d ${POSTGRES_DB:-evoting_db}"]
       interval: 10s
+      timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.50"
+        reservations:
+          memory: 256M
 
   backend:
     build: ./backend
     env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-evoting_app}:${POSTGRES_PASSWORD:-evoting_local_dev}@db:5432/${POSTGRES_DB:-evoting_db}
-      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-https://localhost,https://localhost:443,http://localhost,http://localhost:80,http://localhost:8088,https://frontend,http://frontend}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-https://localhost,https://localhost:443,http://localhost,http://localhost:80,https://frontend,http://frontend}"
       REQUIRE_GATEWAY: "true"
     depends_on:
       db:
         condition: service_healthy
-    # Port 8000 is NOT exposed to the host – only reachable via gateway
+    # Port 8000 is NOT exposed to the host — only reachable via gateway on the internal network
     expose:
       - "8000"
+    networks:
+      - internal
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.00"
+        reservations:
+          memory: 256M
 
   gateway:
     build: ./gateway
     depends_on:
-      - backend
-    ports:
-      - "8080:8080"
+      backend:
+        condition: service_healthy
+    # Gateway is internal only — accessed by frontend via Docker network.
+    expose:
+      - "8080"
+    networks:
+      - internal
     restart: unless-stopped
     healthcheck:
-      # Use 127.0.0.1: in this image `localhost` can resolve to ::1 while nginx listens on IPv4 only.
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/gateway/health || exit 1"]
       interval: 10s
+      timeout: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.50"
+        reservations:
+          memory: 128M
 
   frontend:
     build: ./frontend
     depends_on:
       gateway:
         condition: service_healthy
-    # Host 8088 avoids clashing with another service bound to 80 (e.g. system nginx/apache).
     ports:
-      - "8088:80"
+      - "80:80"
       - "443:443"
+    networks:
+      - internal
+      - public
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.50"
+        reservations:
+          memory: 128M
+
+  # ── Automated database backups ─────────────────────────────────────────
+  db-backup:
+    image: postgres:16-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-evoting_app}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-evoting_local_dev}
+      PGDATABASE: ${POSTGRES_DB:-evoting_db}
+      BACKUP_RETENTION_DAYS: "7"
+    volumes:
+      - db_backups:/backups
+      - ./scripts/db-backup.sh:/usr/local/bin/db-backup.sh:ro
+    networks:
+      - internal
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        chmod +x /usr/local/bin/db-backup.sh
+        echo "0 2 * * * /usr/local/bin/db-backup.sh >> /var/log/backup.log 2>&1" | crontab -
+        echo "Backup scheduler started — runs daily at 02:00 UTC"
+        /usr/local/bin/db-backup.sh
+        crond -f
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+
+networks:
+  internal:
+    driver: bridge
+    internal: true   # no external access — services communicate only with each other
+  public:
+    driver: bridge   # only the frontend is attached — the sole entry point from the internet
 
 volumes:
   postgres_data:
+  db_backups:

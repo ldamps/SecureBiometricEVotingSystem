@@ -35,6 +35,7 @@ from app.models.sqlalchemy import (  # noqa: F401
     TallyResult,
     Voter,
     VoterLedger,
+    VoterPassport,
     Vote,
 )
 

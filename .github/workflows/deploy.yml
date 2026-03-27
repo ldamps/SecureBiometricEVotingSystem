@@ -3,7 +3,10 @@ name: Deploy to EC2
 on:
   push:
     branches: [main]
-  workflow_dispatch:   # allows manual trigger from any branch via GitHub UI
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -13,39 +16,86 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ------------------------------------------------------------------ #
-      # SSH into the EC2 instance, pull latest code, rebuild containers.
-      # No .sh files needed — all commands run inline via appleboy/ssh-action.
-      # ------------------------------------------------------------------ #
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 10m
           script: |
-            cd /home/${{ secrets.EC2_USER }}/SecureBiometricEVotingSystem
+            set -euo pipefail
 
-            # Pull latest code
+            APP_DIR="/home/${{ secrets.EC2_USER }}/SecureBiometricEVotingSystem"
+            cd "$APP_DIR"
+
+            echo "==> Pulling latest code..."
             git pull origin main
 
-            # Write the backend .env from GitHub Secrets
-            # AWS credentials are NOT stored here — the EC2 instance IAM role
-            # (LabRole) provides them automatically via the metadata service.
-            cat > backend/.env <<EOF
+            # ── Write backend .env ────────────────────────────────────────
+            cat > backend/.env <<'ENVEOF'
             DATABASE_URL=${{ secrets.DATABASE_URL }}
-            EOF
+            ENVEOF
+            sed -i 's/^[[:space:]]*//' backend/.env
 
-            # Set the postgres password for docker-compose
-            export POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            # ── Export compose variables ──────────────────────────────────
+            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+            export CORS_ALLOWED_ORIGINS="https://${{ secrets.EC2_HOST }},https://${{ secrets.EC2_HOST }}:443,http://${{ secrets.EC2_HOST }},http://${{ secrets.EC2_HOST }}:80,https://localhost,http://localhost,https://frontend,http://frontend"
 
-            # Set CORS to allow the public EC2 URL (phone QR codes need this)
-            export CORS_ALLOWED_ORIGINS="https://${{ secrets.EC2_HOST }},https://${{ secrets.EC2_HOST }}:443,http://${{ secrets.EC2_HOST }},http://${{ secrets.EC2_HOST }}:8088,https://localhost,http://localhost,http://localhost:8088,https://frontend,http://frontend"
+            # ── Build new images while old containers serve traffic ────────
+            echo "==> Building new images..."
+            docker compose build
 
-            # Rebuild and restart containers
-            docker compose down --remove-orphans
-            docker compose build --no-cache
-            docker compose up -d
+            # ── Rolling restart ───────────────────────────────────────────
+            echo "==> Starting updated containers..."
+            docker compose up -d --remove-orphans
 
-            # Run database migrations
+            # ── Run database migrations ───────────────────────────────────
+            echo "==> Running database migrations..."
             docker compose exec -T backend alembic upgrade head
+
+            # ── Post-deploy health verification ───────────────────────────
+            echo "==> Verifying deployment health..."
+            MAX_RETRIES=12
+            RETRY_INTERVAL=5
+
+            # Check frontend is serving (port 80 is mapped to host; expect 301→HTTPS)
+            FRONTEND_OK=false
+            for i in $(seq 1 $MAX_RETRIES); do
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://127.0.0.1:80/ || echo "000")
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ]; then
+                echo "    Frontend: OK (HTTP $HTTP_CODE)"
+                FRONTEND_OK=true
+                break
+              fi
+              echo "    Frontend not ready (attempt $i/$MAX_RETRIES, got $HTTP_CODE)..."
+              sleep $RETRY_INTERVAL
+            done
+
+            if [ "$FRONTEND_OK" != "true" ]; then
+              echo "ERROR: Frontend health check failed after $MAX_RETRIES attempts"
+              docker compose logs --tail=30 frontend
+              exit 1
+            fi
+
+            # Check backend readiness (DB connectivity)
+            READY="000"
+            for i in $(seq 1 $MAX_RETRIES); do
+              READY=$(docker compose exec -T backend python -c "import urllib.request; r=urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready'); print(r.status)" 2>/dev/null || echo "000")
+              if [ "$READY" = "200" ]; then
+                echo "    Backend readiness: OK (DB connected)"
+                break
+              fi
+              echo "    Backend not ready (attempt $i/$MAX_RETRIES)..."
+              sleep $RETRY_INTERVAL
+            done
+
+            if [ "$READY" != "200" ]; then
+              echo "ERROR: Backend readiness check failed after $MAX_RETRIES attempts"
+              docker compose logs --tail=50 backend
+              exit 1
+            fi
+
+            docker image prune -f
+
+            echo "==> Deployment complete!"

@@ -1,0 +1,13 @@
+# Development overrides — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Exposes DB and gateway ports to the host for local debugging.
+
+services:
+  db:
+    ports:
+      - "5433:5432"
+
+  gateway:
+    ports:
+      - "8080:8080"

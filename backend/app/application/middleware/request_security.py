@@ -24,7 +24,13 @@ class RequestSecurityMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         # 1. Gateway-origin check (production only)
-        if REQUIRE_GATEWAY and not request.headers.get("X-Forwarded-For"):
+        #    Exempt health-check paths so Docker/deploy probes work without the gateway.
+        _HEALTH_PATHS = {"/health", "/api/v1/health", "/api/v1/health/ready"}
+        if (
+            REQUIRE_GATEWAY
+            and request.url.path not in _HEALTH_PATHS
+            and not request.headers.get("X-Forwarded-For")
+        ):
             return JSONResponse(
                 {"detail": "Direct access not allowed"}, status_code=403
             )

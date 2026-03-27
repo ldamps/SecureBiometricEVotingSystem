@@ -22,12 +22,17 @@ from app.models.sqlalchemy import (  # noqa: F401
     DeviceCredential,
     Election,
     ElectionOfficial,
+    EncryptionKey,
     ErrorReport,
     Investigation,
+    Party,
+    Referendum,
+    ReferendumVote,
     SeatAllocation,
     TallyResult,
     Voter,
     VoterLedger,
+    VoterPassport,
     Vote,
 )
 
