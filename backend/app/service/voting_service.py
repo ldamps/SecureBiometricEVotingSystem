@@ -21,6 +21,8 @@ from app.models.sqlalchemy.election import Election, ElectionStatus
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.tally_result_repo import TallyResultRepository
+from app.repository.candidate_repo import CandidateRepository
+from app.repository.voter_repo import VoterRepository
 from app.repository.vote_repo import VoteRepository
 from app.repository.referendum_vote_repo import ReferendumVoteRepository
 from app.repository.voter_ledger_repo import VoterLedgerRepository
@@ -54,6 +56,8 @@ class VotingService(EncryptionUtilsMixin):
         tally_result_repo: TallyResultRepository,
         election_repo: ElectionRepository,
         referendum_repo: ReferendumRepository,
+        candidate_repo: CandidateRepository,
+        voter_repo: VoterRepository,
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
@@ -65,6 +69,8 @@ class VotingService(EncryptionUtilsMixin):
         self.tally_result_repo = tally_result_repo
         self.election_repo = election_repo
         self.referendum_repo = referendum_repo
+        self.candidate_repo = candidate_repo
+        self.voter_repo = voter_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
@@ -95,6 +101,9 @@ class VotingService(EncryptionUtilsMixin):
         if election.status != ElectionStatus.OPEN.value:
             raise ValidationError("Election is not open for voting.")
 
+        # 1b. Validate the voter exists
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
+
         # 2. Check Voter_Ledger — has this voter already voted?
         existing_ledger = await self._get_voter_ledger_entry(voter_id, election_id)
         if existing_ledger:
@@ -115,6 +124,9 @@ class VotingService(EncryptionUtilsMixin):
             raise ValidationError("Ballot token does not belong to this election.")
         if ballot_token.constituency_id != constituency_id:
             raise ValidationError("Ballot token does not belong to this constituency.")
+
+        # 3b. Validate the candidate exists
+        await self.candidate_repo.get_candidate_by_id(self.session, candidate_id)
 
         # 4. Create the anonymous vote record (NO voter_id — preserves anonymity)
         receipt_code = secrets.token_urlsafe(32)
@@ -212,6 +224,9 @@ class VotingService(EncryptionUtilsMixin):
         )
         if referendum.status != "OPEN":
             raise ValidationError("Referendum is not open for voting.")
+
+        # 1b. Validate the voter exists
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
         # 2. Check Voter_Ledger — has this voter already voted?
         existing_ledger = await self._get_referendum_voter_ledger_entry(

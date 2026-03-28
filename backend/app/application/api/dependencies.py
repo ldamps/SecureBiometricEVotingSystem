@@ -219,6 +219,8 @@ def get_voting_service(
         tally_result_repo=TallyResultRepository(),
         election_repo=ElectionRepository(Election),
         referendum_repo=ReferendumRepository(Referendum),
+        candidate_repo=CandidateRepository(),
+        voter_repo=VoterRepository(Voter),
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
