@@ -4,6 +4,7 @@ from typing import Type, List
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from uuid import UUID
 from app.application.core.exceptions import NotFoundError
 import structlog
@@ -70,4 +71,38 @@ class VoterLedgerRepository:
             return list(result.scalars().all())
         except Exception:
             logger.exception("Failed to get all voter ledger entries by voter ID", voter_id=voter_id)
+            raise
+
+    async def get_all_voter_ledger_entries_by_election_id(
+        self,
+        session: AsyncSession,
+        election_id: UUID,
+    ) -> List[VoterLedger]:
+        """Get all voter ledger entries for an election, eagerly loading the voter relationship."""
+        try:
+            result = await session.execute(
+                select(self._model)
+                .options(selectinload(self._model.voter))
+                .where(self._model.election_id == election_id)
+            )
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception("Failed to get voter ledger entries by election ID", election_id=election_id)
+            raise
+
+    async def get_all_voter_ledger_entries_by_referendum_id(
+        self,
+        session: AsyncSession,
+        referendum_id: UUID,
+    ) -> List[VoterLedger]:
+        """Get all voter ledger entries for a referendum, eagerly loading the voter relationship."""
+        try:
+            result = await session.execute(
+                select(self._model)
+                .options(selectinload(self._model.voter))
+                .where(self._model.referendum_id == referendum_id)
+            )
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception("Failed to get voter ledger entries by referendum ID", referendum_id=referendum_id)
             raise

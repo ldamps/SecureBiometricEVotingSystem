@@ -104,7 +104,6 @@ async def verify_voter_identity(
     return await service.verify_voter_identity(body)
 
 
-
 ### VOTER ADDRESS ROUTES ###
 
 # list voter's addresses

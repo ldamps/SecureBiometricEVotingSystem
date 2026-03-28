@@ -7,7 +7,7 @@ import structlog
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 from fastapi.responses import JSONResponse
 
-from app.application.api.dependencies import get_ballot_token_service, get_candidate_service, get_election_service
+from app.application.api.dependencies import get_ballot_token_service, get_candidate_service, get_election_service, get_voter_ledger_service
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.application.core.exceptions import NotFoundError, ValidationError
@@ -21,7 +21,9 @@ from app.models.schemas.ballot_token import (
 )
 from app.models.schemas.candidate import CandidateItem, CreateCandidateRequest, UpdateCandidateRequest
 from app.models.schemas.election import ElectionItem, CreateElectionRequest, UpdateElectionRequest
+from app.models.schemas.voter_ledger import ElectionVoterListResponse
 from app.service.ballot_service import BallotTokenService
+from app.service.voter_ledger_service import VoterLedgerService
 from app.service.candidate_service import CandidateService
 from app.service.election_service import ElectionService
 
@@ -100,6 +102,20 @@ async def update_election(
     dto = UpdateElectionPlainDTO.create_dto(body, election_id)
     return await service.update_election(election_id, dto)
 
+
+# List all voters for an election with voting status
+@router.get(
+    "/{election_id}/voters",
+    responses=election_responses,
+    response_model=ElectionVoterListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_voters(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    service: VoterLedgerService = Depends(get_voter_ledger_service),
+) -> ElectionVoterListResponse:
+    """List all voters registered for an election and whether they have voted."""
+    return await service.get_election_voters(election_id)
 
 
 # Get all candidates for an election

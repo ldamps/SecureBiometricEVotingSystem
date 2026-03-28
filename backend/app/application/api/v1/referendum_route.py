@@ -6,7 +6,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
 
-from app.application.api.dependencies import get_ballot_token_service, get_referendum_service
+from app.application.api.dependencies import get_ballot_token_service, get_referendum_service, get_voter_ledger_service
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.application.core.exceptions import NotFoundError, ValidationError
@@ -18,8 +18,10 @@ from app.models.schemas.ballot_token import (
     IssueReferendumBallotTokenResponse,
 )
 from app.models.schemas.referendum import ReferendumItem, CreateReferendumRequest, UpdateReferendumRequest
+from app.models.schemas.voter_ledger import ReferendumVoterListResponse
 from app.service.ballot_service import BallotTokenService
 from app.service.referendum_service import ReferendumService
+from app.service.voter_ledger_service import VoterLedgerService
 
 referendum_responses = responses(Resource.REFERENDUM)
 ballot_responses = responses(Resource.BALLOT_TOKEN)
@@ -92,6 +94,21 @@ async def update_referendum(
     """Update a referendum's mutable fields."""
     update_data = body.model_dump(exclude_none=True)
     return await service.update_referendum(referendum_id, update_data)
+
+
+# List all voters for a referendum with voting status
+@router.get(
+    "/{referendum_id}/voters",
+    responses=referendum_responses,
+    response_model=ReferendumVoterListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_referendum_voters(
+    referendum_id: UUID = Path(..., description="The unique identifier for the referendum."),
+    service: VoterLedgerService = Depends(get_voter_ledger_service),
+) -> ReferendumVoterListResponse:
+    """List all voters registered for a referendum and whether they have voted."""
+    return await service.get_referendum_voters(referendum_id)
 
 
 # ── Ballot tokens ──
