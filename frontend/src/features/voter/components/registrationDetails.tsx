@@ -34,12 +34,14 @@ function RegistrationDetails({
     const showPreviousNames = state.nameChanged === true;
 
     const baseFields = [
-        { key: "firstName", label: "First Name", placeholder: "e.g. John" },
-        { key: "lastName", label: "Last Name", placeholder: "e.g. Doe" },
-        { key: "email", label: "Email", placeholder: "e.g. john.doe@example.com" },
-        { key: "dateOfBirth", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
-        { key: "nationalInsuranceNumber", label: "National Insurance Number", placeholder: "e.g. 1234567890" },
-        { key: "passportNumber", label: "Passport Number", placeholder: "e.g. 1234567890" },
+        { key: "firstName", label: "First Name", placeholder: "e.g. John", type: "text" },
+        { key: "lastName", label: "Last Name", placeholder: "e.g. Doe", type: "text" },
+        { key: "email", label: "Email", placeholder: "e.g. john.doe@example.com", type: "text" },
+        { key: "dateOfBirth", label: "Date of Birth", placeholder: "", type: "date" },
+        { key: "nationalInsuranceNumber", label: "National Insurance Number", placeholder: "e.g. 1234567890", type: "text" },
+        { key: "passportNumber", label: "Passport Number", placeholder: "e.g. 123456789", type: "text" },
+        { key: "passportCountry", label: "Passport Country", placeholder: "e.g. United Kingdom", type: "text" },
+        { key: "passportExpiryDate", label: "Passport Expiry Date", placeholder: "", type: "date" },
     ];
 
     const toggleNationality = (key: string) => {
@@ -79,7 +81,7 @@ function RegistrationDetails({
                         {field.label}
                     </label>
                     <input
-                        type="text"
+                        type={field.type}
                         id={field.key}
                         name={field.key}
                         placeholder={field.placeholder}

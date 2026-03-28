@@ -11,6 +11,14 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db, init_async_db, dispose_async_db
 from app.application.api import register_all_versions
+from app.application.middleware import (
+    RequestContextMiddleware,
+    RequestSecurityMiddleware,
+    SecurityHeadersMiddleware,
+    RequestLoggerMiddleware,
+)
+from app.application.middleware.cors.config import ALLOWED_ORIGINS
+from app.application.core.error_handlers import register_error_handlers
 
 
 @asynccontextmanager
@@ -29,14 +37,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Allow React frontend (default CRA port) to call the API
+# ── Middleware stack (outermost → innermost) ──────────────────────────────
+# 1. CORS – must be outermost so preflight responses get correct headers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-XSRF-TOKEN", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
 )
+
+# 2. Request context – assigns a unique request ID
+app.add_middleware(RequestContextMiddleware)
+
+# 3. Security checks – gateway-origin validation, body size guard
+app.add_middleware(RequestSecurityMiddleware)
+
+# 4. Security headers – defence-in-depth response headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 5. Request logger – structured logging of every request
+app.add_middleware(RequestLoggerMiddleware)
+
+# Global error handlers
+register_error_handlers(app)
 
 # Mount versioned API (e.g. /api/v1/health, /api/v1/voter/...)
 register_all_versions(app)

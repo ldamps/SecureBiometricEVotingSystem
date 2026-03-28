@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   backend-lint:
     name: Backend – install & check
@@ -53,7 +56,7 @@ jobs:
         run: npm run build
 
   docker-build:
-    name: Docker – build both images
+    name: Docker – build all images
     runs-on: ubuntu-latest
     needs: [backend-lint, frontend-build]
     steps:
@@ -64,3 +67,12 @@ jobs:
 
       - name: Build frontend image
         run: docker build -t evoting-frontend ./frontend
+
+      - name: Build gateway image
+        run: docker build -t evoting-gateway ./gateway
+
+      - name: Create stub backend .env for config validation
+        run: touch backend/.env
+
+      - name: Validate docker-compose config
+        run: docker compose config --quiet
