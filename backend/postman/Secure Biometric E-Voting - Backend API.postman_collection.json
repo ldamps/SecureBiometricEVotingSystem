@@ -3,7 +3,7 @@
 		"_postman_id": "e57608d7-df50-4949-9660-d3c1a889b75b",
 		"name": "Secure Biometric E-Voting - Backend API",
 		"description": "Collection to test the Secure Biometric E-Voting System backend.\n\n**Base URL:** Uses variable `base_url` (default: http://localhost:8001). Change in collection or environment to match your server port.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
 		"_exporter_id": "48255022"
 	},
 	"item": [
@@ -15,15 +15,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								""
-							]
-						},
+						"url": "{{base_url}}/",
 						"description": "API root - returns message and docs link."
 					},
 					"response": []
@@ -33,15 +25,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/health",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"health"
-							]
-						},
+						"url": "{{base_url}}/health",
 						"description": "Health check for deployment and monitoring (root-level)."
 					},
 					"response": []
@@ -51,15 +35,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/constituencies",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"constituencies"
-							]
-						},
+						"url": "{{base_url}}/constituencies",
 						"description": "List all constituencies (DB-backed)."
 					},
 					"response": []
@@ -74,17 +50,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/health",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"health"
-							]
-						},
+						"url": "{{base_url}}/api/v1/health",
 						"description": "Versioned health check - liveness (status, version, stage). Only available if versioned API is mounted in main."
 					},
 					"response": []
@@ -111,19 +77,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"address_type\": \"LOCAL_CURRENT\",\n  \"address_line1\": \"11 Downing Street\",\n  \"town\": \"London\",\n  \"postcode\": \"SW1A 2AA\",\n  \"county\": \"Greater London\",\n  \"country\": \"England\",\n  \"address_status\": \"PENDING\"\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"address"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/address"
 							},
 							"response": []
 						},
@@ -132,20 +86,7 @@
 							"request": {
 								"method": "GET",
 								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"address",
-										"{{address_id}}"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}"
 							},
 							"response": []
 						},
@@ -154,19 +95,7 @@
 							"request": {
 								"method": "GET",
 								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/addresses",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"addresses"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/addresses"
 							},
 							"response": []
 						},
@@ -184,20 +113,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"address_type\": \"LOCAL_CURRENT\",\n  \"address_line1\": \"42 Test Street\",\n  \"address_line2\": \"Flat 3\",\n  \"town\": \"Aberdeen\",\n  \"postcode\": \"AB10 1AA\",\n  \"county\": \"Aberdeenshire\",\n  \"country\": \"Scotland\",\n  \"address_status\": \"ACTIVE\"\n}\n\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"address",
-										"{{address_id}}"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}"
 							},
 							"response": []
 						},
@@ -215,20 +131,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"voter_id\": \"9fe5b1ff-af2b-4cfe-97c9-9ac3bfadfed6\",\n    \"address_type\": \"LOCAL_CURRENT\",\n    \"address_line1\": \"10 Downing Street\",\n    \"address_line2\": \"Westminster\",\n    \"town\": \"London\",\n    \"postcode\": \"SW1A 2AA\",\n    \"county\": \"Greater London\",\n    \"country\": \"United Kingdom\",\n    \"address_status\": \"PENDING\",\n    \"renew_by\": \"2027-12-31T23:59:59\"\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"address",
-										"{{address_id}}"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/address/{{address_id}}"
 							},
 							"response": []
 						}
@@ -236,7 +139,86 @@
 				},
 				{
 					"name": "Biometrics",
-					"item": []
+					"item": [
+						{
+							"name": "Enroll biometrics",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"voter_id\": \"9fe5b1ff-af2b-4cfe-97c9-9ac3bfadfed6\",\n  \"public_key_pem\": \"-----BEGIN PUBLIC KEY-----\\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjKz3RMXGpJuPMJv2TcFDn+FYWG\\nk8k5gRqXBnVfGSr0zQYJhS+3bDKmOF5LByKfR1jVNbFdCkPE5xjGaqmXcQ==\\n-----END PUBLIC KEY-----\",\n  \"device_id\": \"device-abc-123\",\n  \"modalities\": \"face,ear\",\n  \"device_label\": \"My iPhone\"\n}\n\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{base_url}}/api/v1/biometric/enroll"
+							},
+							"response": []
+						},
+						{
+							"name": "Create challenge",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"voter_id\": \"9fe5b1ff-af2b-4cfe-97c9-9ac3bfadfed6\"\n}\n\n\n\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{base_url}}/api/v1/biometric/challenge"
+							},
+							"response": []
+						},
+						{
+							"name": "Verify",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"challenge_id\": \"f47ac10b-58cc-4372-a567-0e02b2c3d479\",\n  \"device_id\": \"device-abc-123\",\n  \"signature\": \"MEUCIQC7...\"\n}\n\n\n\n\n"
+								},
+								"url": "{{base_url}}/api/v1/biometric/verify"
+							},
+							"response": []
+						},
+						{
+							"name": "List all device credentials",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"GENERAL\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n\n\n"
+								},
+								"url": "{{base_url}}/api/v1/biometric/{{voter_id}}/credentials"
+							},
+							"response": []
+						},
+						{
+							"name": "Revoke credentials",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"voter_id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n}\n\n\n\n"
+								},
+								"url": "{{base_url}}/api/v1/biometric/credentials/{{credential_id}}"
+							},
+							"response": []
+						}
+					]
 				},
 				{
 					"name": "Passport",
@@ -255,19 +237,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"passport_number\": \"AU9912834\",\n  \"issuing_country\": \"AUS\",\n  \"expiry_date\": \"2032-01-15T00:00:00Z\",\n  \"is_primary\": false\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passport",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"passport"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/passport"
 							},
 							"response": []
 						},
@@ -288,19 +258,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passports",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"passports"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/passports"
 							},
 							"response": []
 						},
@@ -318,20 +276,7 @@
 										}
 									}
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passport/{{passport_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"passport",
-										"{{passport_id}}"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/passport/{{passport_id}}"
 							},
 							"response": []
 						},
@@ -349,20 +294,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/passport/{{passport_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"passport",
-										"{{passport_id}}"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/passport/{{passport_id}}"
 							},
 							"response": []
 						}
@@ -388,20 +320,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger/{{voter_ledger_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"ledger",
-										"{{voter_ledger_id}}"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger/{{voter_ledger_id}}"
 							},
 							"response": []
 						},
@@ -422,19 +341,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"ledger"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger"
 							},
 							"response": []
 						},
@@ -452,19 +359,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"election_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"voted_at\": \"2026-03-21T10:30:00Z\"\n}\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"voter",
-										"{{voter_id}}",
-										"ledger"
-									]
-								}
+								"url": "{{base_url}}/api/v1/voter/{{voter_id}}/ledger"
 							},
 							"response": []
 						}
@@ -475,18 +370,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/voter/{{voter_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"voter",
-								"{{voter_id}}"
-							]
-						},
+						"url": "{{base_url}}/api/v1/voter/{{voter_id}}",
 						"description": "Get voter details by voter ID (UUID). Set collection variable voter_id after registering a voter."
 					},
 					"response": []
@@ -505,18 +389,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"c2e2eec7-0998-4333-8c8c-63145723a0a2\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/voter/register",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"voter",
-								"register"
-							]
-						},
+						"url": "{{base_url}}/api/v1/voter/register",
 						"description": "Register a new voter. Use a valid constituency UUID from GET /constituencies. Copy returned id into collection variable voter_id for other voter requests."
 					},
 					"response": []
@@ -535,18 +408,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"first_name\": \"Jane\",\n  \"surname\": \"Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"nationality_category\": \"COMMONWEALTH_LEAVE_TO_REMAIN\",\n  \"immigration_status\": \"LIMITED_LEAVE_TO_REMAIN\",\n  \"immigration_status_expiry\": \"2027-09-01T00:00:00Z\"\n}"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/voter/{{voter_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"voter",
-								"{{voter_id}}"
-							]
-						},
+						"url": "{{base_url}}/api/v1/voter/{{voter_id}}",
 						"description": "Update a voter's details. All body fields are optional. Uses collection variable voter_id."
 					},
 					"response": []
@@ -565,18 +427,7 @@
 								}
 							}
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/voter/verify-identity",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"voter",
-								"verify-identity"
-							]
-						}
+						"url": "{{base_url}}/api/v1/voter/verify-identity"
 					},
 					"response": []
 				}
@@ -600,19 +451,7 @@
 									"mode": "raw",
 									"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n"
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/election/{{election_id}}/candidates",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"election",
-										"{{election_id}}",
-										"candidates"
-									]
-								}
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/candidates"
 							},
 							"response": []
 						},
@@ -630,19 +469,7 @@
 										}
 									}
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/election/{{election_id}}/candidates",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"election",
-										"{{election_id}}",
-										"candidates"
-									]
-								}
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/candidates"
 							},
 							"response": []
 						},
@@ -660,20 +487,48 @@
 										}
 									}
 								},
-								"url": {
-									"raw": "{{base_url}}/api/v1/election/{{election_id}}/candidates/{{candidate_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"election",
-										"{{election_id}}",
-										"candidates",
-										"{{candidate_id}}"
-									]
-								}
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/candidates/{{candidate_id}}"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Ballot tokens",
+					"item": [
+						{
+							"name": "Create ballot token",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"constituency_id\": \"acb0eaac-c886-4084-8236-98575364844e\",\n  \"count\": 5\n}\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/ballot-tokens"
+							},
+							"response": []
+						},
+						{
+							"name": "List ballot token for an election",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/ballot-tokens/status"
+							},
+							"response": []
+						},
+						{
+							"name": "Get ballot token",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/ballot-tokens/status"
 							},
 							"response": []
 						}
@@ -684,18 +539,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/election/{{election_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"election",
-								"{{election_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/election/{{election_id}}"
 					},
 					"response": []
 				},
@@ -704,17 +548,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/election",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"election"
-							]
-						}
+						"url": "{{base_url}}/api/v1/election"
 					},
 					"response": []
 				},
@@ -725,24 +559,14 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n",
+							"raw": "{\n  \"title\": \"2026 General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-04-01T08:00:00Z\",\n  \"voting_closes\": \"2026-04-01T22:00:00Z\"\n}\n\n\n\n\n",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/election",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"election"
-							]
-						}
+						"url": "{{base_url}}/api/v1/election"
 					},
 					"response": []
 				},
@@ -760,18 +584,16 @@
 								}
 							}
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/election/{{election_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"election",
-								"{{election_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/election/{{election_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List voters for an election",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/election/{{election_id}}/voters"
 					},
 					"response": []
 				}
@@ -792,18 +614,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/official/{{offiical_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"official",
-								"{{offiical_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/official/{{offiical_id}}"
 					},
 					"response": []
 				},
@@ -853,17 +664,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"election_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"voted_at\": \"2026-03-21T10:30:00Z\"\n}\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/constituency",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"constituency"
-							]
-						}
+						"url": "{{base_url}}/api/v1/constituency"
 					},
 					"response": []
 				},
@@ -872,18 +673,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/constituency/{{constituency_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"constituency",
-								"{{constituency_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/constituency/{{constituency_id}}"
 					},
 					"response": []
 				}
@@ -906,17 +696,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party"
 					},
 					"response": []
 				},
@@ -934,18 +714,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"party_name\": \"Labour Party UK\",\n  \"abbreviation\": \"LAB\",\n  \"is_active\": true\n}\n\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party/{{party_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party",
-								"{{party_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party/{{party_id}}"
 					},
 					"response": []
 				},
@@ -966,17 +735,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party"
 					},
 					"response": []
 				},
@@ -997,18 +756,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party/{{party_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party",
-								"{{party_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party/{{party_id}}"
 					},
 					"response": []
 				},
@@ -1029,19 +777,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party/{{party_id}}/candidates",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party",
-								"{{party_id}}",
-								"candidates"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party/{{party_id}}/candidates"
 					},
 					"response": []
 				},
@@ -1059,18 +795,7 @@
 							"mode": "raw",
 							"raw": "\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party/{{party_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party",
-								"{{party_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party/{{party_id}}"
 					},
 					"response": []
 				},
@@ -1091,19 +816,7 @@
 							"mode": "raw",
 							"raw": "{\n  \"party_name\": \"Labour Party\",\n  \"abbreviation\": \"LAB\"\n}\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party/deleted/all",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party",
-								"deleted",
-								"all"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party/deleted/all"
 					},
 					"response": []
 				},
@@ -1121,19 +834,7 @@
 							"mode": "raw",
 							"raw": "\n\n"
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/party/{{party_id}}/restore",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"party",
-								"{{party_id}}",
-								"restore"
-							]
-						}
+						"url": "{{base_url}}/api/v1/party/{{party_id}}/restore"
 					},
 					"response": []
 				}
@@ -1143,30 +844,61 @@
 			"name": "API v1 - Referendum",
 			"item": [
 				{
+					"name": "Ballot tokens",
+					"item": [
+						{
+							"name": "Create ballot token",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"constituency_id\": \"acb0eaac-c886-4084-8236-98575364844e\",\n  \"count\": 5\n}\n\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}/ballot-tokens"
+							},
+							"response": []
+						},
+						{
+							"name": "Get ballot token",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}/ballot-tokens/status"
+							},
+							"response": []
+						},
+						{
+							"name": "List ballot tokens",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}/ballot-tokens"
+							},
+							"response": []
+						}
+					]
+				},
+				{
 					"name": "Create referendum",
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Scottish Independence Referendum\",\n  \"question\": \"Should Scotland be an independent country?\",\n  \"description\": \"A referendum on whether Scotland should leave the United Kingdom.\",\n  \"scope\": \"NATIONAL\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-06-01T08:00:00Z\",\n  \"voting_closes\": \"2026-06-01T22:00:00Z\"\n}\n\n\n\n\n",
+							"raw": "{\n  \"title\": \"Scottish Independence Referendum Test\",\n  \"question\": \"Should Scotland be an independent country?\",\n  \"description\": \"A referendum on whether Scotland should leave the United Kingdom.\",\n  \"scope\": \"NATIONAL\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-06-01T08:00:00Z\",\n  \"voting_closes\": \"2026-06-01T22:00:00Z\"\n}\n\n\n\n\n",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/referendum",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"referendum"
-							]
-						}
+						"url": "{{base_url}}/api/v1/referendum"
 					},
 					"response": []
 				},
@@ -1175,17 +907,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/referendum",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"referendum"
-							]
-						}
+						"url": "{{base_url}}/api/v1/referendum"
 					},
 					"response": []
 				},
@@ -1194,18 +916,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/v1/referendum/{{referendum_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"referendum",
-								"{{referendum_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}"
 					},
 					"response": []
 				},
@@ -1223,18 +934,57 @@
 								}
 							}
 						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/referendum/{{referendum_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"referendum",
-								"{{referendum_id}}"
-							]
-						}
+						"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List voters for a referendum",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}/voters"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Voting",
+			"item": [
+				{
+					"name": "Cast a vote in an election",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"voter_id\": \"9fe5b1ff-af2b-4cfe-97c9-9ac3bfadfed6\",\n    \"election_id\": \"f96696cd-0cb0-4b9c-a26c-28881808ce6c\",\n    \"constituency_id\": \"acb0eaac-c886-4084-8236-98575364844e\",\n    \"candidate_id\": \"6b985b44-6799-4ff4-9144-c40cd5ec5b73\",\n    \"blind_token_hash\": \"db1028b1-ddf8-4488-bf7a-3b9382f0f656\",\n    \"send_email_confirmation\": true\n}\n\n\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/voting/cast"
+					},
+					"response": []
+				},
+				{
+					"name": "Cast a vote in referendum",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"voter_id\": \"9fe5b1ff-af2b-4cfe-97c9-9ac3bfadfed6\",\n    \"referendum_id\": \"1dfd51ad-2363-40cc-8b81-b7b541e2d750\",\n    \"choice\": \"YES\",\n    \"blind_token_hash\": \"387bbe01-0f1a-4d33-a57e-7a491c784925\",\n    \"send_email_confirmation\": true\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/voting/cast-referendum"
 					},
 					"response": []
 				}
