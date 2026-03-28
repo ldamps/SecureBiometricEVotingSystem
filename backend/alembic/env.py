@@ -19,7 +19,8 @@ from app.models.sqlalchemy import (  # noqa: F401
     Address,
     AuditLog,
     BallotToken,
-    BiometricTemplate,
+    BiometricChallenge,
+    DeviceCredential,
     Candidate,
     Constituency,
     Election,
@@ -34,6 +35,7 @@ from app.models.sqlalchemy import (  # noqa: F401
     TallyResult,
     Voter,
     VoterLedger,
+    VoterPassport,
     Vote,
 )
 

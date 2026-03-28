@@ -12,21 +12,46 @@
 4. [AWS EC2 Setup](#4-aws-ec2-setup)
 5. [CI/CD Pipeline](#5-cicd-pipeline)
 6. [Environment Variables & Secrets](#6-environment-variables--secrets)
-7. [Resuming a Lab Session](#7-resuming-a-lab-session)
+7. [Security Hardening](#7-security-hardening)
+8. [Resuming a Lab Session](#8-resuming-a-lab-session)
 
 ---
 
 ## 1. System Architecture
 
-The system is deployed on **AWS Learner Lab** using the following containers, orchestrated with Docker Compose on a single EC2 instance:
+The system is deployed on **AWS Learner Lab** using Docker Compose on a single EC2 instance. Services are isolated across two Docker networks:
 
-| Container | Technology | Purpose |
-|-----------|-----------|---------|
-| `frontend` | React + Nginx | Serves the React SPA as static files; proxies `/api/` requests to the backend |
-| `backend` | FastAPI + Uvicorn | Runs all backend API modules on port 8000 |
-| `db` | PostgreSQL 16 | Persistent relational database |
+```
+Internet
+   │
+   ├── :80  (HTTP → HTTPS redirect)
+   └── :443 (HTTPS)
+         │
+    ┌────▼──────────────────────────────── public network ──┐
+    │  frontend (React + Nginx)                             │
+    └────┬──────────────────────────────────────────────────┘
+         │ /api/* proxy
+    ┌────▼──────────────────────────────── internal network ─┐
+    │  gateway (Nginx) ──► backend (FastAPI) ──► db (PG 16) │
+    │                                                        │
+    │  db-backup (cron pg_dump)                              │
+    └────────────────────────────────────────────────────────┘
+```
 
-AWS KMS is used for encryption/decryption operations. The backend container accesses KMS via the EC2 instance IAM role (LabRole) — no credentials are hardcoded.
+| Container | Technology | Network | Purpose |
+|-----------|-----------|---------|---------|
+| `frontend` | React + Nginx | public + internal | Serves the React SPA; terminates HTTPS; proxies `/api/` to the gateway |
+| `gateway` | Nginx | internal only | Rate limiting, security headers, request validation |
+| `backend` | FastAPI + Uvicorn | internal only | All backend API modules (port 8000, not exposed to host) |
+| `db` | PostgreSQL 16 | internal only | Persistent relational database (not exposed to host) |
+| `db-backup` | PostgreSQL client + cron | internal only | Automated daily database backups with retention policy |
+
+**Key security properties:**
+- Only the frontend container is reachable from the internet (ports 80/443)
+- The gateway, backend, and database are on an **internal-only Docker network** with no external access
+- All containers run with **resource limits** (CPU + memory) to prevent resource exhaustion
+- The backend runs as a **non-root user** inside its container
+- AWS KMS is used for encryption — the backend accesses KMS via the EC2 instance IAM role (LabRole) with no hardcoded credentials
 
 ---
 
@@ -36,21 +61,27 @@ AWS KMS is used for encryption/decryption operations. The backend container acce
 SecureBiometricEVotingSystem/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml           # Runs on every push/PR: lint, build, Docker build
-│       └── deploy.yml       # Runs on push to main: SSH deploy to EC2
+│       ├── ci.yml              # Runs on every push/PR: lint, build, Docker build
+│       └── deploy.yml          # Runs on push to main: SSH deploy to EC2
 ├── backend/
-│   ├── app/                 # FastAPI application modules
-│   ├── alembic/             # Database migrations
-│   ├── Dockerfile
+│   ├── app/                    # FastAPI application modules
+│   ├── alembic/                # Database migrations
+│   ├── Dockerfile              # Multi-stage build, non-root user
 │   ├── .dockerignore
 │   ├── requirements.txt
 │   └── main.py
 ├── frontend/
-│   ├── src/                 # React TypeScript source
-│   ├── Dockerfile
+│   ├── src/                    # React TypeScript source
+│   ├── Dockerfile              # Multi-stage build (Node → Nginx + self-signed TLS)
 │   ├── .dockerignore
-│   └── nginx.conf           # Nginx config: static serving + API proxy
-├── docker-compose.yml
+│   └── nginx.conf              # HTTPS, SPA fallback, API proxy → gateway
+├── gateway/
+│   ├── Dockerfile              # Nginx-alpine reverse proxy
+│   └── nginx.conf              # Rate limiting, security headers, upstream routing
+├── scripts/
+│   └── db-backup.sh            # Automated pg_dump with retention
+├── docker-compose.yml          # Production: network-isolated services
+├── docker-compose.dev.yml      # Dev overrides: exposes DB/gateway ports to host
 └── .gitignore
 ```
 
@@ -60,37 +91,54 @@ SecureBiometricEVotingSystem/
 
 ### Backend Dockerfile (`backend/Dockerfile`)
 
-Uses `python:3.12-slim`. Installs pip dependencies then copies application code. Runs Uvicorn on port 8000.
-
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+Multi-stage build with security hardening:
+- **Stage 1** (`deps`): Installs pip dependencies into a clean layer
+- **Stage 2** (`production`): Copies only installed packages + application code, runs as non-root `appuser`
 
 ### Frontend Dockerfile (`frontend/Dockerfile`)
 
 Multi-stage build:
 - **Stage 1** (`node:20-alpine`): Runs `npm ci && npm run build` to produce the static `build/` folder
-- **Stage 2** (`nginx:alpine`): Copies the build output and serves it via Nginx
+- **Stage 2** (`nginx:alpine`): Copies the build output, generates a self-signed TLS certificate, serves via Nginx
+
+### Gateway (`gateway/`)
+
+Nginx reverse proxy sitting between the frontend and backend:
+- Per-IP rate limiting: 10 req/s general, 3 req/s auth, 2 req/s voting
+- OWASP security headers on all proxied responses
+- 5 MB request body size cap
+- Hides upstream server identity
 
 ### Nginx Configuration (`frontend/nginx.conf`)
 
-- Serves React static files
-- Proxies all requests to `/api/` through to `http://backend:8000/` (Docker Compose internal DNS)
+- HTTP → HTTPS redirect (port 80 → 443)
+- Serves React static files with HSTS, CSP, and other security headers
+- Proxies all requests to `/api/` through to the gateway (Docker internal DNS)
 - SPA fallback: unknown routes serve `index.html` so React Router handles them
 
 > **Important:** API calls in the React app must use relative paths (`/api/...`) not `http://localhost:8000`. Nginx handles the routing transparently.
 
 ### Docker Compose (`docker-compose.yml`)
 
-Defines three services: `db`, `backend`, `frontend`. All have `restart: unless-stopped` so they automatically restart when the EC2 instance boots.
+Defines five services: `db`, `backend`, `gateway`, `frontend`, `db-backup`. All have `restart: unless-stopped` so they automatically restart when the EC2 instance boots.
 
-The `backend` service overrides `DATABASE_URL` to point to the `db` container hostname rather than `localhost`.
+**Network isolation:**
+- `internal` network (bridge, `internal: true`): all services — no external access
+- `public` network (bridge): frontend only — the sole entry point from the internet
+
+**Resource limits:** Each service has CPU and memory limits to prevent resource exhaustion on the t3.medium instance.
+
+**Health checks:** All services have Docker health checks. The backend checks its HTTP liveness endpoint; the gateway checks its health route; the frontend checks it can serve a page.
+
+### Docker Compose Dev Override (`docker-compose.dev.yml`)
+
+For local development, use both files to expose DB and gateway ports to the host:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+This exposes PostgreSQL on host port 5433 and the gateway on port 8080 for direct debugging.
 
 ---
 
@@ -114,11 +162,13 @@ This is a one-time manual setup. After this, all subsequent deploys are fully au
 
 3. **Security Group inbound rules:**
 
-| Type | Port | Source |
-|------|------|--------|
-| SSH | 22 | Anywhere (0.0.0.0/0) |
-| HTTP | 80 | Anywhere (0.0.0.0/0) |
-| Custom TCP | 8000 | Anywhere (0.0.0.0/0) |
+| Type | Port | Source | Purpose |
+|------|------|--------|---------|
+| SSH | 22 | Your IP/32 | Admin access (restrict to your IP) |
+| HTTP | 80 | 0.0.0.0/0 | Frontend (redirects to HTTPS) |
+| HTTPS | 443 | 0.0.0.0/0 | Frontend (serves SPA + proxies API) |
+
+> **Do NOT expose** ports 8000 (backend), 8080 (gateway), or 5432/5433 (database). These services are only accessible internally via Docker networks. Exposing them bypasses the gateway's rate limiting and security headers.
 
 4. Launch the instance.
 
@@ -201,17 +251,23 @@ Developer pushes code
   ci.yml runs (all branches)
   ├── Backend: pip install + import check
   ├── Frontend: npm ci + npm run build
-  └── Docker: build both images
+  ├── Docker: build all images (backend, frontend, gateway)
+  └── Validate: docker compose config
         │
         ▼ (only on push to main)
   deploy.yml runs
   ├── SSH into EC2
   ├── git pull origin main
   ├── Write backend/.env from GitHub Secrets
-  ├── docker compose build --no-cache
-  ├── docker compose up -d
-  └── alembic upgrade head (run DB migrations)
+  ├── docker compose build (incremental — uses layer cache)
+  ├── docker compose up -d --remove-orphans (rolling restart)
+  ├── alembic upgrade head (DB migrations)
+  ├── Health check: frontend serving pages
+  ├── Health check: backend readiness (DB connectivity)
+  └── docker image prune (free disk space)
 ```
+
+The deploy uses a **build-then-restart** strategy: new images are built while old containers still serve traffic. `docker compose up -d` then recreates only containers whose image changed, minimising downtime to seconds.
 
 ### GitHub Actions Secrets Required
 
@@ -250,7 +306,109 @@ git check-ignore -v backend/.env
 
 ---
 
-## 7. Resuming a Lab Session
+## 7. Security Hardening
+
+This section documents the security measures applied to the deployment infrastructure.
+
+### 7.1 Network Isolation
+
+The Docker Compose configuration uses two networks:
+
+- **`internal`** (`internal: true`): All services communicate here. The `internal: true` flag means Docker will not create any iptables rules allowing external traffic — even if a container binds a port, it is unreachable from outside.
+- **`public`**: Only the frontend is attached. This is the sole ingress point from the internet.
+
+This means an attacker who gains access to the host network cannot directly reach the database or backend — they must go through the frontend → gateway → backend proxy chain, where rate limiting and security headers are enforced.
+
+### 7.2 Security Group (AWS)
+
+The EC2 security group must only allow:
+
+| Port | Protocol | Source | Service |
+|------|----------|--------|---------|
+| 22 | TCP | Your IP/32 | SSH (not 0.0.0.0/0) |
+| 80 | TCP | 0.0.0.0/0 | Frontend HTTP → HTTPS redirect |
+| 443 | TCP | 0.0.0.0/0 | Frontend HTTPS |
+
+**Ports that must NOT be open:** 8000 (backend), 8080 (gateway), 5432/5433 (database). If these were previously open, remove them:
+
+```bash
+# Get security group ID
+SG_ID=$(aws ec2 describe-instances \
+  --instance-ids <INSTANCE_ID> \
+  --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+  --output text)
+
+# Remove backend port
+aws ec2 revoke-security-group-ingress \
+  --group-id "$SG_ID" --protocol tcp --port 8000 --cidr 0.0.0.0/0
+
+# Remove gateway port
+aws ec2 revoke-security-group-ingress \
+  --group-id "$SG_ID" --protocol tcp --port 8080 --cidr 0.0.0.0/0
+
+# Restrict SSH to your IP
+MY_IP=$(curl -s https://checkip.amazonaws.com)
+aws ec2 revoke-security-group-ingress \
+  --group-id "$SG_ID" --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress \
+  --group-id "$SG_ID" --protocol tcp --port 22 --cidr "${MY_IP}/32"
+```
+
+### 7.3 Container Hardening
+
+- **Non-root execution:** The backend Dockerfile creates a dedicated `appuser` (UID 1000) and runs the application as that user. This limits the blast radius if the application is compromised.
+- **Resource limits:** All containers have CPU and memory limits (`deploy.resources.limits`) to prevent a single service from exhausting the host.
+- **Health checks:** Docker monitors every service. If a container becomes unhealthy, `restart: unless-stopped` triggers automatic recovery.
+- **Read-only mounts:** The backup script is mounted read-only (`:ro`) into the backup container.
+
+### 7.4 Rate Limiting (Gateway)
+
+The Nginx gateway applies per-IP rate limits to prevent abuse:
+
+| Endpoint | Rate | Burst | Purpose |
+|----------|------|-------|---------|
+| `/api/v1/auth/*` | 3 req/s | 5 | Brute-force protection on login |
+| `/api/v1/voter/register` | 3 req/s | 5 | Registration abuse prevention |
+| `/api/v1/voting/*` | 2 req/s | 3 | Vote submission rate control |
+| `/api/*` (other) | 10 req/s | 20 | General API protection |
+
+Excess requests receive HTTP 429 (Too Many Requests).
+
+### 7.5 Database Backups
+
+An automated backup service (`db-backup`) runs inside the Docker Compose stack:
+- **Schedule:** Daily at 02:00 UTC via cron
+- **Method:** `pg_dump` compressed with gzip
+- **Retention:** 7 days (configurable via `BACKUP_RETENTION_DAYS`)
+- **Storage:** Docker volume `db_backups`
+
+To manually trigger a backup:
+
+```bash
+docker compose exec db-backup /usr/local/bin/db-backup.sh
+```
+
+To restore from a backup:
+
+```bash
+gunzip -c /path/to/evoting_YYYYMMDD_HHMMSS.sql.gz | \
+  docker compose exec -T db psql -U evoting_app -d evoting_db
+```
+
+### 7.6 Health Endpoints
+
+| Endpoint | Purpose | Checks |
+|----------|---------|--------|
+| `GET /health` | Liveness | Process is running |
+| `GET /api/v1/health` | Liveness (versioned) | Process + version info |
+| `GET /api/v1/health/ready` | Readiness | Process + database connectivity |
+| `GET /gateway/health` | Gateway liveness | Nginx is serving |
+
+The deploy workflow verifies both frontend availability and backend readiness (DB connectivity) after every deployment. If the readiness check fails, the deploy is marked as failed in GitHub Actions.
+
+---
+
+## 8. Resuming a Lab Session
 
 When returning to the Learner Lab after a session has expired:
 

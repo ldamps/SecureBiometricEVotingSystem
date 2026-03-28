@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base.sqlalchemy_base import Base, EncryptedColumn, EncryptedDBField, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.sqlalchemy.address import Address
-from app.models.sqlalchemy.biometric_template import BiometricTemplate
+from app.models.sqlalchemy.biometric_credentials import DeviceCredential
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.models.sqlalchemy.constituency import Constituency
 
@@ -140,8 +140,8 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         cascade="all, delete-orphan",
     )
 
-    biometric_templates: Mapped[list["BiometricTemplate"]] = relationship(
-        "BiometricTemplate",
+    device_credentials: Mapped[list["DeviceCredential"]] = relationship(
+        "DeviceCredential",
         back_populates="voter",
         cascade="all, delete-orphan",
     )
