@@ -87,7 +87,7 @@ class VotingService(EncryptionUtilsMixin):
         election_id = UUID(request.election_id)
         constituency_id = UUID(request.constituency_id)
         candidate_id = UUID(request.candidate_id)
-        blind_token_hash = UUID(request.blind_token_hash)
+        blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
         # 1. Validate the election exists and is OPEN
@@ -102,9 +102,10 @@ class VotingService(EncryptionUtilsMixin):
                 "You have already voted in this election. Each voter may only vote once."
             )
 
-        # 3. Validate the blind ballot token
+        # 3. Validate the blind ballot token (lookup via HMAC search token)
+        search_token = await self._compute_ballot_search_token(blind_token_hash)
         ballot_token = await self.ballot_token_repo.get_by_blind_token_hash(
-            self.session, blind_token_hash
+            self.session, search_token
         )
         if not ballot_token:
             raise ValidationError("Invalid ballot token.")
@@ -202,7 +203,7 @@ class VotingService(EncryptionUtilsMixin):
         voter_id = UUID(request.voter_id)
         referendum_id = UUID(request.referendum_id)
         choice = request.choice.upper()
-        blind_token_hash = UUID(request.blind_token_hash)
+        blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
         # 1. Validate the referendum exists and is OPEN
@@ -221,9 +222,10 @@ class VotingService(EncryptionUtilsMixin):
                 "You have already voted in this referendum. Each voter may only vote once."
             )
 
-        # 3. Validate the blind ballot token
+        # 3. Validate the blind ballot token (lookup via HMAC search token)
+        search_token = await self._compute_ballot_search_token(blind_token_hash)
         ballot_token = await self.ballot_token_repo.get_by_blind_token_hash(
-            self.session, blind_token_hash
+            self.session, search_token
         )
         if not ballot_token:
             raise ValidationError("Invalid ballot token.")
@@ -350,6 +352,12 @@ class VotingService(EncryptionUtilsMixin):
             referendum_id=str(referendum_id),
         )
         return ledger
+
+    async def _compute_ballot_search_token(self, blind_token_hash: str) -> str:
+        """Compute the HMAC search token for a plaintext blind_token_hash."""
+        await self._keys_manager.init_org_keys(self.session, org_id=None)
+        args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
+        return await self._mapper.create_search_token(blind_token_hash, args, self.session)
 
     async def _send_vote_confirmation_email(
         self, voter_id: UUID, election_name: str

@@ -9,6 +9,7 @@ import structlog
 
 from app.models.base.sqlalchemy_base import EncryptedDBField
 from app.models.dto.address import AddressBaseDTO, AddressDTO
+from app.models.dto.ballot import BallotTokenBaseDTO, BallotTokenDTO
 from app.models.dto.candidate import CandidateBaseDTO, CandidateDTO
 from app.models.dto.election import ElectionBaseDTO, ElectionDTO
 from app.models.dto.party import PartyBaseDTO, PartyDTO
@@ -16,6 +17,7 @@ from app.models.dto.referendum import ReferendumBaseDTO, ReferendumDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
 from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
 from app.models.schemas.address import AddressItem
+from app.models.schemas.ballot_token import BallotTokenItem
 from app.models.schemas.candidate import CandidateItem
 from app.models.schemas.election import ElectionItem
 from app.models.schemas.party import PartyItem
@@ -23,6 +25,7 @@ from app.models.schemas.referendum import ReferendumItem
 from app.models.schemas.voter import VoterItem
 from app.models.schemas.voter_passport import VoterPassportItem
 from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
+from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.candidate import Candidate
 from app.models.sqlalchemy.election import Election
 from app.models.sqlalchemy.party import Party

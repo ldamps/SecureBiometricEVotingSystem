@@ -1,24 +1,33 @@
 # app/application/api/v1/election_route.py - Election endpoints.
 
-from fastapi import APIRouter, Path, Depends, Body, status
+from typing import List, Optional
+from uuid import UUID
+
+import structlog
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from fastapi.responses import JSONResponse
+
+from app.application.api.dependencies import get_ballot_token_service, get_candidate_service, get_election_service
 from app.application.api.responses import responses
 from app.application.constants import Resource
-from app.models.schemas.election import ElectionItem, CreateElectionRequest, UpdateElectionRequest
-from app.models.dto.election import CreateElectionPlainDTO, UpdateElectionPlainDTO
-from app.service.election_service import ElectionService
-from app.models.schemas.candidate import CandidateItem, CreateCandidateRequest, UpdateCandidateRequest
+from app.application.core.exceptions import NotFoundError, ValidationError
 from app.models.dto.candidate import CreateCandidatePlainDTO
+from app.models.dto.election import CreateElectionPlainDTO, UpdateElectionPlainDTO
+from app.models.schemas.ballot_token import (
+    BallotTokenItem,
+    BallotTokenStatusResponse,
+    IssueBallotTokenRequest,
+    IssueBallotTokenResponse,
+)
+from app.models.schemas.candidate import CandidateItem, CreateCandidateRequest, UpdateCandidateRequest
+from app.models.schemas.election import ElectionItem, CreateElectionRequest, UpdateElectionRequest
+from app.service.ballot_service import BallotTokenService
 from app.service.candidate_service import CandidateService
-from app.application.api.dependencies import get_election_service, get_candidate_service
-from app.application.core.exceptions import ValidationError
-from fastapi.responses import JSONResponse
-from typing import List
-from uuid import UUID
-import structlog
-
+from app.service.election_service import ElectionService
 
 election_responses = responses(Resource.ELECTION)
 candidate_responses = responses(Resource.CANDIDATE)
+ballot_responses = responses(Resource.BALLOT_TOKEN)
 logger = structlog.get_logger()
 
 ### ROUTES ###
@@ -147,3 +156,76 @@ async def update_candidate(
     """Update a candidate's mutable fields (first_name, last_name, is_active)."""
     update_data = body.model_dump(exclude_none=True)
     return await service.update_candidate(candidate_id, update_data)
+
+
+# ── Ballot tokens ──
+
+
+# Issue ballot tokens for an election
+@router.post(
+    "/{election_id}/ballot-tokens",
+    responses=ballot_responses,
+    response_model=IssueBallotTokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def issue_election_ballot_tokens(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    body: IssueBallotTokenRequest = Body(
+        ..., description="Request to issue election ballot tokens."
+    ),
+    service: BallotTokenService = Depends(get_ballot_token_service),
+):
+    """Issue one-time ballot tokens for an election + constituency.
+
+    Each token can be distributed to an eligible voter. The voter uses the
+    ``blind_token_hash`` when casting their vote.
+    """
+    try:
+        body.election_id = str(election_id)
+        return await service.issue_election_tokens(body)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+# Get ballot token status for an election
+@router.get(
+    "/{election_id}/ballot-tokens/status",
+    responses=ballot_responses,
+    response_model=BallotTokenStatusResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_ballot_token_status(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    constituency_id: Optional[UUID] = Query(
+        None, description="Optional constituency filter."
+    ),
+    service: BallotTokenService = Depends(get_ballot_token_service),
+):
+    """Get total/used/unused token counts for an election."""
+    try:
+        return await service.get_election_token_status(election_id, constituency_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+# List all ballot tokens for an election
+@router.get(
+    "/{election_id}/ballot-tokens",
+    responses=ballot_responses,
+    response_model=List[BallotTokenItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_ballot_tokens(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    constituency_id: Optional[UUID] = Query(
+        None, description="Optional constituency filter."
+    ),
+    service: BallotTokenService = Depends(get_ballot_token_service),
+):
+    """List all ballot tokens for an election (decrypted)."""
+    try:
+        return await service.get_election_tokens(election_id, constituency_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

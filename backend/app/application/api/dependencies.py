@@ -44,6 +44,8 @@ from app.repository.tally_result_repo import TallyResultRepository
 from app.service.biometric_service import BiometricService
 from app.repository.biometric_credentials_repo import BiometricCredentialsRepository
 from app.repository.biometric_challenge_repo import BiometricChallengeRepository
+from app.service.ballot_service import BallotTokenService
+from app.models.sqlalchemy.ballot_token import BallotToken
 
 
 logger = structlog.get_logger()
@@ -231,6 +233,21 @@ def get_biometric_service(
         challenge_repo=BiometricChallengeRepository(),
         voter_repo=VoterRepository(Voter),
         session=session,
+    )
+
+def get_ballot_token_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> BallotTokenService:
+    """Get a ballot token service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return BallotTokenService(
+        ballot_token_repo=BallotTokenRepository(),
+        election_repo=ElectionRepository(Election),
+        referendum_repo=ReferendumRepository(Referendum),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
     )
 
 def get_referendum_service(
