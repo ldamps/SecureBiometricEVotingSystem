@@ -31,6 +31,7 @@ from app.repository.referendum_repo import ReferendumRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
+from app.service.email_service import EmailService
 
 logger = structlog.get_logger()
 
@@ -61,6 +62,7 @@ class VotingService(EncryptionUtilsMixin):
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
+        email_service: EmailService | None = None,
     ):
         self.vote_repo = vote_repo
         self.referendum_vote_repo = referendum_vote_repo
@@ -74,6 +76,7 @@ class VotingService(EncryptionUtilsMixin):
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
+        self._email_service = email_service
 
     async def cast_vote(self, request: CastVoteRequest) -> CastVoteResponse:
         """Cast a vote in an election.
@@ -172,7 +175,7 @@ class VotingService(EncryptionUtilsMixin):
         # 8. Optionally send email confirmation (non-blocking)
         if request.send_email_confirmation:
             try:
-                await self._send_vote_confirmation_email(voter_id, election.title)
+                await self._send_vote_confirmation_email(voter_id, election.title, "election")
             except Exception:
                 logger.warning(
                     "Failed to send vote confirmation email",
@@ -281,7 +284,7 @@ class VotingService(EncryptionUtilsMixin):
         # 8. Optionally send email confirmation (non-blocking)
         if request.send_email_confirmation:
             try:
-                await self._send_vote_confirmation_email(voter_id, referendum.title)
+                await self._send_vote_confirmation_email(voter_id, referendum.title, "referendum")
             except Exception:
                 logger.warning(
                     "Failed to send referendum vote confirmation email",
@@ -375,17 +378,23 @@ class VotingService(EncryptionUtilsMixin):
         return await self._mapper.create_search_token(blind_token_hash, args, self.session)
 
     async def _send_vote_confirmation_email(
-        self, voter_id: UUID, election_name: str
+        self, voter_id: UUID, vote_name: str, vote_type: str = "election"
     ) -> None:
-        """Send a vote confirmation email to the voter.
+        """Send a vote confirmation email to the voter."""
+        if not self._email_service:
+            logger.warning("Email service not configured, skipping vote confirmation email")
+            return
 
-        Note: The email service infrastructure (SMTP client) is not yet
-        implemented. This method is a placeholder that logs the intent.
-        Once the email infra is wired up, replace with actual send logic.
-        """
-        logger.info(
-            "Vote confirmation email queued",
-            voter_id=str(voter_id),
-            election_name=election_name,
-            template="voting_confirmation.html",
-        )
+        # Decrypt voter email
+        voter = await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        await self._keys_manager.init_org_keys(self.session, org_id=None)
+        args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
+
+        from app.models.dto.voter import VoterDTO
+        voter_dto = await self._mapper.decrypt_model(voter, VoterDTO, args, self.session)
+
+        if not voter_dto.email:
+            logger.warning("Voter has no email address", voter_id=str(voter_id))
+            return
+
+        self._email_service.send_vote_confirmation(voter_dto.email, vote_name, vote_type)

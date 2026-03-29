@@ -46,6 +46,8 @@ from app.repository.biometric_credentials_repo import BiometricCredentialsReposi
 from app.repository.biometric_challenge_repo import BiometricChallengeRepository
 from app.service.ballot_service import BallotTokenService
 from app.models.sqlalchemy.ballot_token import BallotToken
+from app.service.email_service import EmailService
+from app.infra.email.client import ResendEmailClient
 
 
 logger = structlog.get_logger()
@@ -93,6 +95,11 @@ async def get_db(
 
 # APP SERVICES ----------
 
+def get_email_service() -> EmailService:
+    """Get the email service."""
+    return EmailService(client=ResendEmailClient())
+
+
 def get_keys_manager_service() -> KeysManagerService:
     """DEK lifecycle (system org_id=None for voter PII)."""
     return KeysManagerService(
@@ -106,6 +113,7 @@ def get_keys_manager_service() -> KeysManagerService:
 def get_voter_service(
     session: AsyncSession = Depends(get_db),
     keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+    email_service: EmailService = Depends(get_email_service),
 ) -> VoterService:
     """Get a voter service."""
     mapper = EncryptionMapperService(EncryptionService(), keys_manager)
@@ -114,6 +122,7 @@ def get_voter_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        email_service=email_service,
     )
 
 def get_address_service(
@@ -208,6 +217,7 @@ def get_candidate_service(
 def get_voting_service(
     session: AsyncSession = Depends(get_db),
     keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+    email_service: EmailService = Depends(get_email_service),
 ) -> VotingService:
     """Get a voting service."""
     mapper = EncryptionMapperService(EncryptionService(), keys_manager)
@@ -224,6 +234,7 @@ def get_voting_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        email_service=email_service,
     )
 
 def get_biometric_service(

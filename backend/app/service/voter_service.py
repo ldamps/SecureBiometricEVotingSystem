@@ -1,10 +1,12 @@
 # voter_service.py - Service layer for voter-related operations.
 
 import structlog
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from uuid import UUID
 
+from app.application.core.exceptions import ValidationError
 from app.models.sqlalchemy.voter import Voter
 from app.models.dto.voter import (
     RegisterVoterPlainDTO,
@@ -34,6 +36,7 @@ from app.service.base.encryption_utils_mixin import (
 )
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
+from app.service.email_service import EmailService
 
 logger = structlog.get_logger()
 
@@ -50,6 +53,7 @@ class VoterService(EncryptionUtilsMixin):
         voter: Optional[Voter] = None,
         address_repo: Optional[AddressRepository] = None,
         passport_repo: Optional[VoterPassportRepository] = None,
+        email_service: Optional[EmailService] = None,
     ):
         self.voter_repo = voter_repo
         self.address_repo = address_repo or AddressRepository()
@@ -58,6 +62,7 @@ class VoterService(EncryptionUtilsMixin):
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
         self.voter = voter
+        self._email_service = email_service
 
     async def register_voter(
         self,
@@ -103,7 +108,31 @@ class VoterService(EncryptionUtilsMixin):
 
             voter_item = await self.voter_model_to_schema_item(voter, self.session)
             voter_item.passports = passport_schemas
+
+            # Send registration confirmation email (non-blocking)
+            if self._email_service and dto.email:
+                try:
+                    self._email_service.send_registration_confirmation(dto.email)
+                except Exception:
+                    logger.warning(
+                        "Failed to send registration confirmation email",
+                        voter_id=str(voter.id),
+                    )
+
             return voter_item
+        except IntegrityError as exc:
+            error_msg = str(exc.orig) if exc.orig else str(exc)
+            if "national_insurance_number_search_token" in error_msg:
+                raise ValidationError(
+                    "A voter with this national insurance number is already registered."
+                ) from exc
+            if "email_search_token" in error_msg:
+                raise ValidationError(
+                    "A voter with this email address is already registered."
+                ) from exc
+            raise ValidationError(
+                "A voter with these details is already registered."
+            ) from exc
         except Exception:
             logger.exception("Failed to register voter", dto=dto)
             raise

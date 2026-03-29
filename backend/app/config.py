@@ -26,3 +26,7 @@ ENCRYPTION_HMAC_SECRET = os.getenv("ENCRYPTION_HMAC_SECRET", "")
 # AWS KMS (required when ENCRYPTION_PROVIDER=aws_kms)
 KMS_KEY_ID = os.getenv("KMS_KEY_ID", "")        # e.g. arn:aws:kms:us-east-1:123456789012:key/...
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+
+# Resend Email
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
