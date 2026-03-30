@@ -1,8 +1,22 @@
-# admin_route.py - Admin routes for the e-voting system (election officers + administrators)
-from fastapi import APIRouter
+# official_route.py - Election official routes (admins + officers).
+
+from typing import List, Optional
+from uuid import UUID
+
+import structlog
+from fastapi import APIRouter, Body, Depends, Path, Query, status
+
+from app.application.api.dependencies import get_official_service
 from app.application.api.responses import responses
 from app.application.constants import Resource
-import structlog
+from app.models.dto.official import CreateOfficialPlainDTO, UpdateOfficialPlainDTO
+from app.models.schemas.official import (
+    CreateOfficialRequest,
+    OfficialItem,
+    UpdateOfficialRequest,
+)
+from app.models.sqlalchemy.election_official import OfficialRole
+from app.service.official_service import OfficialService
 
 official_responses = responses(Resource.OFFICIAL)
 logger = structlog.get_logger()
@@ -13,27 +27,109 @@ router = APIRouter(
     tags=["official"],
 )
 
-# Create election official (only admins can create election officials)
+
+# Create an election official (admin-only)
+@router.post(
+    "",
+    responses=official_responses,
+    response_model=OfficialItem,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_official(
+    body: CreateOfficialRequest = Body(..., description="The official creation request."),
+    service: OfficialService = Depends(get_official_service),
+):
+    """Create a new election official.
+
+    Only administrators can create officials. The official will be
+    required to reset their password on first login.
+    """
+    dto = CreateOfficialPlainDTO.create_dto(body)
+    return await service.create_official(dto)
 
 
+# Update an election official
+@router.patch(
+    "/{official_id}",
+    responses=official_responses,
+    response_model=OfficialItem,
+    status_code=status.HTTP_200_OK,
+)
+async def update_official(
+    official_id: UUID = Path(..., description="The unique identifier for the official."),
+    body: UpdateOfficialRequest = Body(..., description="The official update request."),
+    service: OfficialService = Depends(get_official_service),
+):
+    """Update an election official's mutable fields.
+
+    Officers can update their own name/email. Admins can update any
+    official's details including role and active status.
+    """
+    dto = UpdateOfficialPlainDTO.create_dto(body, official_id)
+    return await service.update_official(official_id, dto)
 
 
-# Update election official (officers can update their own details + admins can update any officer's details)
+# Get all election officials
+@router.get(
+    "",
+    responses=official_responses,
+    response_model=List[OfficialItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_officials(
+    role: Optional[OfficialRole] = Query(None, description="Filter by role (ADMIN or OFFICER)."),
+    service: OfficialService = Depends(get_official_service),
+) -> List[OfficialItem]:
+    """Get all election officials, optionally filtered by role."""
+    if role:
+        return await service.get_officials_by_role(role.value)
+    return await service.get_all_officials()
 
 
-# Get all election officers
+# Get election official by ID
+@router.get(
+    "/{official_id}",
+    responses=official_responses,
+    response_model=OfficialItem,
+    status_code=status.HTTP_200_OK,
+)
+async def get_official_by_id(
+    official_id: UUID = Path(..., description="The unique identifier for the official."),
+    service: OfficialService = Depends(get_official_service),
+) -> OfficialItem:
+    """Get election official details by ID."""
+    return await service.get_official_by_id(official_id)
 
 
-# Get all administrators
+# Deactivate an election official (admin-only)
+@router.patch(
+    "/{official_id}/deactivate",
+    responses=official_responses,
+    response_model=OfficialItem,
+    status_code=status.HTTP_200_OK,
+)
+async def deactivate_official(
+    official_id: UUID = Path(..., description="The unique identifier for the official."),
+    service: OfficialService = Depends(get_official_service),
+):
+    """Deactivate an election official (admin-only).
+
+    The official's account is disabled but not deleted, preserving
+    audit trail integrity.
+    """
+    return await service.deactivate_official(official_id)
 
 
-# Get election official by ID 
-
-
-# Deactivate election officials (admins only)
-
-
-
-
-
-
+# Reactivate an election official (admin-only)
+@router.patch(
+    "/{official_id}/activate",
+    responses=official_responses,
+    response_model=OfficialItem,
+    status_code=status.HTTP_200_OK,
+)
+async def activate_official(
+    official_id: UUID = Path(..., description="The unique identifier for the official."),
+    service: OfficialService = Depends(get_official_service),
+):
+    """Reactivate a previously deactivated election official (admin-only)."""
+    return await service.activate_official(official_id)

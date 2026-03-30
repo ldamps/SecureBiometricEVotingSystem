@@ -14,12 +14,14 @@ from app.models.dto.candidate import CandidateBaseDTO, CandidateDTO
 from app.models.dto.election import ElectionBaseDTO, ElectionDTO
 from app.models.dto.party import PartyBaseDTO, PartyDTO
 from app.models.dto.referendum import ReferendumBaseDTO, ReferendumDTO
+from app.models.dto.official import OfficialBaseDTO, OfficialDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
 from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
 from app.models.schemas.address import AddressItem
 from app.models.schemas.ballot_token import BallotTokenItem
 from app.models.schemas.candidate import CandidateItem
 from app.models.schemas.election import ElectionItem
+from app.models.schemas.official import OfficialItem
 from app.models.schemas.party import PartyItem
 from app.models.schemas.referendum import ReferendumItem
 from app.models.schemas.voter import VoterItem
@@ -28,6 +30,7 @@ from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
 from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.candidate import Candidate
 from app.models.sqlalchemy.election import Election
+from app.models.sqlalchemy.election_official import ElectionOfficial
 from app.models.sqlalchemy.party import Party
 from app.models.sqlalchemy.referendum import Referendum
 from app.models.sqlalchemy.voter import Voter
@@ -228,6 +231,35 @@ def referendum_orm_to_dto_unencrypted_row(referendum: Referendum) -> ReferendumD
         voting_opens=referendum.voting_opens,
         voting_closes=referendum.voting_closes,
         is_active=referendum.is_active,
+    )
+
+
+def official_orm_to_dto_unencrypted_row(official: ElectionOfficial) -> OfficialDTO:
+    """Map official ORM row to a plaintext DTO (EncryptedBytes decoded to strings)."""
+
+    def enc_plain(name: str) -> Optional[str]:
+        v = getattr(official, name, None)
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v
+        if isinstance(v, (bytes, bytearray)):
+            return v.decode("utf-8", errors="replace") if v else None
+        return None
+
+    return OfficialDTO(
+        id=official.id,
+        username=official.username,
+        first_name=enc_plain("first_name"),
+        last_name=enc_plain("last_name"),
+        email=enc_plain("email_hash"),
+        role=official.role,
+        is_active=official.is_active,
+        must_reset_password=official.must_reset_password,
+        failed_login_attempts=official.failed_login_attempts,
+        created_by=official.created_by,
+        last_login_at=official.last_login_at,
+        locked_until=official.locked_until,
     )
 
 
@@ -476,4 +508,14 @@ class EncryptionUtilsMixin:
             base_dto_class=ReferendumBaseDTO,
             session=session,
             map_unencrypted_row=referendum_orm_to_dto_unencrypted_row,
+        )
+
+    async def official_model_to_schema_item(self, official: ElectionOfficial, session: Any) -> OfficialItem:
+        """ElectionOfficial ORM model → API schema (EncryptedBytes at column level)."""
+        return await self._orm_to_schema_item(
+            official,
+            plain_dto_class=OfficialDTO,
+            base_dto_class=OfficialBaseDTO,
+            session=session,
+            map_unencrypted_row=official_orm_to_dto_unencrypted_row,
         )

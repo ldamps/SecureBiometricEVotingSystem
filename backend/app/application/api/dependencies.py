@@ -48,6 +48,8 @@ from app.service.ballot_service import BallotTokenService
 from app.models.sqlalchemy.ballot_token import BallotToken
 from app.service.email_service import EmailService
 from app.infra.email.client import ResendEmailClient
+from app.service.official_service import OfficialService
+from app.repository.official_repo import OfficialRepository
 
 
 logger = structlog.get_logger()
@@ -261,6 +263,15 @@ def get_ballot_token_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+    )
+
+def get_official_service(
+    session: AsyncSession = Depends(get_db),
+) -> OfficialService:
+    """Get an official service (EncryptedBytes handled at column level)."""
+    return OfficialService(
+        official_repo=OfficialRepository(),
+        session=session,
     )
 
 def get_referendum_service(
