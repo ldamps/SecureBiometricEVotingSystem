@@ -19,3 +19,5 @@ class Resource(Enum):
     PARTY = "party"
     REFERENDUM = "referendum"
     BIOMETRIC = "biometric"
+    ERROR_REPORT = "error_report"
+    INVESTIGATION = "investigation"

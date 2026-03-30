@@ -11,12 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.core.exceptions import NotFoundError, ValidationError
 from app.models.dto.official import (
     CreateOfficialPlainDTO,
-    OfficialDTO,
     UpdateOfficialPlainDTO,
 )
 from app.models.schemas.official import OfficialItem
 from app.models.sqlalchemy.election_official import ElectionOfficial, OfficialRole
 from app.repository.official_repo import OfficialRepository
+from app.service.base.encryption_utils_mixin import official_orm_to_dto_unencrypted_row
 
 logger = structlog.get_logger()
 
@@ -42,35 +42,6 @@ def _verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def _official_to_dto(official: ElectionOfficial) -> OfficialDTO:
-    """Map an ElectionOfficial ORM model to a plaintext DTO.
-
-    EncryptedBytes columns are decoded to strings; None values stay None.
-    """
-
-    def _decode(val: bytes | str | None) -> str | None:
-        if val is None:
-            return None
-        if isinstance(val, (bytes, bytearray)):
-            return val.decode("utf-8", errors="replace") if val else None
-        return str(val)
-
-    return OfficialDTO(
-        id=official.id,
-        username=official.username,
-        first_name=_decode(official.first_name),
-        last_name=_decode(official.last_name),
-        email=_decode(official.email_hash),
-        role=official.role,
-        is_active=official.is_active,
-        must_reset_password=official.must_reset_password,
-        failed_login_attempts=official.failed_login_attempts,
-        created_by=official.created_by,
-        last_login_at=official.last_login_at,
-        locked_until=official.locked_until,
-    )
-
-
 class OfficialService:
     """Service layer for election official operations."""
 
@@ -81,11 +52,6 @@ class OfficialService:
     ):
         self.official_repo = official_repo
         self.session = session
-
-    # ── Helpers ──
-
-    def _to_schema(self, official: ElectionOfficial) -> OfficialItem:
-        return _official_to_dto(official).to_schema()
 
     # ── Create ──
 
@@ -119,7 +85,7 @@ class OfficialService:
             )
 
             official = await self.official_repo.create_official(self.session, official)
-            return self._to_schema(official)
+            return official_orm_to_dto_unencrypted_row(official).to_schema()
 
         except (ValidationError, NotFoundError):
             raise
@@ -135,7 +101,7 @@ class OfficialService:
             official = await self.official_repo.get_official_by_id(
                 self.session, official_id,
             )
-            return self._to_schema(official)
+            return official_orm_to_dto_unencrypted_row(official).to_schema()
         except Exception:
             logger.exception("Failed to get official", official_id=official_id)
             raise
@@ -144,7 +110,7 @@ class OfficialService:
         """Get all officials."""
         try:
             officials = await self.official_repo.get_all_officials(self.session)
-            return [self._to_schema(o) for o in officials]
+            return [official_orm_to_dto_unencrypted_row(o).to_schema() for o in officials]
         except Exception:
             logger.exception("Failed to get all officials")
             raise
@@ -155,7 +121,7 @@ class OfficialService:
             officials = await self.official_repo.get_officials_by_role(
                 self.session, role,
             )
-            return [self._to_schema(o) for o in officials]
+            return [official_orm_to_dto_unencrypted_row(o).to_schema() for o in officials]
         except Exception:
             logger.exception("Failed to get officials by role", role=role)
             raise
@@ -186,7 +152,7 @@ class OfficialService:
             updated = await self.official_repo.update_official(
                 self.session, official_id, update_data,
             )
-            return self._to_schema(updated)
+            return official_orm_to_dto_unencrypted_row(updated).to_schema()
 
         except (ValidationError, NotFoundError):
             raise
@@ -202,7 +168,7 @@ class OfficialService:
             updated = await self.official_repo.deactivate_official(
                 self.session, official_id,
             )
-            return self._to_schema(updated)
+            return official_orm_to_dto_unencrypted_row(updated).to_schema()
         except Exception:
             logger.exception("Failed to deactivate official", official_id=official_id)
             raise
@@ -213,7 +179,7 @@ class OfficialService:
             updated = await self.official_repo.activate_official(
                 self.session, official_id,
             )
-            return self._to_schema(updated)
+            return official_orm_to_dto_unencrypted_row(updated).to_schema()
         except Exception:
             logger.exception("Failed to activate official", official_id=official_id)
             raise

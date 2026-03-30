@@ -50,6 +50,10 @@ from app.service.email_service import EmailService
 from app.infra.email.client import ResendEmailClient
 from app.service.official_service import OfficialService
 from app.repository.official_repo import OfficialRepository
+from app.service.error_report_service import ErrorReportService
+from app.repository.error_report_repo import ErrorReportRepository
+from app.service.investigation_service import InvestigationService
+from app.repository.investigation_repo import InvestigationRepository
 
 
 logger = structlog.get_logger()
@@ -271,6 +275,25 @@ def get_official_service(
     """Get an official service (EncryptedBytes handled at column level)."""
     return OfficialService(
         official_repo=OfficialRepository(),
+        session=session,
+    )
+
+def get_error_report_service(
+    session: AsyncSession = Depends(get_db),
+) -> ErrorReportService:
+    """Get an error report service (auto-opens investigation on create)."""
+    return ErrorReportService(
+        error_report_repo=ErrorReportRepository(),
+        investigation_repo=InvestigationRepository(),
+        session=session,
+    )
+
+def get_investigation_service(
+    session: AsyncSession = Depends(get_db),
+) -> InvestigationService:
+    """Get an investigation service."""
+    return InvestigationService(
+        investigation_repo=InvestigationRepository(),
         session=session,
     )
 
