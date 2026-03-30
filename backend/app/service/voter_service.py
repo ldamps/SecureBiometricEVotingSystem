@@ -37,6 +37,8 @@ from app.service.base.encryption_utils_mixin import (
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
 from app.service.email_service import EmailService
+from app.repository.audit_log_repo import AuditLogRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 
 logger = structlog.get_logger()
 
@@ -54,6 +56,7 @@ class VoterService(EncryptionUtilsMixin):
         address_repo: Optional[AddressRepository] = None,
         passport_repo: Optional[VoterPassportRepository] = None,
         email_service: Optional[EmailService] = None,
+        audit_log_repo: Optional[AuditLogRepository] = None,
     ):
         self.voter_repo = voter_repo
         self.address_repo = address_repo or AddressRepository()
@@ -63,6 +66,7 @@ class VoterService(EncryptionUtilsMixin):
         self._mapper = encryption_mapper
         self.voter = voter
         self._email_service = email_service
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     async def register_voter(
         self,
@@ -108,6 +112,20 @@ class VoterService(EncryptionUtilsMixin):
 
             voter_item = await self.voter_model_to_schema_item(voter, self.session)
             voter_item.passports = passport_schemas
+
+            # Audit: voter registered
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="VOTER_REGISTERED",
+                    action="CREATE",
+                    summary=f"Voter registered with reference {plain_fields['voter_reference']}",
+                    resource_type="voter",
+                    resource_id=voter.id,
+                    actor_type="VOTER",
+                    actor_id=voter.id,
+                ),
+            )
 
             # Send registration confirmation email (non-blocking)
             if self._email_service and dto.email:
@@ -169,6 +187,21 @@ class VoterService(EncryptionUtilsMixin):
             voter_id,
             dto,
         )
+
+        # Audit: voter updated
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="VOTER_UPDATED",
+                action="UPDATE",
+                summary=f"Voter {voter_id} details updated",
+                resource_type="voter",
+                resource_id=voter_id,
+                actor_type="VOTER",
+                actor_id=voter_id,
+            ),
+        )
+
         return await self.voter_model_to_schema_item(updated, self.session)
 
     async def check_voter_exists(self, voter_id: UUID) -> bool:

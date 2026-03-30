@@ -17,6 +17,8 @@ from app.models.schemas.official import OfficialItem
 from app.models.sqlalchemy.election_official import ElectionOfficial, OfficialRole
 from app.repository.official_repo import OfficialRepository
 from app.service.base.encryption_utils_mixin import official_orm_to_dto_unencrypted_row
+from app.repository.audit_log_repo import AuditLogRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 
 logger = structlog.get_logger()
 
@@ -49,9 +51,11 @@ class OfficialService:
         self,
         official_repo: OfficialRepository,
         session: AsyncSession,
+        audit_log_repo: AuditLogRepository | None = None,
     ):
         self.official_repo = official_repo
         self.session = session
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     # ── Create ──
 
@@ -85,6 +89,21 @@ class OfficialService:
             )
 
             official = await self.official_repo.create_official(self.session, official)
+
+            # Audit: official created
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="OFFICIAL_CREATED",
+                    action="CREATE",
+                    summary=f"Election official '{dto.username}' created with role {dto.role}",
+                    resource_type="official",
+                    resource_id=official.id,
+                    actor_type="OFFICIAL",
+                    actor_id=dto.created_by,
+                ),
+            )
+
             return official_orm_to_dto_unencrypted_row(official).to_schema()
 
         except (ValidationError, NotFoundError):

@@ -13,6 +13,8 @@ from app.models.schemas.investigation import InvestigationItem
 from app.models.sqlalchemy.investigation import Investigation
 from app.repository.investigation_repo import InvestigationRepository
 from app.service.base.encryption_utils_mixin import investigation_orm_to_dto_unencrypted_row
+from app.repository.audit_log_repo import AuditLogRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 
 logger = structlog.get_logger()
 
@@ -27,6 +29,7 @@ class InvestigationService:
     ):
         self.investigation_repo = investigation_repo
         self.session = session
+        self._audit_log_repo = AuditLogRepository()
 
     # ── Read ──
 
@@ -108,6 +111,28 @@ class InvestigationService:
             updated = await self.investigation_repo.update_investigation(
                 self.session, investigation_id, update_data,
             )
+
+            # Audit: investigation updated/resolved
+            event_type = "INVESTIGATION_UPDATED"
+            summary = f"Investigation {investigation_id} updated"
+            if dto.status in ("RESOLVED", "CLOSED"):
+                event_type = "INVESTIGATION_RESOLVED"
+                summary = f"Investigation {investigation_id} {dto.status.lower()}"
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type=event_type,
+                    action="UPDATE",
+                    summary=summary,
+                    resource_type="investigation",
+                    resource_id=investigation_id,
+                    election_id=updated.election_id,
+                    actor_type="OFFICIAL",
+                    actor_id=dto.assigned_to or dto.resolved_by,
+                ),
+            )
+
             return investigation_orm_to_dto_unencrypted_row(updated).to_schema()
 
         except (ValidationError,):

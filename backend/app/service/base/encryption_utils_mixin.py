@@ -8,6 +8,7 @@ from typing import Any, Optional, TypeVar
 import structlog
 
 from app.models.base.sqlalchemy_base import EncryptedDBField
+from app.models.dto.audit_log import AuditLogBaseDTO, AuditLogDTO
 from app.models.dto.address import AddressBaseDTO, AddressDTO
 from app.models.dto.ballot import BallotTokenBaseDTO, BallotTokenDTO
 from app.models.dto.candidate import CandidateBaseDTO, CandidateDTO
@@ -19,6 +20,7 @@ from app.models.dto.referendum import ReferendumBaseDTO, ReferendumDTO
 from app.models.dto.official import OfficialBaseDTO, OfficialDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
 from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
+from app.models.schemas.audit_log import AuditLogItem
 from app.models.schemas.address import AddressItem
 from app.models.schemas.ballot_token import BallotTokenItem
 from app.models.schemas.candidate import CandidateItem
@@ -30,6 +32,7 @@ from app.models.schemas.party import PartyItem
 from app.models.schemas.referendum import ReferendumItem
 from app.models.schemas.voter import VoterItem
 from app.models.schemas.voter_passport import VoterPassportItem
+from app.models.sqlalchemy.audit_log import AuditLog
 from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
 from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.candidate import Candidate
@@ -299,6 +302,24 @@ def investigation_orm_to_dto_unencrypted_row(inv: Investigation) -> Investigatio
         resolved_by=inv.resolved_by,
         raised_at=inv.raised_at,
         resolved_at=inv.resolved_at,
+    )
+
+
+def audit_log_orm_to_dto_unencrypted_row(entry: AuditLog) -> AuditLogDTO:
+    """Map audit log ORM row to a plaintext DTO (no encrypted fields)."""
+    return AuditLogDTO(
+        id=entry.id,
+        event_type=entry.event_type,
+        action=entry.action,
+        summary=entry.summary,
+        actor_id=entry.actor_id,
+        actor_type=entry.actor_type,
+        resource_type=entry.resource_type,
+        resource_id=entry.resource_id,
+        election_id=entry.election_id,
+        ip_address=entry.ip_address,
+        event_metadata=entry.event_metadata,
+        created_at=entry.created_at,
     )
 
 

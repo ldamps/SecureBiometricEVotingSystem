@@ -54,6 +54,8 @@ from app.service.error_report_service import ErrorReportService
 from app.repository.error_report_repo import ErrorReportRepository
 from app.service.investigation_service import InvestigationService
 from app.repository.investigation_repo import InvestigationRepository
+from app.service.audit_log_service import AuditLogService
+from app.repository.audit_log_repo import AuditLogRepository
 
 
 logger = structlog.get_logger()
@@ -294,6 +296,15 @@ def get_investigation_service(
     """Get an investigation service."""
     return InvestigationService(
         investigation_repo=InvestigationRepository(),
+        session=session,
+    )
+
+def get_audit_log_service(
+    session: AsyncSession = Depends(get_db),
+) -> AuditLogService:
+    """Get an audit log service (read-only queries + internal event logging)."""
+    return AuditLogService(
+        audit_log_repo=AuditLogRepository(),
         session=session,
     )
 

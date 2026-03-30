@@ -17,6 +17,8 @@ from app.service.base.encryption_utils_mixin import (
     error_report_orm_to_dto_unencrypted_row,
     investigation_orm_to_dto_unencrypted_row,
 )
+from app.repository.audit_log_repo import AuditLogRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 
 logger = structlog.get_logger()
 
@@ -37,6 +39,7 @@ class ErrorReportService:
         self.error_report_repo = error_report_repo
         self.investigation_repo = investigation_repo
         self.session = session
+        self._audit_log_repo = AuditLogRepository()
 
     # ── Create (report + auto-open investigation) ──
 
@@ -73,6 +76,33 @@ class ErrorReportService:
             )
             investigation = await self.investigation_repo.create_investigation(
                 self.session, investigation,
+            )
+
+            # Audit: error report created + investigation opened
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="ERROR_REPORT_CREATED",
+                    action="CREATE",
+                    summary=f"Error report '{report.title}' created for election {report.election_id}",
+                    resource_type="error_report",
+                    resource_id=report.id,
+                    election_id=report.election_id,
+                    actor_type="OFFICIAL",
+                    actor_id=report.reported_by,
+                ),
+            )
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="INVESTIGATION_OPENED",
+                    action="CREATE",
+                    summary=f"Investigation auto-opened for error report '{report.title}'",
+                    resource_type="investigation",
+                    resource_id=investigation.id,
+                    election_id=report.election_id,
+                    actor_type="SYSTEM",
+                ),
             )
 
             return ErrorReportWithInvestigationItem(

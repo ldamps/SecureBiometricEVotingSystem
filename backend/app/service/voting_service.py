@@ -32,6 +32,8 @@ from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
 from app.service.email_service import EmailService
+from app.repository.audit_log_repo import AuditLogRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 
 logger = structlog.get_logger()
 
@@ -63,6 +65,7 @@ class VotingService(EncryptionUtilsMixin):
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
         email_service: EmailService | None = None,
+        audit_log_repo: AuditLogRepository | None = None,
     ):
         self.vote_repo = vote_repo
         self.referendum_vote_repo = referendum_vote_repo
@@ -77,6 +80,7 @@ class VotingService(EncryptionUtilsMixin):
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
         self._email_service = email_service
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     async def cast_vote(self, request: CastVoteRequest) -> CastVoteResponse:
         """Cast a vote in an election.
@@ -182,6 +186,20 @@ class VotingService(EncryptionUtilsMixin):
                     voter_id=str(voter_id),
                     election_id=str(election_id),
                 )
+
+        # 8b. Audit: vote cast (no voter_id to preserve anonymity)
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="VOTE_CAST",
+                action="CREATE",
+                summary=f"Vote cast in election {election_id}",
+                resource_type="vote",
+                resource_id=vote.id,
+                election_id=election_id,
+                actor_type="VOTER",
+            ),
+        )
 
         logger.info(
             "Vote cast successfully",
@@ -291,6 +309,19 @@ class VotingService(EncryptionUtilsMixin):
                     voter_id=str(voter_id),
                     referendum_id=str(referendum_id),
                 )
+
+        # 8b. Audit: referendum vote cast (no voter_id to preserve anonymity)
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="VOTE_CAST",
+                action="CREATE",
+                summary=f"Referendum vote cast in referendum {referendum_id}",
+                resource_type="referendum_vote",
+                resource_id=vote.id,
+                actor_type="VOTER",
+            ),
+        )
 
         logger.info(
             "Referendum vote cast successfully",
