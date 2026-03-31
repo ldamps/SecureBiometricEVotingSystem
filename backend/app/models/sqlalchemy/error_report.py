@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 import uuid
 from datetime import datetime
 
@@ -10,6 +11,14 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
+
+
+class ErrorReportSeverity(str, enum.Enum):
+    """Error report severity."""
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 
 class ErrorReport(Base, UUIDPrimaryKeyMixin):

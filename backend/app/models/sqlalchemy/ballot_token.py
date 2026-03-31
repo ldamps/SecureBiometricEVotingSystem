@@ -5,11 +5,16 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, TIMESTAMP
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, String, TIMESTAMP, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
+from app.models.base.sqlalchemy_base import (
+    Base,
+    EncryptedColumn,
+    EncryptedDBField,
+    UUIDPrimaryKeyMixin,
+)
 
 
 class BallotToken(Base, UUIDPrimaryKeyMixin):
@@ -17,6 +22,10 @@ class BallotToken(Base, UUIDPrimaryKeyMixin):
 
     Exactly one of ``election_id`` / ``referendum_id`` must be set.
     ``constituency_id`` is required for election tokens but NULL for referendums.
+
+    The ``blind_token_hash`` is encrypted at rest (AES-256-GCM via EncryptedColumn).
+    A companion ``blind_token_hash_search_token`` (HMAC-SHA256 blind index) enables
+    lookups without decrypting every row.
     """
 
     __tablename__ = "ballot_token"
@@ -43,9 +52,14 @@ class BallotToken(Base, UUIDPrimaryKeyMixin):
         index=True,
     )
 
-    blind_token_hash: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), unique=True, nullable=False, index=True
+    # Encrypted one-time token
+    blind_token_hash: Mapped[EncryptedDBField | None] = mapped_column(
+        EncryptedColumn, nullable=False
     )
+    blind_token_hash_search_token: Mapped[str | None] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
+
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     issued_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     used_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
@@ -58,5 +72,9 @@ class BallotToken(Base, UUIDPrimaryKeyMixin):
             "(election_id IS NOT NULL AND referendum_id IS NULL) OR "
             "(election_id IS NULL AND referendum_id IS NOT NULL)",
             name="ck_ballot_token_election_xor_referendum",
+        ),
+        UniqueConstraint(
+            "blind_token_hash_search_token",
+            name="uq_ballot_token_blind_token_hash_search_token",
         ),
     )

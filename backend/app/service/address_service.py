@@ -9,7 +9,9 @@ from app.models.schemas.address import AddressItem
 from app.models.sqlalchemy.address import AddressType
 from app.repository.address_repo import AddressRepository
 from app.repository.constituency_repo import ConstituencyRepository
+from app.repository.audit_log_repo import AuditLogRepository
 from app.repository.voter_repo import VoterRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
@@ -29,6 +31,7 @@ class AddressService(EncryptionUtilsMixin):
         encryption_mapper: EncryptionMapperService,
         constituency_repo: ConstituencyRepository | None = None,
         voter_repo: VoterRepository | None = None,
+        audit_log_repo: AuditLogRepository | None = None,
     ):
         self.address_repo = address_repo
         self.session = session
@@ -36,6 +39,7 @@ class AddressService(EncryptionUtilsMixin):
         self._mapper = encryption_mapper
         self._constituency_repo = constituency_repo or ConstituencyRepository()
         self._voter_repo = voter_repo or VoterRepository()
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     async def _resolve_constituency(self, county: str) -> UUID:
         """Look up a constituency by county name. Raises ValidationError if not found."""
@@ -129,6 +133,18 @@ class AddressService(EncryptionUtilsMixin):
             elif is_overseas:
                 await self._sync_voter_overseas_constituency(dto.voter_id)
 
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="ADDRESS_CREATED",
+                    action="CREATE",
+                    summary=f"Address created for voter {dto.voter_id}",
+                    resource_type="address",
+                    resource_id=address.id,
+                    actor_type="VOTER",
+                ),
+            )
+
             address_dto = await self._mapper.decrypt_model(
                 address, AddressDTO, args, self.session
             )
@@ -216,6 +232,18 @@ class AddressService(EncryptionUtilsMixin):
         elif becoming_overseas:
             await self._sync_voter_overseas_constituency(dto.voter_id)
 
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="ADDRESS_UPDATED",
+                action="UPDATE",
+                summary=f"Address {dto.address_id} updated for voter {dto.voter_id}",
+                resource_type="address",
+                resource_id=dto.address_id,
+                actor_type="VOTER",
+            ),
+        )
+
         return await self.address_model_to_schema_item(updated, self.session)
 
     async def delete_address(
@@ -243,4 +271,16 @@ class AddressService(EncryptionUtilsMixin):
             self.session,
             address_id,
             voter_id,
+        )
+
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="ADDRESS_DELETED",
+                action="DELETE",
+                summary=f"Address {address_id} deleted for voter {voter_id}",
+                resource_type="address",
+                resource_id=address_id,
+                actor_type="VOTER",
+            ),
         )

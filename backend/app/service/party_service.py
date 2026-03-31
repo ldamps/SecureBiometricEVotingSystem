@@ -11,6 +11,8 @@ from app.models.dto.party import (
     PartyDTO,
 )
 from app.models.schemas.party import PartyItem
+from app.models.sqlalchemy.audit_log import AuditLog
+from app.repository.audit_log_repo import AuditLogRepository
 from app.repository.party_repo import PartyRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.keys_manager_service import KeysManagerService
@@ -28,11 +30,13 @@ class PartyService(EncryptionUtilsMixin):
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
+        audit_log_repo: AuditLogRepository | None = None,
     ):
         self.party_repo = party_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     async def create_party(self, dto: CreatePartyPlainDTO) -> PartyItem:
         """Create a new party."""
@@ -45,6 +49,18 @@ class PartyService(EncryptionUtilsMixin):
             )
             party = enc_row.to_model()
             party = await self.party_repo.create_party(self.session, party)
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="PARTY_CREATED",
+                    action="CREATE",
+                    summary=f"Party created",
+                    resource_type="party",
+                    resource_id=party.id,
+                    actor_type="OFFICIAL",
+                ),
+            )
 
             return await self.party_model_to_schema_item(party, self.session)
         except Exception:
@@ -78,6 +94,19 @@ class PartyService(EncryptionUtilsMixin):
             updated = await self.party_repo.update_party(
                 self.session, party_id, update_data
             )
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="PARTY_UPDATED",
+                    action="UPDATE",
+                    summary=f"Party {party_id} updated",
+                    resource_type="party",
+                    resource_id=party_id,
+                    actor_type="OFFICIAL",
+                ),
+            )
+
             return await self.party_model_to_schema_item(updated, self.session)
         except Exception:
             logger.exception("Failed to update party", party_id=party_id)
@@ -87,6 +116,19 @@ class PartyService(EncryptionUtilsMixin):
         """Soft delete a party."""
         try:
             deleted = await self.party_repo.soft_delete_party(self.session, party_id)
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="PARTY_DELETED",
+                    action="DELETE",
+                    summary=f"Party {party_id} soft-deleted",
+                    resource_type="party",
+                    resource_id=party_id,
+                    actor_type="OFFICIAL",
+                ),
+            )
+
             return await self.party_model_to_schema_item(deleted, self.session)
         except Exception:
             logger.exception("Failed to soft delete party", party_id=party_id)
@@ -108,6 +150,19 @@ class PartyService(EncryptionUtilsMixin):
         """Restore a soft-deleted party."""
         try:
             restored = await self.party_repo.restore_party(self.session, party_id)
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="PARTY_RESTORED",
+                    action="UPDATE",
+                    summary=f"Party {party_id} restored",
+                    resource_type="party",
+                    resource_id=party_id,
+                    actor_type="OFFICIAL",
+                ),
+            )
+
             return await self.party_model_to_schema_item(restored, self.session)
         except Exception:
             logger.exception("Failed to restore party", party_id=party_id)
