@@ -46,12 +46,21 @@
 			"name": "API v1 - Health",
 			"item": [
 				{
-					"name": "Health check (v1)",
+					"name": "Health check",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": "{{base_url}}/api/v1/health",
 						"description": "Versioned health check - liveness (status, version, stage). Only available if versioned API is mounted in main."
+					},
+					"response": []
+				},
+				{
+					"name": "Readiness check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/health/ready"
 					},
 					"response": []
 				}
@@ -387,7 +396,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"first_name\": \"John\",\n  \"surname\": \"Smith\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"john.smith@example.com\",\n  \"national_insurance_number\": \"QQ123456C\",\n  \"passports\": [\n    {\n      \"passport_number\": \"533401572\",\n      \"issuing_country\": \"GBR\",\n      \"expiry_date\": \"2030-08-20T00:00:00Z\",\n      \"is_primary\": true\n    },\n    {\n      \"passport_number\": \"IE8827341\",\n      \"issuing_country\": \"IRL\",\n      \"expiry_date\": \"2029-03-10T00:00:00Z\",\n      \"is_primary\": false\n    }\n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"c2e2eec7-0998-4333-8c8c-63145723a0a2\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"pending\"\n}\n"
+							"raw": "{\n  \"first_name\": \"Lirit\",\n  \"surname\": \"Dampier\",\n  \"previous_first_name\": null,\n  \"previous_surname\": null,\n  \"date_of_birth\": \"1990-05-15T00:00:00Z\",\n  \"email\": \"dampierld@gmail.com\",\n  \"national_insurance_number\": \"WE123456C\",\n  \"passports\": [\n    \n  ],\n  \"nationality_category\": \"BRITISH_CITIZEN\",\n  \"immigration_status\": null,\n  \"immigration_status_expiry\": null,\n  \"constituency_id\": \"c2e2eec7-0998-4333-8c8c-63145723a0a2\",\n  \"renew_by\": \"2028-03-20T00:00:00Z\",\n  \"registration_status\": \"ACTIVE\"\n}\n"
 						},
 						"url": "{{base_url}}/api/v1/voter/register",
 						"description": "Register a new voter. Use a valid constituency UUID from GET /constituencies. Copy returned id into collection variable voter_id for other voter requests."
@@ -535,6 +544,38 @@
 					]
 				},
 				{
+					"name": "Results",
+					"item": [
+						{
+							"name": "Get election results",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/results"
+							},
+							"response": []
+						},
+						{
+							"name": "Get tallies",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/tallies"
+							},
+							"response": []
+						},
+						{
+							"name": "Get tallies for election + constituency",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/election/{{election_id}}/constituency/{{constituency_id}}"
+							},
+							"response": []
+						}
+					]
+				},
+				{
 					"name": "Get election",
 					"request": {
 						"method": "GET",
@@ -603,6 +644,58 @@
 			"name": "API v1 - Officials",
 			"item": [
 				{
+					"name": "Create election official",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"admin.tester\",\n  \"first_name\": \"Sarah\",\n  \"last_name\": \"Jones\",\n  \"email\": \"sarah.jones@electoral-commission.gov.uk\",\n  \"password\": \"SecurePass123\",\n  \"role\": \"OFFICER\",\n  \"created_by\": null\n}\n\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/official"
+					},
+					"response": []
+				},
+				{
+					"name": "Update election official",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"James\",\n  \"last_name\": \"Smith-Williams\",\n  \"email\": \"j.smith-williams@electoral-commission.gov.uk\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/official/{{official_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "Get all election officials",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"James\",\n  \"last_name\": \"Smith-Williams\",\n  \"email\": \"j.smith-williams@electoral-commission.gov.uk\"\n}\n"
+						},
+						"url": "{{base_url}}/api/v1/official"
+					},
+					"response": []
+				},
+				{
 					"name": "Get election official by ID",
 					"protocolProfileBehavior": {
 						"disableBodyPruning": true
@@ -612,33 +705,35 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"2026 UK General Election\",\n  \"election_type\": \"ELECTION\",\n  \"scope\": \"NATIONAL\",\n  \"allocation_method\": \"FPTP\",\n  \"status\": \"OPEN\",\n  \"voting_opens\": \"2026-05-07T07:00:00Z\",\n  \"voting_closes\": \"2026-05-07T22:00:00Z\"\n}\n\n"
+							"raw": "{\n  \"first_name\": \"James\",\n  \"last_name\": \"Smith-Williams\",\n  \"email\": \"j.smith-williams@electoral-commission.gov.uk\"\n}\n"
 						},
-						"url": "{{base_url}}/api/v1/official/{{offiical_id}}"
+						"url": "{{base_url}}/api/v1/official/{{official_id}}"
 					},
 					"response": []
 				},
 				{
-					"name": "Get all election officers",
+					"name": "Deactivate election official",
 					"request": {
-						"method": "GET",
-						"header": []
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"James\",\n  \"last_name\": \"Smith-Williams\",\n  \"email\": \"j.smith-williams@electoral-commission.gov.uk\"\n}\n"
+						},
+						"url": "{{base_url}}/api/v1/official/{{official_id}}/deactivate"
 					},
 					"response": []
 				},
 				{
-					"name": "Get all election admins",
+					"name": "Reactivate an election official",
 					"request": {
-						"method": "GET",
-						"header": []
-					},
-					"response": []
-				},
-				{
-					"name": "Create election official",
-					"request": {
-						"method": "POST",
-						"header": []
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"James\",\n  \"last_name\": \"Smith-Williams\",\n  \"email\": \"j.smith-williams@electoral-commission.gov.uk\"\n}\n"
+						},
+						"url": "{{base_url}}/api/v1/official/{{official_id}}/activate"
 					},
 					"response": []
 				}
@@ -885,6 +980,29 @@
 					]
 				},
 				{
+					"name": "Results",
+					"item": [
+						{
+							"name": "Get referendum results",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}/results"
+							},
+							"response": []
+						},
+						{
+							"name": "Get tallies",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/referendum/{{referendum_id}}/tallies"
+							},
+							"response": []
+						}
+					]
+				},
+				{
 					"name": "Create referendum",
 					"request": {
 						"method": "POST",
@@ -989,6 +1107,304 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "API v1 - Errors",
+			"item": [
+				{
+					"name": "Investigations",
+					"item": [
+						{
+							"name": "List investigations by election",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/errors/investigations/{{election_id}}"
+							},
+							"response": []
+						},
+						{
+							"name": "Get investigation by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/errors/investigations/{{investigation_id}}"
+							},
+							"response": []
+						},
+						{
+							"name": "List investigations for an error",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/errors/report/{{error_id}}/investigations"
+							},
+							"response": []
+						},
+						{
+							"name": "List invesitgation by assignee",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{base_url}}/api/v1/errors/investigation/{{official_id}}/assigned"
+							},
+							"response": []
+						},
+						{
+							"name": "Update investigation",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"RESOLVED\",\n  \"resolved_by\": \"7fec6b2b-1bca-49dc-93b3-05da14f149b5\",\n  \"notes\": \"Confirmed duplicate ballot token issuance. 150 tokens voided.\"\n}\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{base_url}}/api/v1/errors/investigation/{{investigation_id}}"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Report error",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"election_id\": \"f96696cd-0cb0-4b9c-a26c-28881808ce6c\",\n  \"reported_by\": \"7fec6b2b-1bca-49dc-93b3-05da14f149b5\",\n  \"title\": \"Vote count discrepancy in constituency X\",\n  \"description\": \"Tally shows 150 more votes than ballot tokens issued for constituency X.\",\n  \"severity\": \"HIGH\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/errors/report"
+					},
+					"response": []
+				},
+				{
+					"name": "Get error by ID",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"election_id\": \"f96696cd-0cb0-4b9c-a26c-28881808ce6c\",\n  \"reported_by\": \"7fec6b2b-1bca-49dc-93b3-05da14f149b5\",\n  \"title\": \"Vote count discrepancy in constituency X\",\n  \"description\": \"Tally shows 150 more votes than ballot tokens issued for constituency X.\",\n  \"severity\": \"HIGH\"\n}\n"
+						},
+						"url": "{{base_url}}/api/v1/errors/report/{{report_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List errors by official",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/errors/report/official/{{official_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List errors by election",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"election_id\": \"f96696cd-0cb0-4b9c-a26c-28881808ce6c\",\n  \"reported_by\": \"7fec6b2b-1bca-49dc-93b3-05da14f149b5\",\n  \"title\": \"Vote count discrepancy in constituency X\",\n  \"description\": \"Tally shows 150 more votes than ballot tokens issued for constituency X.\",\n  \"severity\": \"HIGH\"\n}\n"
+						},
+						"url": "{{base_url}}/api/v1/errors/report/election/{{election_id}}"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Audit",
+			"item": [
+				{
+					"name": "List audit logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit"
+					},
+					"response": []
+				},
+				{
+					"name": "Get audit by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit/{{audit_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "Get audit by election",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit/election/{{election_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List audit by actor",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit/actor-type/{{actor_type}}"
+					},
+					"response": []
+				},
+				{
+					"name": "Get audit by actor id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit/actor-type/{{actor_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List audits by resource",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit/resource/{{resource_type}}/{{resource_id}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List audit by event type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit/event-type/{{event_type}}"
+					},
+					"response": []
+				},
+				{
+					"name": "List audits by date",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/audit/date-range\n"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "API v1 - Auth",
+			"item": [
+				{
+					"name": "Get me",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/v1/auth/me"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"admin.test\",\n  \"password\": \"SecurePass1234\",\n  \"role\": \"ADMIN\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/auth/login"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMmU5MGRlMy1mYWNmLTQ1MWYtOWQwOC1iZTA1OTBiMzc4ZjgiLCJ1c2VybmFtZSI6ImFkbWluLnRlc3QiLCJyb2xlIjoiQURNSU4iLCJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImlhdCI6MTc3NDk1MDY5MywiZXhwIjoxNzc1NTU1NDkzfQ.F3DaufuY4FDRNWBxN44Y0gM9J0MgD92eHXaMbKdHbik\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/auth/refresh"
+					},
+					"response": []
+				},
+				{
+					"name": "Change password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"current_password\": \"SecurePass123\",\n  \"new_password\": \"SecurePass1234\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{base_url}}/api/v1/auth/change-password"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": {
+			"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMmU5MGRlMy1mYWNmLTQ1MWYtOWQwOC1iZTA1OTBiMzc4ZjgiLCJ1c2VybmFtZSI6ImFkbWluLnRlc3QiLCJyb2xlIjoiQURNSU4iLCJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc0OTU5NDkzLCJleHAiOjE3NzQ5NjEyOTN9.MZe1EKu1mw2jGkWHR2BA-xXRjI7IPdlhIZlPGn8R-bg"
+		}
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
 		}
 	],
 	"variable": [
