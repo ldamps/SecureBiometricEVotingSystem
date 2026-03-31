@@ -8,23 +8,38 @@ from typing import Any, Optional, TypeVar
 import structlog
 
 from app.models.base.sqlalchemy_base import EncryptedDBField
+from app.models.dto.audit_log import AuditLogBaseDTO, AuditLogDTO
 from app.models.dto.address import AddressBaseDTO, AddressDTO
+from app.models.dto.ballot import BallotTokenBaseDTO, BallotTokenDTO
 from app.models.dto.candidate import CandidateBaseDTO, CandidateDTO
 from app.models.dto.election import ElectionBaseDTO, ElectionDTO
+from app.models.dto.error_report import ErrorReportBaseDTO, ErrorReportDTO
+from app.models.dto.investigation import InvestigationBaseDTO, InvestigationDTO
 from app.models.dto.party import PartyBaseDTO, PartyDTO
 from app.models.dto.referendum import ReferendumBaseDTO, ReferendumDTO
+from app.models.dto.official import OfficialBaseDTO, OfficialDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
 from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
+from app.models.schemas.audit_log import AuditLogItem
 from app.models.schemas.address import AddressItem
+from app.models.schemas.ballot_token import BallotTokenItem
 from app.models.schemas.candidate import CandidateItem
 from app.models.schemas.election import ElectionItem
+from app.models.schemas.error_report import ErrorReportItem
+from app.models.schemas.investigation import InvestigationItem
+from app.models.schemas.official import OfficialItem
 from app.models.schemas.party import PartyItem
 from app.models.schemas.referendum import ReferendumItem
 from app.models.schemas.voter import VoterItem
 from app.models.schemas.voter_passport import VoterPassportItem
+from app.models.sqlalchemy.audit_log import AuditLog
 from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
+from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.candidate import Candidate
 from app.models.sqlalchemy.election import Election
+from app.models.sqlalchemy.election_official import ElectionOfficial
+from app.models.sqlalchemy.error_report import ErrorReport
+from app.models.sqlalchemy.investigation import Investigation
 from app.models.sqlalchemy.party import Party
 from app.models.sqlalchemy.referendum import Referendum
 from app.models.sqlalchemy.voter import Voter
@@ -225,6 +240,86 @@ def referendum_orm_to_dto_unencrypted_row(referendum: Referendum) -> ReferendumD
         voting_opens=referendum.voting_opens,
         voting_closes=referendum.voting_closes,
         is_active=referendum.is_active,
+    )
+
+
+def official_orm_to_dto_unencrypted_row(official: ElectionOfficial) -> OfficialDTO:
+    """Map official ORM row to a plaintext DTO (EncryptedBytes decoded to strings)."""
+
+    def enc_plain(name: str) -> Optional[str]:
+        v = getattr(official, name, None)
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v
+        if isinstance(v, (bytes, bytearray)):
+            return v.decode("utf-8", errors="replace") if v else None
+        return None
+
+    return OfficialDTO(
+        id=official.id,
+        username=official.username,
+        first_name=enc_plain("first_name"),
+        last_name=enc_plain("last_name"),
+        email=enc_plain("email_hash"),
+        role=official.role,
+        is_active=official.is_active,
+        must_reset_password=official.must_reset_password,
+        failed_login_attempts=official.failed_login_attempts,
+        created_by=official.created_by,
+        last_login_at=official.last_login_at,
+        locked_until=official.locked_until,
+    )
+
+
+def error_report_orm_to_dto_unencrypted_row(report: ErrorReport) -> ErrorReportDTO:
+    """Map error report ORM row to a plaintext DTO (no encrypted fields)."""
+    return ErrorReportDTO(
+        id=report.id,
+        election_id=report.election_id,
+        reported_by=report.reported_by,
+        title=report.title,
+        description=report.description,
+        severity=report.severity,
+        reported_at=report.reported_at,
+    )
+
+
+def investigation_orm_to_dto_unencrypted_row(inv: Investigation) -> InvestigationDTO:
+    """Map investigation ORM row to a plaintext DTO (no encrypted fields)."""
+    return InvestigationDTO(
+        id=inv.id,
+        error_id=inv.error_id,
+        election_id=inv.election_id,
+        raised_by=inv.raised_by,
+        title=inv.title,
+        description=inv.description,
+        severity=inv.severity,
+        status=inv.status,
+        category=inv.category,
+        assigned_to=inv.assigned_to,
+        notes=inv.notes,
+        resolved_by=inv.resolved_by,
+        raised_at=inv.raised_at,
+        resolved_at=inv.resolved_at,
+    )
+
+
+def audit_log_orm_to_dto_unencrypted_row(entry: AuditLog) -> AuditLogDTO:
+    """Map audit log ORM row to a plaintext DTO (no encrypted fields)."""
+    return AuditLogDTO(
+        id=entry.id,
+        event_type=entry.event_type,
+        action=entry.action,
+        summary=entry.summary,
+        actor_id=entry.actor_id,
+        actor_type=entry.actor_type,
+        resource_type=entry.resource_type,
+        resource_id=entry.resource_id,
+        election_id=entry.election_id,
+        ip_address=entry.ip_address,
+        event_metadata=entry.event_metadata,
+        created_at=entry.created_at,
     )
 
 
@@ -473,4 +568,34 @@ class EncryptionUtilsMixin:
             base_dto_class=ReferendumBaseDTO,
             session=session,
             map_unencrypted_row=referendum_orm_to_dto_unencrypted_row,
+        )
+
+    async def official_model_to_schema_item(self, official: ElectionOfficial, session: Any) -> OfficialItem:
+        """ElectionOfficial ORM model → API schema (EncryptedBytes at column level)."""
+        return await self._orm_to_schema_item(
+            official,
+            plain_dto_class=OfficialDTO,
+            base_dto_class=OfficialBaseDTO,
+            session=session,
+            map_unencrypted_row=official_orm_to_dto_unencrypted_row,
+        )
+
+    async def error_report_model_to_schema_item(self, report: ErrorReport, session: Any) -> ErrorReportItem:
+        """ErrorReport ORM model → API schema (no encrypted fields)."""
+        return await self._orm_to_schema_item(
+            report,
+            plain_dto_class=ErrorReportDTO,
+            base_dto_class=ErrorReportBaseDTO,
+            session=session,
+            map_unencrypted_row=error_report_orm_to_dto_unencrypted_row,
+        )
+
+    async def investigation_model_to_schema_item(self, inv: Investigation, session: Any) -> InvestigationItem:
+        """Investigation ORM model → API schema (no encrypted fields)."""
+        return await self._orm_to_schema_item(
+            inv,
+            plain_dto_class=InvestigationDTO,
+            base_dto_class=InvestigationBaseDTO,
+            session=session,
+            map_unencrypted_row=investigation_orm_to_dto_unencrypted_row,
         )

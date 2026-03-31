@@ -44,6 +44,24 @@ from app.repository.tally_result_repo import TallyResultRepository
 from app.service.biometric_service import BiometricService
 from app.repository.biometric_credentials_repo import BiometricCredentialsRepository
 from app.repository.biometric_challenge_repo import BiometricChallengeRepository
+from app.service.ballot_service import BallotTokenService
+from app.models.sqlalchemy.ballot_token import BallotToken
+from app.service.email_service import EmailService
+from app.infra.email.client import ResendEmailClient
+from app.service.official_service import OfficialService
+from app.repository.official_repo import OfficialRepository
+from app.service.error_report_service import ErrorReportService
+from app.repository.error_report_repo import ErrorReportRepository
+from app.service.investigation_service import InvestigationService
+from app.repository.investigation_repo import InvestigationRepository
+from app.service.audit_log_service import AuditLogService
+from app.service.tally_service import TallyService
+from app.service.result_service import ResultService
+from app.repository.audit_log_repo import AuditLogRepository
+from app.service.auth_service import AuthService
+from app.models.dto.auth import TokenPayload
+from app.application.core.exceptions import AuthenticationError, AuthorizationError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 
 logger = structlog.get_logger()
@@ -91,6 +109,11 @@ async def get_db(
 
 # APP SERVICES ----------
 
+def get_email_service() -> EmailService:
+    """Get the email service."""
+    return EmailService(client=ResendEmailClient())
+
+
 def get_keys_manager_service() -> KeysManagerService:
     """DEK lifecycle (system org_id=None for voter PII)."""
     return KeysManagerService(
@@ -104,6 +127,7 @@ def get_keys_manager_service() -> KeysManagerService:
 def get_voter_service(
     session: AsyncSession = Depends(get_db),
     keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+    email_service: EmailService = Depends(get_email_service),
 ) -> VoterService:
     """Get a voter service."""
     mapper = EncryptionMapperService(EncryptionService(), keys_manager)
@@ -112,6 +136,7 @@ def get_voter_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        email_service=email_service,
     )
 
 def get_address_service(
@@ -188,6 +213,7 @@ def get_party_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        audit_log_repo=AuditLogRepository(),
     )
 
 def get_candidate_service(
@@ -201,11 +227,13 @@ def get_candidate_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        audit_log_repo=AuditLogRepository(),
     )
 
 def get_voting_service(
     session: AsyncSession = Depends(get_db),
     keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+    email_service: EmailService = Depends(get_email_service),
 ) -> VotingService:
     """Get a voting service."""
     mapper = EncryptionMapperService(EncryptionService(), keys_manager)
@@ -217,9 +245,12 @@ def get_voting_service(
         tally_result_repo=TallyResultRepository(),
         election_repo=ElectionRepository(Election),
         referendum_repo=ReferendumRepository(Referendum),
+        candidate_repo=CandidateRepository(),
+        voter_repo=VoterRepository(Voter),
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        email_service=email_service,
     )
 
 def get_biometric_service(
@@ -229,6 +260,59 @@ def get_biometric_service(
     return BiometricService(
         credentials_repo=BiometricCredentialsRepository(),
         challenge_repo=BiometricChallengeRepository(),
+        voter_repo=VoterRepository(Voter),
+        session=session,
+    )
+
+def get_ballot_token_service(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+) -> BallotTokenService:
+    """Get a ballot token service."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    return BallotTokenService(
+        ballot_token_repo=BallotTokenRepository(),
+        election_repo=ElectionRepository(Election),
+        referendum_repo=ReferendumRepository(Referendum),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+    )
+
+def get_official_service(
+    session: AsyncSession = Depends(get_db),
+) -> OfficialService:
+    """Get an official service (EncryptedBytes handled at column level)."""
+    return OfficialService(
+        official_repo=OfficialRepository(),
+        session=session,
+    )
+
+def get_error_report_service(
+    session: AsyncSession = Depends(get_db),
+) -> ErrorReportService:
+    """Get an error report service (auto-opens investigation on create)."""
+    return ErrorReportService(
+        error_report_repo=ErrorReportRepository(),
+        investigation_repo=InvestigationRepository(),
+        session=session,
+    )
+
+def get_investigation_service(
+    session: AsyncSession = Depends(get_db),
+) -> InvestigationService:
+    """Get an investigation service."""
+    return InvestigationService(
+        investigation_repo=InvestigationRepository(),
+        session=session,
+    )
+
+def get_audit_log_service(
+    session: AsyncSession = Depends(get_db),
+) -> AuditLogService:
+    """Get an audit log service (read-only queries + internal event logging)."""
+    return AuditLogService(
+        audit_log_repo=AuditLogRepository(),
         session=session,
     )
 
@@ -243,6 +327,7 @@ def get_referendum_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        audit_log_repo=AuditLogRepository(),
     )
 
 
@@ -250,13 +335,70 @@ def get_referendum_service(
 # ------------------------------------------------------------
 
 
-# CODE DEPENDENCIES ----------
+def get_tally_service(
+    session: AsyncSession = Depends(get_db),
+) -> TallyService:
+    """Get a tally service (read-only queries on tally results)."""
+    return TallyService(
+        tally_result_repo=TallyResultRepository(),
+        session=session,
+    )
+
+def get_result_service(
+    session: AsyncSession = Depends(get_db),
+) -> ResultService:
+    """Get a result service (aggregates tallies into election/referendum results)."""
+    return ResultService(
+        tally_result_repo=TallyResultRepository(),
+        election_repo=ElectionRepository(Election),
+        session=session,
+    )
 
 
-# ------------------------------------------------------------
+# AUTH DEPENDENCIES ----------
+
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
-# APP REPOSITORIES ----------
+def get_auth_service(
+    session: AsyncSession = Depends(get_db),
+) -> AuthService:
+    """Get an auth service."""
+    return AuthService(
+        official_repo=OfficialRepository(),
+        session=session,
+        audit_log_repo=AuditLogRepository(),
+    )
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> TokenPayload:
+    """Extract and validate the JWT from the Authorization header.
+
+    Returns the decoded token payload for the current request.
+    Raises AuthenticationError if the token is missing or invalid.
+    """
+    if credentials is None:
+        raise AuthenticationError("Missing authentication token")
+    return AuthService.decode_token(credentials.credentials)
+
+
+def require_role(*allowed_roles: str):
+    """Dependency factory that restricts access to specific roles.
+
+    Usage in a route:
+        current_user: TokenPayload = Depends(require_role("ADMIN"))
+    """
+    async def _check(
+        current_user: TokenPayload = Depends(get_current_user),
+    ) -> TokenPayload:
+        if current_user.role not in allowed_roles:
+            raise AuthorizationError(
+                f"Insufficient permissions. Required role: {', '.join(allowed_roles)}"
+            )
+        return current_user
+    return _check
 
 
 # ------------------------------------------------------------

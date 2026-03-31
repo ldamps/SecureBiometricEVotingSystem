@@ -11,6 +11,8 @@ from app.models.dto.referendum import (
     ReferendumDTO,
 )
 from app.models.schemas.referendum import ReferendumItem
+from app.models.sqlalchemy.audit_log import AuditLog
+from app.repository.audit_log_repo import AuditLogRepository
 from app.repository.referendum_repo import ReferendumRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.keys_manager_service import KeysManagerService
@@ -28,11 +30,13 @@ class ReferendumService(EncryptionUtilsMixin):
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
+        audit_log_repo: AuditLogRepository | None = None,
     ):
         self.referendum_repo = referendum_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     async def create_referendum(self, dto: CreateReferendumPlainDTO) -> ReferendumItem:
         """Create a new referendum."""
@@ -45,6 +49,18 @@ class ReferendumService(EncryptionUtilsMixin):
             )
             referendum = enc_row.to_model()
             referendum = await self.referendum_repo.create_referendum(self.session, referendum)
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="REFERENDUM_CREATED",
+                    action="CREATE",
+                    summary=f"Referendum '{dto.title}' created",
+                    resource_type="referendum",
+                    resource_id=referendum.id,
+                    actor_type="OFFICIAL",
+                ),
+            )
 
             return await self.referendum_model_to_schema_item(referendum, self.session)
         except Exception:
@@ -78,6 +94,19 @@ class ReferendumService(EncryptionUtilsMixin):
             updated = await self.referendum_repo.update_referendum(
                 self.session, referendum_id, update_data
             )
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="REFERENDUM_UPDATED",
+                    action="UPDATE",
+                    summary=f"Referendum {referendum_id} updated",
+                    resource_type="referendum",
+                    resource_id=referendum_id,
+                    actor_type="OFFICIAL",
+                ),
+            )
+
             return await self.referendum_model_to_schema_item(updated, self.session)
         except Exception:
             logger.exception("Failed to update referendum", referendum_id=referendum_id)

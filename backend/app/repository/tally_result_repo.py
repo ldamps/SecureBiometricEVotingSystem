@@ -74,6 +74,49 @@ class TallyResultRepository:
 
         return tally
 
+    async def get_tallies_by_election(
+        self,
+        session: AsyncSession,
+        election_id: UUID,
+    ) -> list[TallyResult]:
+        """Get all tally rows for an election, ordered by vote count descending."""
+        result = await session.execute(
+            select(self._model)
+            .where(self._model.election_id == election_id)
+            .order_by(self._model.vote_count.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_tallies_by_constituency(
+        self,
+        session: AsyncSession,
+        election_id: UUID,
+        constituency_id: UUID,
+    ) -> list[TallyResult]:
+        """Get tally rows for an election + constituency, ordered by vote count descending."""
+        result = await session.execute(
+            select(self._model)
+            .where(
+                self._model.election_id == election_id,
+                self._model.constituency_id == constituency_id,
+            )
+            .order_by(self._model.vote_count.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_tallies_by_referendum(
+        self,
+        session: AsyncSession,
+        referendum_id: UUID,
+    ) -> list[TallyResult]:
+        """Get tally rows for a referendum, ordered by choice."""
+        result = await session.execute(
+            select(self._model)
+            .where(self._model.referendum_id == referendum_id)
+            .order_by(self._model.choice.asc())
+        )
+        return list(result.scalars().all())
+
     async def increment_referendum_vote_count(
         self,
         session: AsyncSession,

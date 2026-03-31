@@ -6,7 +6,7 @@ from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.keys_manager_service import KeysManagerService
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.models.dto.voter_ledger import CreateVoterLedgerPlainDTO, CreateVoterLedgerEncryptedDTO, VoterLedgerDTO
-from app.models.schemas.voter_ledger import VoterLedgerItem
+from app.models.schemas.voter_ledger import VoterLedgerItem, ElectionVoterItem, ElectionVoterListResponse, ReferendumVoterListResponse
 from uuid import UUID
 from typing import List
 
@@ -83,4 +83,76 @@ class VoterLedgerService(EncryptionUtilsMixin):
             
         except Exception:
             logger.exception("Failed to get all voter ledger entries by voter ID", voter_id=voter_id)
+            raise
+
+    async def get_election_voters(
+        self,
+        election_id: UUID,
+    ) -> ElectionVoterListResponse:
+        """Get all voters for an election with their voting status."""
+        try:
+            ledger_entries = await self.voter_ledger_repo.get_all_voter_ledger_entries_by_election_id(
+                self.session, election_id
+            )
+
+            voters: List[ElectionVoterItem] = []
+            for entry in ledger_entries:
+                voter = entry.voter
+                voter_item = await self.voter_model_to_schema_item(voter, self.session)
+                voters.append(ElectionVoterItem(
+                    voter_id=str(entry.voter_id),
+                    first_name=voter_item.first_name,
+                    surname=voter_item.surname,
+                    has_voted=entry.voted_at is not None,
+                    voted_at=entry.voted_at,
+                ))
+
+            total_voted = sum(1 for v in voters if v.has_voted)
+
+            return ElectionVoterListResponse(
+                election_id=str(election_id),
+                total_voters=len(voters),
+                total_voted=total_voted,
+                total_not_voted=len(voters) - total_voted,
+                voters=voters,
+            )
+
+        except Exception:
+            logger.exception("Failed to get election voters", election_id=election_id)
+            raise
+
+    async def get_referendum_voters(
+        self,
+        referendum_id: UUID,
+    ) -> ReferendumVoterListResponse:
+        """Get all voters for a referendum with their voting status."""
+        try:
+            ledger_entries = await self.voter_ledger_repo.get_all_voter_ledger_entries_by_referendum_id(
+                self.session, referendum_id
+            )
+
+            voters: List[ElectionVoterItem] = []
+            for entry in ledger_entries:
+                voter = entry.voter
+                voter_item = await self.voter_model_to_schema_item(voter, self.session)
+                voters.append(ElectionVoterItem(
+                    voter_id=str(entry.voter_id),
+                    first_name=voter_item.first_name,
+                    surname=voter_item.surname,
+                    has_voted=entry.voted_at is not None,
+                    voted_at=entry.voted_at,
+                ))
+
+            total_voted = sum(1 for v in voters if v.has_voted)
+
+            return ReferendumVoterListResponse(
+                referendum_id=str(referendum_id),
+                total_voters=len(voters),
+                total_voted=total_voted,
+                total_not_voted=len(voters) - total_voted,
+                voters=voters,
+            )
+
+        except Exception:
+            logger.exception("Failed to get referendum voters", referendum_id=referendum_id)
             raise

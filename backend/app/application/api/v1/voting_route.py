@@ -1,18 +1,18 @@
 # app/application/api/v1/voting_route.py - Voting route definitions
 
-from fastapi import APIRouter, Depends, Body, HTTPException, status
+import structlog
+from fastapi import APIRouter, Body, Depends, status
+
+from app.application.api.dependencies import get_voting_service
 from app.application.api.responses import responses
 from app.application.constants import Resource
-from app.application.core.exceptions import NotFoundError, ValidationError
 from app.models.schemas.vote import (
-    CastVoteRequest,
-    CastVoteResponse,
     CastReferendumVoteRequest,
     CastReferendumVoteResponse,
+    CastVoteRequest,
+    CastVoteResponse,
 )
 from app.service.voting_service import VotingService
-from app.application.api.dependencies import get_voting_service
-import structlog
 
 voting_responses = responses(Resource.VOTE)
 logger = structlog.get_logger()
@@ -44,12 +44,7 @@ async def cast_vote(
 
     Once submitted, the vote cannot be changed or revoked.
     """
-    try:
-        return await service.cast_vote(body)
-    except ValidationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    return await service.cast_vote(body)
 
 
 # Cast a vote on a referendum
@@ -71,9 +66,4 @@ async def cast_referendum_vote(
 
     Once submitted, the vote cannot be changed or revoked.
     """
-    try:
-        return await service.cast_referendum_vote(body)
-    except ValidationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    return await service.cast_referendum_vote(body)
