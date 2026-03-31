@@ -18,7 +18,6 @@ from app.application.api.dependencies import (
 )
 from app.application.api.responses import responses
 from app.application.constants import Resource
-from app.application.core.exceptions import NotFoundError, ValidationError
 from app.models.dto.auth import TokenPayload
 from app.models.dto.candidate import CreateCandidatePlainDTO
 from app.models.dto.election import CreateElectionPlainDTO, UpdateElectionPlainDTO
