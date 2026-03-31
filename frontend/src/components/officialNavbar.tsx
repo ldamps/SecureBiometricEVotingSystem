@@ -2,11 +2,18 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../styles/ThemeContext";
 import { SecondaryButton } from "../styles/ui";
+import { clearAuthSession } from "../services/api-client.service";
 
 const OfficialNavbar: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
   const { colors, spacing, fontSizes, fontWeights } = theme;
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate("/official/landing");
+  };
+
   return (
     <nav
       className="app-nav"
@@ -38,7 +45,7 @@ const OfficialNavbar: React.FC = () => {
 
       {/* Right side: theme toggle + logout button */}
       <div style={{ display: "flex", alignItems: "center", gap: spacing.md }}>
-        <SecondaryButton onClick={() => { navigate("/official/landing"); }}>Logout</SecondaryButton>
+        <SecondaryButton onClick={handleLogout}>Logout</SecondaryButton>
         {/* Light/Dark mode toggle */}
         <button
           onClick={toggleTheme}

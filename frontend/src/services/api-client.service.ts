@@ -24,7 +24,10 @@ const RETRY_BACKOFF_MS = 500;
 // Token helpers
 // ---------------------------------------------------------------------------
 
-let accessToken: string | null = null;
+let accessToken: string | null =
+  typeof window !== "undefined"
+    ? window.localStorage.getItem("accessToken")
+    : null;
 
 /** Called by the auth layer after login / token refresh. */
 export function setAccessToken(token: string | null): void {
@@ -33,6 +36,17 @@ export function setAccessToken(token: string | null): void {
 
 export function getAccessToken(): string | null {
   return accessToken;
+}
+
+export function clearAuthSession(): void {
+  accessToken = null;
+
+  if (typeof window === "undefined") return;
+
+  window.localStorage.removeItem("accessToken");
+  window.localStorage.removeItem("refreshToken");
+  window.localStorage.removeItem("tokenType");
+  window.localStorage.removeItem("accessTokenExpiresAt");
 }
 
 /** Read the XSRF-TOKEN cookie set by the backend. */
