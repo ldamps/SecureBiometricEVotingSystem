@@ -1,4 +1,5 @@
 # result.py - DTOs for aggregated election/referendum results.
+# UK FPTP: each constituency elects one MP; party with 326+/650 seats wins.
 
 from dataclasses import dataclass, field
 from typing import ClassVar, Dict, List, Optional
@@ -16,7 +17,7 @@ from app.models.schemas.tally_result import TallyResultItem
 
 @dataclass
 class ConstituencyResultDTO:
-    """Aggregated result for a single constituency."""
+    """Aggregated result for a single constituency (one seat)."""
     constituency_id: UUID
     winner_candidate_id: Optional[UUID] = None
     winner_name: Optional[str] = None
@@ -38,14 +39,17 @@ class ConstituencyResultDTO:
 
 @dataclass
 class ElectionResultDTO:
-    """Full election result."""
+    """Full election result with UK FPTP seat allocation."""
     __resource__: ClassVar[Resource] = Resource.RESULT
     election_id: UUID = field(default=None)
     election_title: Optional[str] = None
     status: str = ""
     total_votes: int = 0
+    total_seats: int = 0
+    majority_threshold: int = 0
     constituencies: List[ConstituencyResultDTO] = field(default_factory=list)
     seat_allocation: Dict[str, int] = field(default_factory=dict)
+    winning_party_id: Optional[str] = None
 
     def to_schema(self) -> ElectionResultResponse:
         return ElectionResultResponse(
@@ -54,8 +58,11 @@ class ElectionResultDTO:
             election_title=self.election_title,
             status=self.status,
             total_votes=self.total_votes,
+            total_seats=self.total_seats,
+            majority_threshold=self.majority_threshold,
             constituencies=[c.to_schema() for c in self.constituencies],
             seat_allocation=self.seat_allocation,
+            winning_party_id=self.winning_party_id,
         )
 
 
