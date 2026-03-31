@@ -1,6 +1,6 @@
 // Voting Step1: Election Selection
 import { getCardStyle, getVoterPageContentWrapperStyle, getStepTitleStyle, getStepDescStyle } from "../../../styles/ui";
-import ProgressBar from "./progressBar";
+import ProgressBar from "../../voter/components/progressBar";
 import { useTheme } from "../../../styles/ThemeContext";
 import { PrimaryButton } from "../../../styles/ui";
 import { ElectionApiRepository } from "../repositories/election-api.repository";

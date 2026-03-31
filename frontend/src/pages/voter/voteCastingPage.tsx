@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTheme } from "../../styles/ThemeContext";
-import ElectionSelection from "../../features/voter/components/electionSelection";
+import ElectionSelection from "../../features/election/components/electionSelection";
 import VoterIdentity from "../../features/voter/components/voterIdentity";
 import BiometricVerification from "../../features/voter/components/biometricVerification";
 import CandidateSelection from "../../features/voter/components/candidateSelection";

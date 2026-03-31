@@ -20,17 +20,40 @@ import VotesPerConstituencyChart from "../../features/admin/components/votesPerC
 import SeatAllocationChart from "../../features/admin/components/seatAllocationChart";
 import ReportErrorModal from "../../features/admin/components/reportErrorModal";
 import ManageOfficials from "../../features/admin/components/manageOfficials";
+import { ElectionApiRepository } from "../../features/election/repositories/election-api.repository";
+import { Election, ElectionStatus } from "../../features/election/model/election.model";
 
 // --- Mock data (replace with backend when available) ---
 
 /** Set to true to show Audit logs tab (admin only). */
 const MOCK_USER_IS_ADMIN = true;
 
-interface ConcludedElection {
-  id: string;
-  name: string;
-  concludedAt: string;
-  totalConstituencies: number;
+const electionApiRepository = new ElectionApiRepository();
+
+function datePartFromIso(iso: string | undefined): string | undefined {
+  if (!iso) return undefined;
+  return iso.includes("T") ? iso.split("T")[0] : iso.slice(0, 10);
+}
+
+/** Sort: open elections first, then by title. */
+function sortElectionsForSelect(rows: Election[]): Election[] {
+  return [...rows].sort((a, b) => {
+    const rank = (e: Election) => (e.status === ElectionStatus.OPEN ? 0 : 1);
+    const byStatus = rank(a) - rank(b);
+    if (byStatus !== 0) return byStatus;
+    return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  });
+}
+
+function formatElectionOptionLabel(election: Election): string {
+  const open = election.status === ElectionStatus.OPEN;
+  const statusWord = open ? "Open" : "Closed";
+  if (open) {
+    const opens = datePartFromIso(election.voting_opens);
+    return opens ? `${election.title} (${statusWord} · opens ${opens})` : `${election.title} (${statusWord})`;
+  }
+  const closes = datePartFromIso(election.voting_closes);
+  return closes ? `${election.title} (${statusWord} · closed ${closes})` : `${election.title} (${statusWord})`;
 }
 
 interface ConstituencyResult {
@@ -61,12 +84,6 @@ interface Investigation {
   status: "open" | "in_progress" | "resolved";
   reportedAt: string;
 }
-
-
-const MOCK_CONCLUDED_ELECTIONS: ConcludedElection[] = [
-  { id: "el-1", name: "UK General Election 2024", concludedAt: "2024-07-05", totalConstituencies: 650 },
-  { id: "el-2", name: "Local Council Elections 2024", concludedAt: "2024-05-02", totalConstituencies: 331 },
-];
 
 const MOCK_CONSTITUENCY_RESULTS: ConstituencyResult[] = [
   { id: "c1", name: "Edinburgh North", votesCast: 45231, votersWhoVoted: 45231, matchStatus: "ok" },
@@ -113,9 +130,45 @@ const OfficialHomePage: React.FC = () => {
     tabFromSlug && (tabs as readonly string[]).includes(tabFromSlug) ? tabFromSlug : tabs[0];
 
   const [activeTab, setActiveTab] = useState<string>(resolvedTab);
-  const [selectedElectionId, setSelectedElectionId] = useState<string>(MOCK_CONCLUDED_ELECTIONS[0]?.id ?? "");
+  const [selectedElectionId, setSelectedElectionId] = useState<string>("");
+  const [elections, setElections] = useState<Election[]>([]);
+  const [electionsLoadError, setElectionsLoadError] = useState<string | null>(null);
+  const [electionsLoading, setElectionsLoading] = useState(true);
   const [reportErrorModalOpen, setReportErrorModalOpen] = useState(false);
   const [reportErrorContext, setReportErrorContext] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setElectionsLoading(true);
+    setElectionsLoadError(null);
+    electionApiRepository
+      .listElections()
+      .then((rows) => {
+        if (cancelled) return;
+        const sorted = sortElectionsForSelect(rows);
+        setElections(sorted);
+        if (sorted.length > 0) {
+          setSelectedElectionId((current) =>
+            current && sorted.some((e) => e.id === current) ? current : sorted[0].id,
+          );
+        } else {
+          setSelectedElectionId("");
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setElectionsLoadError(err.message || "Failed to load elections.");
+          setElections([]);
+          setSelectedElectionId("");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setElectionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setSearchParams(
@@ -128,7 +181,7 @@ const OfficialHomePage: React.FC = () => {
     );
   }, [activeTab, setSearchParams]);
 
-  const selectedElection = MOCK_CONCLUDED_ELECTIONS.find((e) => e.id === selectedElectionId);
+  const selectedElection = elections.find((e) => e.id === selectedElectionId);
   const pageWrapper = getPageContentWrapperStyle(theme);
   const pageTitle = getPageTitleStyle(theme);
   const sectionH2 = getSectionH2Style(theme);
@@ -147,21 +200,35 @@ const OfficialHomePage: React.FC = () => {
 
       <section style={{ paddingLeft: theme.spacing.xl, paddingRight: theme.spacing.xl, paddingBottom: theme.spacing.lg }}>
         <label htmlFor="election-select" style={{ display: "block", marginBottom: theme.spacing.sm, color: theme.colors.text.secondary, fontSize: theme.fontSizes.sm }}>
-          Select concluded election to verify
+          Select election to verify
         </label>
         <select
           id="election-select"
           value={selectedElectionId}
           onChange={(e) => setSelectedElectionId(e.target.value)}
           style={getSelectStyle(theme)}
+          disabled={electionsLoading || !!electionsLoadError}
         >
-          <option value="">— Select an election —</option>
-          {MOCK_CONCLUDED_ELECTIONS.map((e) => (
+          <option value="">
+            {electionsLoading
+              ? "Loading elections…"
+              : electionsLoadError
+                ? "— Error loading elections —"
+                : elections.length === 0
+                  ? "— No elections —"
+                  : "— Select an election —"}
+          </option>
+          {elections.map((e) => (
             <option key={e.id} value={e.id}>
-              {e.name} (concluded {e.concludedAt})
+              {formatElectionOptionLabel(e)}
             </option>
           ))}
         </select>
+        {electionsLoadError && (
+          <p style={{ marginTop: theme.spacing.sm, color: theme.colors.status.error, fontSize: theme.fontSizes.sm }}>
+            {electionsLoadError}
+          </p>
+        )}
       </section>
 
       {selectedElection && (
@@ -185,7 +252,7 @@ const OfficialHomePage: React.FC = () => {
               <section>
                 <h2 style={sectionH2}>Overview</h2>
                 <p style={{ ...cardText, marginBottom: theme.spacing.lg }}>
-                  Summary and visualisations for <strong>{selectedElection.name}</strong>. Go through the constituency data below to verify results; use &quot;Report error&quot; when you see an issue.
+                  Summary and visualisations for <strong>{selectedElection.title}</strong>. Go through the constituency data below to verify results; use &quot;Report error&quot; when you see an issue.
                 </p>
 
                 {/* Charts row */}
@@ -319,7 +386,7 @@ const OfficialHomePage: React.FC = () => {
 
       {!selectedElection && (
         <p style={{ paddingLeft: theme.spacing.xl, color: theme.colors.text.secondary }}>
-          Select a concluded election above to view the verification dashboard and investigations.
+          Select an election above to view the verification dashboard and investigations.
         </p>
       )}
 
