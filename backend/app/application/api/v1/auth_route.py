@@ -10,6 +10,7 @@ from app.models.dto.auth import TokenPayload
 from app.models.schemas.auth import (
     AuthenticatedUser,
     ChangePasswordRequest,
+    ChangePasswordResponse,
     LoginRequest,
     RefreshTokenRequest,
     TokenResponse,
@@ -78,17 +79,18 @@ async def get_me(
 # Change password — protected
 @router.post(
     "/change-password",
+    response_model=ChangePasswordResponse,
     status_code=status.HTTP_200_OK,
 )
 async def change_password(
     body: ChangePasswordRequest = Body(..., description="Password change request."),
     current_user: TokenPayload = Depends(get_current_user),
     service: AuthService = Depends(get_auth_service),
-):
+) -> ChangePasswordResponse:
     """Change the currently authenticated user's password."""
     await service.change_password(
         official_id=UUID(current_user.sub),
         current_password=body.current_password,
         new_password=body.new_password,
     )
-    return {"detail": "Password changed successfully"}
+    return ChangePasswordResponse(detail="Password changed successfully")
