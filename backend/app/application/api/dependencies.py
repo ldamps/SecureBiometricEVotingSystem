@@ -55,6 +55,8 @@ from app.repository.error_report_repo import ErrorReportRepository
 from app.service.investigation_service import InvestigationService
 from app.repository.investigation_repo import InvestigationRepository
 from app.service.audit_log_service import AuditLogService
+from app.service.tally_service import TallyService
+from app.service.result_service import ResultService
 from app.repository.audit_log_repo import AuditLogRepository
 from app.service.auth_service import AuthService
 from app.models.dto.auth import TokenPayload
@@ -211,6 +213,7 @@ def get_party_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        audit_log_repo=AuditLogRepository(),
     )
 
 def get_candidate_service(
@@ -224,6 +227,7 @@ def get_candidate_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        audit_log_repo=AuditLogRepository(),
     )
 
 def get_voting_service(
@@ -323,11 +327,32 @@ def get_referendum_service(
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
+        audit_log_repo=AuditLogRepository(),
     )
 
 
 
 # ------------------------------------------------------------
+
+
+def get_tally_service(
+    session: AsyncSession = Depends(get_db),
+) -> TallyService:
+    """Get a tally service (read-only queries on tally results)."""
+    return TallyService(
+        tally_result_repo=TallyResultRepository(),
+        session=session,
+    )
+
+def get_result_service(
+    session: AsyncSession = Depends(get_db),
+) -> ResultService:
+    """Get a result service (aggregates tallies into election/referendum results)."""
+    return ResultService(
+        tally_result_repo=TallyResultRepository(),
+        election_repo=ElectionRepository(Election),
+        session=session,
+    )
 
 
 # AUTH DEPENDENCIES ----------

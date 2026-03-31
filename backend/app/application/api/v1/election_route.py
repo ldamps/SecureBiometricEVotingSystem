@@ -4,20 +4,20 @@ from typing import List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Body, Depends, Path, Query, status
 
 from app.application.api.dependencies import (
     get_ballot_token_service,
     get_candidate_service,
     get_current_user,
     get_election_service,
+    get_result_service,
+    get_tally_service,
     get_voter_ledger_service,
     require_role,
 )
 from app.application.api.responses import responses
 from app.application.constants import Resource
-from app.application.core.exceptions import NotFoundError, ValidationError
 from app.models.dto.auth import TokenPayload
 from app.models.dto.candidate import CreateCandidatePlainDTO
 from app.models.dto.election import CreateElectionPlainDTO, UpdateElectionPlainDTO
@@ -29,8 +29,12 @@ from app.models.schemas.ballot_token import (
 )
 from app.models.schemas.candidate import CandidateItem, CreateCandidateRequest, UpdateCandidateRequest
 from app.models.schemas.election import ElectionItem, CreateElectionRequest, UpdateElectionRequest
+from app.models.schemas.result import ElectionResultResponse
+from app.models.schemas.tally_result import TallyResultItem
 from app.models.schemas.voter_ledger import ElectionVoterListResponse
 from app.service.ballot_service import BallotTokenService
+from app.service.result_service import ResultService
+from app.service.tally_service import TallyService
 from app.service.voter_ledger_service import VoterLedgerService
 from app.service.candidate_service import CandidateService
 from app.service.election_service import ElectionService
@@ -250,3 +254,55 @@ async def get_election_ballot_tokens(
 ):
     """List all ballot tokens for an election (decrypted)."""
     return await service.get_election_tokens(election_id, constituency_id)
+
+
+# ── Results & tallies ──
+
+
+# Get aggregated election results (any official)
+@router.get(
+    "/{election_id}/results",
+    responses=election_responses,
+    response_model=ElectionResultResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_results(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    service: ResultService = Depends(get_result_service),
+    current_user: TokenPayload = Depends(get_current_user),
+) -> ElectionResultResponse:
+    """Get aggregated results for an election with per-constituency breakdowns and seat allocation."""
+    return await service.get_election_results(election_id)
+
+
+# Get tallies for an election (admin-only)
+@router.get(
+    "/{election_id}/tallies",
+    responses=election_responses,
+    response_model=List[TallyResultItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_tallies(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    service: TallyService = Depends(get_tally_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
+) -> List[TallyResultItem]:
+    """Get all vote tallies for an election, ordered by vote count."""
+    return await service.get_tallies_by_election(election_id)
+
+
+# Get tallies for an election + constituency (admin-only)
+@router.get(
+    "/{election_id}/constituency/{constituency_id}/tallies",
+    responses=election_responses,
+    response_model=List[TallyResultItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_constituency_tallies(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    constituency_id: UUID = Path(..., description="The constituency ID."),
+    service: TallyService = Depends(get_tally_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
+) -> List[TallyResultItem]:
+    """Get vote tallies for a specific constituency within an election."""
+    return await service.get_tallies_by_constituency(election_id, constituency_id)

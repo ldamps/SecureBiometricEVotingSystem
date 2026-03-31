@@ -31,6 +31,11 @@ class ChangePasswordRequest(RequestSchema):
     new_password: str = Field(..., min_length=8, max_length=128, description="New password (min 8 chars).")
 
 
+class ChangePasswordResponse(ResponseSchema):
+    """Confirmation of a successful password change."""
+    detail: str = Field(..., description="Confirmation message.")
+
+
 class AuthenticatedUser(ResponseSchema):
     """The currently authenticated user's profile."""
     id: str = Field(..., description="Official ID.")

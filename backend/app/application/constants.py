@@ -23,3 +23,4 @@ class Resource(Enum):
     INVESTIGATION = "investigation"
     AUDIT_LOG = "audit_log"
     AUTH = "auth"
+    RESULT = "result"

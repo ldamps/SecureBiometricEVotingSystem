@@ -12,8 +12,15 @@ from app.models.dto.election import (
     ElectionDTO,
 )
 from app.models.schemas.election import ElectionItem
+from app.application.core.exceptions import ValidationError
+from app.models.sqlalchemy.election import ElectionStatus
 from app.repository.election_repo import ElectionRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
+
+# Valid election status transitions: only OPEN -> CLOSED is allowed.
+_VALID_TRANSITIONS: dict[str, set[str]] = {
+    ElectionStatus.OPEN.value: {ElectionStatus.CLOSED.value},
+}
 from app.service.keys_manager_service import KeysManagerService
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.repository.audit_log_repo import AuditLogRepository
@@ -106,6 +113,17 @@ class ElectionService(EncryptionUtilsMixin):
     ) -> ElectionItem:
         """Update an election's mutable fields (status, voting_opens, voting_closes)."""
         try:
+            # Validate status transition if status is being changed
+            if hasattr(dto, "status") and dto.status is not None:
+                current = await self.election_repo.get_election_by_id(
+                    self.session, election_id,
+                )
+                allowed = _VALID_TRANSITIONS.get(current.status, set())
+                if dto.status not in allowed:
+                    raise ValidationError(
+                        f"Invalid status transition: {current.status} -> {dto.status}"
+                    )
+
             updated = await self.election_repo.update_election(
                 self.session, election_id, dto
             )

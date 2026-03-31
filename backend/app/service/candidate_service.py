@@ -5,17 +5,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
 
+from app.application.core.exceptions import ValidationError
 from app.models.dto.candidate import (
     CreateCandidatePlainDTO,
     CreateCandidateEncryptedDTO,
     CandidateDTO,
 )
 from app.models.schemas.candidate import CandidateItem
+from app.models.sqlalchemy.audit_log import AuditLog
+from app.repository.audit_log_repo import AuditLogRepository
 from app.repository.candidate_repo import CandidateRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.keys_manager_service import KeysManagerService
 from app.service.encryption_mapper_service import EncryptionMapperService
-from app.application.core.exceptions import ValidationError
 
 logger = structlog.get_logger()
 
@@ -29,11 +31,13 @@ class CandidateService(EncryptionUtilsMixin):
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
+        audit_log_repo: AuditLogRepository | None = None,
     ):
         self.candidate_repo = candidate_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     async def create_candidate(self, dto: CreateCandidatePlainDTO) -> CandidateItem:
         """Create a new candidate.
@@ -58,6 +62,19 @@ class CandidateService(EncryptionUtilsMixin):
             )
             candidate = enc_row.to_model()
             candidate = await self.candidate_repo.create_candidate(self.session, candidate)
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="CANDIDATE_ADDED",
+                    action="CREATE",
+                    summary=f"Candidate added to election {dto.election_id}",
+                    resource_type="candidate",
+                    resource_id=candidate.id,
+                    election_id=dto.election_id,
+                    actor_type="OFFICIAL",
+                ),
+            )
 
             return await self.candidate_model_to_schema_item(candidate, self.session)
         except Exception:
@@ -103,6 +120,19 @@ class CandidateService(EncryptionUtilsMixin):
             updated = await self.candidate_repo.update_candidate(
                 self.session, candidate_id, update_data
             )
+
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="CANDIDATE_UPDATED",
+                    action="UPDATE",
+                    summary=f"Candidate {candidate_id} updated",
+                    resource_type="candidate",
+                    resource_id=candidate_id,
+                    actor_type="OFFICIAL",
+                ),
+            )
+
             return await self.candidate_model_to_schema_item(updated, self.session)
         except Exception:
             logger.exception("Failed to update candidate", candidate_id=candidate_id)
