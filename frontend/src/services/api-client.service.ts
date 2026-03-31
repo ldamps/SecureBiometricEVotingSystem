@@ -38,6 +38,20 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+/** Access token present and not past stored expiry (if any). */
+export function hasValidOfficialSession(): boolean {
+  if (!accessToken) return false;
+  if (typeof window === "undefined") return true;
+
+  const exp = window.localStorage.getItem("accessTokenExpiresAt");
+  if (exp === null) return true;
+
+  const expMs = Number(exp);
+  if (Number.isNaN(expMs)) return true;
+
+  return Date.now() < expMs;
+}
+
 export function clearAuthSession(): void {
   accessToken = null;
 

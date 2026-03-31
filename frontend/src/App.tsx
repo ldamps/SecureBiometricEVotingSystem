@@ -1,9 +1,10 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 
 import "./styles/global.css";
 import { ThemeProvider } from './styles/ThemeContext';
 import MainLayout from './layouts/mainLayout';
+import OfficialAuthGuard from './components/officialAuthGuard';
 
 // Voter pages:
 import VoterLandingPage from './pages/voter/voterLandingPage';
@@ -44,9 +45,13 @@ const App: React.FC = () => {
             <Route path="/voter/registration" element={<VoterRegisterPage />} />
             <Route path="/voter/update-registration" element={<VoterUpdateRegistrationPage />} />
             
-            {/* Official routes */}
-            <Route path="/official/landing" element={<OfficialLandingPage />} />
-            <Route path="/official/home" element={<OfficialHomePage />} />
+            {/* Official routes: landing is public; all other /official/* require login */}
+            <Route path="official" element={<Outlet />}>
+              <Route path="landing" element={<OfficialLandingPage />} />
+              <Route element={<OfficialAuthGuard />}>
+                <Route path="home" element={<OfficialHomePage />} />
+              </Route>
+            </Route>
             
             {/* Mobile biometric routes (accessed via QR code on phone/tablet) */}
             <Route path="/biometric/enroll" element={<MobileEnrollPage />} />
