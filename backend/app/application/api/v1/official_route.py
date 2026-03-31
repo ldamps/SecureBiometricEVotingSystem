@@ -6,9 +6,10 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Body, Depends, Path, Query, status
 
-from app.application.api.dependencies import get_official_service
+from app.application.api.dependencies import get_current_user, get_official_service, require_role
 from app.application.api.responses import responses
 from app.application.constants import Resource
+from app.models.dto.auth import TokenPayload
 from app.models.dto.official import CreateOfficialPlainDTO, UpdateOfficialPlainDTO
 from app.models.schemas.official import (
     CreateOfficialRequest,
@@ -38,6 +39,7 @@ router = APIRouter(
 async def create_official(
     body: CreateOfficialRequest = Body(..., description="The official creation request."),
     service: OfficialService = Depends(get_official_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
     """Create a new election official.
 
@@ -48,7 +50,7 @@ async def create_official(
     return await service.create_official(dto)
 
 
-# Update an election official
+# Update an election official (admin-only)
 @router.patch(
     "/{official_id}",
     responses=official_responses,
@@ -59,17 +61,17 @@ async def update_official(
     official_id: UUID = Path(..., description="The unique identifier for the official."),
     body: UpdateOfficialRequest = Body(..., description="The official update request."),
     service: OfficialService = Depends(get_official_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
     """Update an election official's mutable fields.
 
-    Officers can update their own name/email. Admins can update any
-    official's details including role and active status.
+    Only admins can update official details including role and active status.
     """
     dto = UpdateOfficialPlainDTO.create_dto(body, official_id)
     return await service.update_official(official_id, dto)
 
 
-# Get all election officials
+# Get all election officials (any official)
 @router.get(
     "",
     responses=official_responses,
@@ -79,6 +81,7 @@ async def update_official(
 async def get_all_officials(
     role: Optional[OfficialRole] = Query(None, description="Filter by role (ADMIN or OFFICER)."),
     service: OfficialService = Depends(get_official_service),
+    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[OfficialItem]:
     """Get all election officials, optionally filtered by role."""
     if role:
@@ -86,7 +89,7 @@ async def get_all_officials(
     return await service.get_all_officials()
 
 
-# Get election official by ID
+# Get election official by ID (any official)
 @router.get(
     "/{official_id}",
     responses=official_responses,
@@ -96,6 +99,7 @@ async def get_all_officials(
 async def get_official_by_id(
     official_id: UUID = Path(..., description="The unique identifier for the official."),
     service: OfficialService = Depends(get_official_service),
+    current_user: TokenPayload = Depends(get_current_user),
 ) -> OfficialItem:
     """Get election official details by ID."""
     return await service.get_official_by_id(official_id)
@@ -111,6 +115,7 @@ async def get_official_by_id(
 async def deactivate_official(
     official_id: UUID = Path(..., description="The unique identifier for the official."),
     service: OfficialService = Depends(get_official_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
     """Deactivate an election official (admin-only).
 
@@ -130,6 +135,7 @@ async def deactivate_official(
 async def activate_official(
     official_id: UUID = Path(..., description="The unique identifier for the official."),
     service: OfficialService = Depends(get_official_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
     """Reactivate a previously deactivated election official (admin-only)."""
     return await service.activate_official(official_id)

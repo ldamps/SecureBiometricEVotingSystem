@@ -56,6 +56,10 @@ from app.service.investigation_service import InvestigationService
 from app.repository.investigation_repo import InvestigationRepository
 from app.service.audit_log_service import AuditLogService
 from app.repository.audit_log_repo import AuditLogRepository
+from app.service.auth_service import AuthService
+from app.models.dto.auth import TokenPayload
+from app.application.core.exceptions import AuthenticationError, AuthorizationError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 
 logger = structlog.get_logger()
@@ -326,13 +330,50 @@ def get_referendum_service(
 # ------------------------------------------------------------
 
 
-# CODE DEPENDENCIES ----------
+# AUTH DEPENDENCIES ----------
+
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
-# ------------------------------------------------------------
+def get_auth_service(
+    session: AsyncSession = Depends(get_db),
+) -> AuthService:
+    """Get an auth service."""
+    return AuthService(
+        official_repo=OfficialRepository(),
+        session=session,
+        audit_log_repo=AuditLogRepository(),
+    )
 
 
-# APP REPOSITORIES ----------
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> TokenPayload:
+    """Extract and validate the JWT from the Authorization header.
+
+    Returns the decoded token payload for the current request.
+    Raises AuthenticationError if the token is missing or invalid.
+    """
+    if credentials is None:
+        raise AuthenticationError("Missing authentication token")
+    return AuthService.decode_token(credentials.credentials)
+
+
+def require_role(*allowed_roles: str):
+    """Dependency factory that restricts access to specific roles.
+
+    Usage in a route:
+        current_user: TokenPayload = Depends(require_role("ADMIN"))
+    """
+    async def _check(
+        current_user: TokenPayload = Depends(get_current_user),
+    ) -> TokenPayload:
+        if current_user.role not in allowed_roles:
+            raise AuthorizationError(
+                f"Insufficient permissions. Required role: {', '.join(allowed_roles)}"
+            )
+        return current_user
+    return _check
 
 
 # ------------------------------------------------------------

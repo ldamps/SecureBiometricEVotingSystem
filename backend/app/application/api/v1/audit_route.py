@@ -7,9 +7,10 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Path, Query, status
 
-from app.application.api.dependencies import get_audit_log_service
+from app.application.api.dependencies import get_audit_log_service, require_role
 from app.application.api.responses import responses
 from app.application.constants import Resource
+from app.models.dto.auth import TokenPayload
 from app.models.schemas.audit_log import AuditLogItem
 from app.service.audit_log_service import AuditLogService
 
@@ -23,7 +24,7 @@ router = APIRouter(
 )
 
 
-# List recent audit logs
+# List recent audit logs (admin-only)
 @router.get(
     "/",
     responses=audit_responses,
@@ -33,12 +34,13 @@ router = APIRouter(
 async def get_recent_audit_logs(
     limit: int = Query(50, ge=1, le=500, description="Maximum number of entries to return."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[AuditLogItem]:
     """Get the most recent audit log entries."""
     return await service.get_recent_audit_logs(limit)
 
 
-# List audit logs by date range
+# List audit logs by date range (admin-only)
 @router.get(
     "/date-range",
     responses=audit_responses,
@@ -50,6 +52,7 @@ async def get_audit_logs_by_date_range(
     end: Optional[datetime] = Query(None, description="End of date range (ISO 8601). Defaults to now."),
     election_id: Optional[UUID] = Query(None, description="Optional election scope."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[AuditLogItem]:
     """List audit log entries within a date range, optionally scoped to an election.
 
@@ -61,7 +64,7 @@ async def get_audit_logs_by_date_range(
     return await service.get_audit_logs_by_date_range(resolved_start, resolved_end, election_id)
 
 
-# List audit logs by election
+# List audit logs by election (admin-only)
 @router.get(
     "/election/{election_id}",
     responses=audit_responses,
@@ -71,12 +74,13 @@ async def get_audit_logs_by_date_range(
 async def get_audit_logs_by_election(
     election_id: UUID = Path(..., description="The election ID."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[AuditLogItem]:
     """List all audit log entries for a specific election."""
     return await service.get_audit_logs_by_election(election_id)
 
 
-# List audit logs by actor
+# List audit logs by actor (admin-only)
 @router.get(
     "/actor/{actor_id}",
     responses=audit_responses,
@@ -86,12 +90,13 @@ async def get_audit_logs_by_election(
 async def get_audit_logs_by_actor(
     actor_id: UUID = Path(..., description="The actor (user) ID."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[AuditLogItem]:
     """List all audit log entries for a specific actor."""
     return await service.get_audit_logs_by_actor(actor_id)
 
 
-# List audit logs by actor type (OFFICIAL, VOTER, SYSTEM)
+# List audit logs by actor type (admin-only)
 @router.get(
     "/actor-type/{actor_type}",
     responses=audit_responses,
@@ -101,12 +106,13 @@ async def get_audit_logs_by_actor(
 async def get_audit_logs_by_actor_type(
     actor_type: str = Path(..., description="The actor type (OFFICIAL, VOTER, SYSTEM)."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[AuditLogItem]:
     """List all audit log entries for a specific actor type."""
     return await service.get_audit_logs_by_actor_type(actor_type.upper())
 
 
-# List audit logs by resource
+# List audit logs by resource (admin-only)
 @router.get(
     "/resource/{resource_type}/{resource_id}",
     responses=audit_responses,
@@ -117,12 +123,13 @@ async def get_audit_logs_by_resource(
     resource_type: str = Path(..., description="The resource type (e.g. voter, election)."),
     resource_id: UUID = Path(..., description="The resource ID."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[AuditLogItem]:
     """List all audit log entries for a specific resource."""
     return await service.get_audit_logs_by_resource(resource_type, resource_id)
 
 
-# List audit logs by event type
+# List audit logs by event type (admin-only)
 @router.get(
     "/event-type/{event_type}",
     responses=audit_responses,
@@ -132,12 +139,13 @@ async def get_audit_logs_by_resource(
 async def get_audit_logs_by_event_type(
     event_type: str = Path(..., description="The event type (e.g. VOTER_REGISTERED, VOTE_CAST)."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[AuditLogItem]:
     """List all audit log entries of a specific event type."""
     return await service.get_audit_logs_by_event_type(event_type)
 
 
-# Get audit log by ID (must be last — wildcard path)
+# Get audit log by ID (admin-only, must be last — wildcard path)
 @router.get(
     "/{audit_id}",
     responses=audit_responses,
@@ -147,6 +155,7 @@ async def get_audit_logs_by_event_type(
 async def get_audit_log_by_id(
     audit_id: UUID = Path(..., description="The audit log entry ID."),
     service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> AuditLogItem:
     """Get a single audit log entry by ID."""
     return await service.get_audit_log_by_id(audit_id)
