@@ -29,8 +29,12 @@ from app.models.schemas.biometric import (
     VerifyBiometricResponse,
     DeviceCredentialItem,
 )
+from app.application.core.exceptions import ValidationError
 from app.repository.biometric_credentials_repo import BiometricCredentialsRepository
 from app.repository.biometric_challenge_repo import BiometricChallengeRepository
+from app.repository.voter_repo import VoterRepository
+from app.repository.audit_log_repo import AuditLogRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 
 logger = structlog.get_logger()
 
@@ -45,11 +49,14 @@ class BiometricService:
         self,
         credentials_repo: BiometricCredentialsRepository,
         challenge_repo: BiometricChallengeRepository,
+        voter_repo: VoterRepository,
         session: AsyncSession,
     ):
         self.credentials_repo = credentials_repo
         self.challenge_repo = challenge_repo
+        self.voter_repo = voter_repo
         self.session = session
+        self._audit_log_repo = AuditLogRepository()
 
 
     async def enroll_device(self, request: EnrollDeviceRequest) -> EnrollDeviceResponse:
@@ -60,6 +67,9 @@ class BiometricService:
         active credential, it is deactivated first (re-enrollment).
         """
         voter_id = UUID(request.voter_id)
+
+        # Verify the voter exists before enrolling
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
         # Validate the public key parses as ECDSA P-256
         self._parse_public_key(request.public_key_pem)
@@ -85,6 +95,20 @@ class BiometricService:
         )
         credential = await self.credentials_repo.create(self.session, credential)
 
+        # Audit: biometric enrolled
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="BIOMETRIC_ENROLLED",
+                action="CREATE",
+                summary=f"Biometric device enrolled for voter {voter_id}",
+                resource_type="biometric_credential",
+                resource_id=credential.id,
+                actor_type="VOTER",
+                actor_id=voter_id,
+            ),
+        )
+
         return EnrollDeviceResponse(
             id=str(credential.id),
             voter_id=str(credential.voter_id),
@@ -100,6 +124,9 @@ class BiometricService:
     ) -> CreateChallengeResponse:
         """Generate a fresh random challenge for the voter's device to sign."""
         voter_id = UUID(request.voter_id)
+
+        # Verify the voter exists before creating a challenge
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
         # 32 random bytes → 64 hex chars
         challenge_bytes = os.urandom(32)
@@ -176,6 +203,20 @@ class BiometricService:
                 voter_id=str(challenge.voter_id),
                 error=str(exc),
             )
+
+            # Audit: biometric verification failed
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="BIOMETRIC_FAILED",
+                    action="VERIFY",
+                    summary=f"Biometric verification failed for voter {challenge.voter_id}",
+                    resource_type="biometric_credential",
+                    actor_type="VOTER",
+                    actor_id=challenge.voter_id,
+                ),
+            )
+
             return VerifyBiometricResponse(
                 verified=False,
                 message="Signature verification failed.",
@@ -184,6 +225,20 @@ class BiometricService:
         # 4. Mark used & update last_used_at
         await self.challenge_repo.mark_used(self.session, challenge_id)
         await self.credentials_repo.touch_last_used(self.session, credential.id)
+
+        # Audit: biometric verification succeeded
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="BIOMETRIC_VERIFIED",
+                action="VERIFY",
+                summary=f"Biometric verification succeeded for voter {challenge.voter_id}",
+                resource_type="biometric_credential",
+                resource_id=credential.id,
+                actor_type="VOTER",
+                actor_id=challenge.voter_id,
+            ),
+        )
 
         logger.info(
             "Biometric verification succeeded",
@@ -221,9 +276,12 @@ class BiometricService:
     @staticmethod
     def _parse_public_key(pem: str) -> ec.EllipticCurvePublicKey:
         """Parse and validate a PEM-encoded ECDSA P-256 public key."""
-        key = serialization.load_pem_public_key(pem.encode("utf-8"))
+        try:
+            key = serialization.load_pem_public_key(pem.encode("utf-8"))
+        except (ValueError, Exception) as exc:
+            raise ValidationError(f"Invalid PEM public key: {exc}") from exc
         if not isinstance(key, ec.EllipticCurvePublicKey):
-            raise ValueError("Key is not an elliptic-curve public key")
+            raise ValidationError("Key is not an elliptic-curve public key")
         if not isinstance(key.curve, ec.SECP256R1):
-            raise ValueError("Key must use the P-256 (secp256r1) curve")
+            raise ValidationError("Key must use the P-256 (secp256r1) curve")
         return key

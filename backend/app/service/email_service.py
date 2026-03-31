@@ -1,0 +1,47 @@
+"""Email service — sends transactional emails via Resend."""
+
+import structlog
+
+from app.infra.email.client import ResendEmailClient
+from app.models.dto.email import SendEmailDTO
+
+logger = structlog.get_logger()
+
+
+class EmailService:
+    """Thin service layer around the Resend email client."""
+
+    def __init__(self, client: ResendEmailClient) -> None:
+        self._client = client
+
+    def send_email(self, dto: SendEmailDTO) -> None:
+        """Send a single email."""
+        self._client.send(
+            to_email=dto.to_email,
+            subject=dto.subject,
+            template_name=dto.template_name,
+            template_vars=dto.template_vars,
+        )
+
+    def send_registration_confirmation(self, to_email: str) -> None:
+        """Send a registration confirmation email."""
+        self.send_email(
+            SendEmailDTO(
+                to_email=to_email,
+                subject="Thank you for registering to vote",
+                template_name="registeration_confirmation.html",
+            )
+        )
+
+    def send_vote_confirmation(
+        self, to_email: str, vote_name: str, vote_type: str = "election"
+    ) -> None:
+        """Send a vote receipt / confirmation email for an election or referendum."""
+        self.send_email(
+            SendEmailDTO(
+                to_email=to_email,
+                subject=f"Vote confirmation — {vote_name}",
+                template_name="voting_confirmation.html",
+                template_vars={"vote_name": vote_name, "vote_type": vote_type},
+            )
+        )

@@ -21,6 +21,8 @@ from app.models.sqlalchemy.election import Election, ElectionStatus
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.tally_result_repo import TallyResultRepository
+from app.repository.candidate_repo import CandidateRepository
+from app.repository.voter_repo import VoterRepository
 from app.repository.vote_repo import VoteRepository
 from app.repository.referendum_vote_repo import ReferendumVoteRepository
 from app.repository.voter_ledger_repo import VoterLedgerRepository
@@ -29,6 +31,9 @@ from app.repository.referendum_repo import ReferendumRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
+from app.service.email_service import EmailService
+from app.repository.audit_log_repo import AuditLogRepository
+from app.models.sqlalchemy.audit_log import AuditLog
 
 logger = structlog.get_logger()
 
@@ -54,9 +59,13 @@ class VotingService(EncryptionUtilsMixin):
         tally_result_repo: TallyResultRepository,
         election_repo: ElectionRepository,
         referendum_repo: ReferendumRepository,
+        candidate_repo: CandidateRepository,
+        voter_repo: VoterRepository,
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
+        email_service: EmailService | None = None,
+        audit_log_repo: AuditLogRepository | None = None,
     ):
         self.vote_repo = vote_repo
         self.referendum_vote_repo = referendum_vote_repo
@@ -65,9 +74,13 @@ class VotingService(EncryptionUtilsMixin):
         self.tally_result_repo = tally_result_repo
         self.election_repo = election_repo
         self.referendum_repo = referendum_repo
+        self.candidate_repo = candidate_repo
+        self.voter_repo = voter_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
+        self._email_service = email_service
+        self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
     async def cast_vote(self, request: CastVoteRequest) -> CastVoteResponse:
         """Cast a vote in an election.
@@ -87,13 +100,16 @@ class VotingService(EncryptionUtilsMixin):
         election_id = UUID(request.election_id)
         constituency_id = UUID(request.constituency_id)
         candidate_id = UUID(request.candidate_id)
-        blind_token_hash = UUID(request.blind_token_hash)
+        blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
         # 1. Validate the election exists and is OPEN
         election = await self.election_repo.get_election_by_id(self.session, election_id)
         if election.status != ElectionStatus.OPEN.value:
             raise ValidationError("Election is not open for voting.")
+
+        # 1b. Validate the voter exists
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
         # 2. Check Voter_Ledger — has this voter already voted?
         existing_ledger = await self._get_voter_ledger_entry(voter_id, election_id)
@@ -102,9 +118,10 @@ class VotingService(EncryptionUtilsMixin):
                 "You have already voted in this election. Each voter may only vote once."
             )
 
-        # 3. Validate the blind ballot token
+        # 3. Validate the blind ballot token (lookup via HMAC search token)
+        search_token = await self._compute_ballot_search_token(blind_token_hash)
         ballot_token = await self.ballot_token_repo.get_by_blind_token_hash(
-            self.session, blind_token_hash
+            self.session, search_token
         )
         if not ballot_token:
             raise ValidationError("Invalid ballot token.")
@@ -114,6 +131,9 @@ class VotingService(EncryptionUtilsMixin):
             raise ValidationError("Ballot token does not belong to this election.")
         if ballot_token.constituency_id != constituency_id:
             raise ValidationError("Ballot token does not belong to this constituency.")
+
+        # 3b. Validate the candidate exists
+        await self.candidate_repo.get_candidate_by_id(self.session, candidate_id)
 
         # 4. Create the anonymous vote record (NO voter_id — preserves anonymity)
         receipt_code = secrets.token_urlsafe(32)
@@ -159,13 +179,27 @@ class VotingService(EncryptionUtilsMixin):
         # 8. Optionally send email confirmation (non-blocking)
         if request.send_email_confirmation:
             try:
-                await self._send_vote_confirmation_email(voter_id, election.title)
+                await self._send_vote_confirmation_email(voter_id, election.title, "election")
             except Exception:
                 logger.warning(
                     "Failed to send vote confirmation email",
                     voter_id=str(voter_id),
                     election_id=str(election_id),
                 )
+
+        # 8b. Audit: vote cast (no voter_id to preserve anonymity)
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="VOTE_CAST",
+                action="CREATE",
+                summary=f"Vote cast in election {election_id}",
+                resource_type="vote",
+                resource_id=vote.id,
+                election_id=election_id,
+                actor_type="VOTER",
+            ),
+        )
 
         logger.info(
             "Vote cast successfully",
@@ -202,7 +236,7 @@ class VotingService(EncryptionUtilsMixin):
         voter_id = UUID(request.voter_id)
         referendum_id = UUID(request.referendum_id)
         choice = request.choice.upper()
-        blind_token_hash = UUID(request.blind_token_hash)
+        blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
         # 1. Validate the referendum exists and is OPEN
@@ -211,6 +245,9 @@ class VotingService(EncryptionUtilsMixin):
         )
         if referendum.status != "OPEN":
             raise ValidationError("Referendum is not open for voting.")
+
+        # 1b. Validate the voter exists
+        await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
         # 2. Check Voter_Ledger — has this voter already voted?
         existing_ledger = await self._get_referendum_voter_ledger_entry(
@@ -221,9 +258,10 @@ class VotingService(EncryptionUtilsMixin):
                 "You have already voted in this referendum. Each voter may only vote once."
             )
 
-        # 3. Validate the blind ballot token
+        # 3. Validate the blind ballot token (lookup via HMAC search token)
+        search_token = await self._compute_ballot_search_token(blind_token_hash)
         ballot_token = await self.ballot_token_repo.get_by_blind_token_hash(
-            self.session, blind_token_hash
+            self.session, search_token
         )
         if not ballot_token:
             raise ValidationError("Invalid ballot token.")
@@ -264,13 +302,26 @@ class VotingService(EncryptionUtilsMixin):
         # 8. Optionally send email confirmation (non-blocking)
         if request.send_email_confirmation:
             try:
-                await self._send_vote_confirmation_email(voter_id, referendum.title)
+                await self._send_vote_confirmation_email(voter_id, referendum.title, "referendum")
             except Exception:
                 logger.warning(
                     "Failed to send referendum vote confirmation email",
                     voter_id=str(voter_id),
                     referendum_id=str(referendum_id),
                 )
+
+        # 8b. Audit: referendum vote cast (no voter_id to preserve anonymity)
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="VOTE_CAST",
+                action="CREATE",
+                summary=f"Referendum vote cast in referendum {referendum_id}",
+                resource_type="referendum_vote",
+                resource_id=vote.id,
+                actor_type="VOTER",
+            ),
+        )
 
         logger.info(
             "Referendum vote cast successfully",
@@ -351,18 +402,30 @@ class VotingService(EncryptionUtilsMixin):
         )
         return ledger
 
-    async def _send_vote_confirmation_email(
-        self, voter_id: UUID, election_name: str
-    ) -> None:
-        """Send a vote confirmation email to the voter.
+    async def _compute_ballot_search_token(self, blind_token_hash: str) -> str:
+        """Compute the HMAC search token for a plaintext blind_token_hash."""
+        await self._keys_manager.init_org_keys(self.session, org_id=None)
+        args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
+        return await self._mapper.create_search_token(blind_token_hash, args, self.session)
 
-        Note: The email service infrastructure (SMTP client) is not yet
-        implemented. This method is a placeholder that logs the intent.
-        Once the email infra is wired up, replace with actual send logic.
-        """
-        logger.info(
-            "Vote confirmation email queued",
-            voter_id=str(voter_id),
-            election_name=election_name,
-            template="voting_confirmation.html",
-        )
+    async def _send_vote_confirmation_email(
+        self, voter_id: UUID, vote_name: str, vote_type: str = "election"
+    ) -> None:
+        """Send a vote confirmation email to the voter."""
+        if not self._email_service:
+            logger.warning("Email service not configured, skipping vote confirmation email")
+            return
+
+        # Decrypt voter email
+        voter = await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        await self._keys_manager.init_org_keys(self.session, org_id=None)
+        args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
+
+        from app.models.dto.voter import VoterDTO
+        voter_dto = await self._mapper.decrypt_model(voter, VoterDTO, args, self.session)
+
+        if not voter_dto.email:
+            logger.warning("Voter has no email address", voter_id=str(voter_id))
+            return
+
+        self._email_service.send_vote_confirmation(voter_dto.email, vote_name, vote_type)
