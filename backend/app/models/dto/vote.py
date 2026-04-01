@@ -22,6 +22,8 @@ class CreateVotePlainDTO(VoteBaseDTO):
     election_id: Optional[UUID] = None
     constituency_id: Optional[UUID] = None
     candidate_id: Optional[UUID] = None
+    party_id: Optional[UUID] = None
+    preference_rank: Optional[int] = None
     blind_token_hash: Optional[str] = None
     receipt_code: Optional[str] = None
     email_sent: bool = False
@@ -34,6 +36,8 @@ class CreateVoteEncryptedDTO(VoteBaseDTO):
     election_id: Optional[UUID] = None
     constituency_id: Optional[UUID] = None
     candidate_id: Optional[UUID] = None
+    party_id: Optional[UUID] = None
+    preference_rank: Optional[int] = None
     blind_token_hash: Optional[str] = None
     receipt_code: Optional[str] = None
     email_sent: bool = False

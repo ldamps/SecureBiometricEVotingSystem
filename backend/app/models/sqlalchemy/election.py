@@ -18,19 +18,54 @@ if TYPE_CHECKING:
 
 
 class ElectionType(str, enum.Enum):
-    """
-    Election type.
-    ** GENERAL ** - General election.
-    ** REFERENDUM ** - Referendum.
-    ** LOCAL ** - Local election.
-    """
+    """UK election types — each maps to a specific electoral system."""
+
+    # FPTP elections
     GENERAL = "GENERAL"
-    LOCAL = "LOCAL"
-    SCOTTISH_PARLIAMENT = "SCOTTISH_PARLIAMENT"
-    NORTHERN_IRELAND_ASSEMBLY = "NORTHERN_IRELAND_ASSEMBLY"
-    WELSH_PARLIAMENT = "WELSH_PARLIAMENT"
+    LOCAL_ENGLAND_WALES = "LOCAL_ENGLAND_WALES"
     MAYORS = "MAYORS"
     POLICE_AND_CRIME_COMMISSIONER = "POLICE_AND_CRIME_COMMISSIONER"
+    SCOTTISH_NATIONAL_PARK = "SCOTTISH_NATIONAL_PARK"
+
+    # AMS elections
+    SCOTTISH_PARLIAMENT = "SCOTTISH_PARLIAMENT"
+    LONDON_ASSEMBLY = "LONDON_ASSEMBLY"
+
+    # STV elections
+    NORTHERN_IRELAND_ASSEMBLY = "NORTHERN_IRELAND_ASSEMBLY"
+    LOCAL_NORTHERN_IRELAND_SCOTLAND = "LOCAL_NORTHERN_IRELAND_SCOTLAND"
+
+    # Alternative Vote elections
+    HOUSE_OF_LORDS_HEREDITARY = "HOUSE_OF_LORDS_HEREDITARY"
+    SCOTTISH_CROFTING_COMMISSION = "SCOTTISH_CROFTING_COMMISSION"
+
+
+class AllocationMethod(str, enum.Enum):
+    """Electoral systems used in UK elections."""
+    FPTP = "FPTP"
+    AMS = "AMS"
+    STV = "STV"
+    ALTERNATIVE_VOTE = "ALTERNATIVE_VOTE"
+
+
+# Deterministic mapping: election type -> allocation method.
+ELECTION_TYPE_ALLOCATION_MAP: dict[ElectionType, AllocationMethod] = {
+    # First Past The Post
+    ElectionType.GENERAL: AllocationMethod.FPTP,
+    ElectionType.LOCAL_ENGLAND_WALES: AllocationMethod.FPTP,
+    ElectionType.MAYORS: AllocationMethod.FPTP,
+    ElectionType.POLICE_AND_CRIME_COMMISSIONER: AllocationMethod.FPTP,
+    ElectionType.SCOTTISH_NATIONAL_PARK: AllocationMethod.FPTP,
+    # Additional Member System
+    ElectionType.SCOTTISH_PARLIAMENT: AllocationMethod.AMS,
+    ElectionType.LONDON_ASSEMBLY: AllocationMethod.AMS,
+    # Single Transferable Vote
+    ElectionType.NORTHERN_IRELAND_ASSEMBLY: AllocationMethod.STV,
+    ElectionType.LOCAL_NORTHERN_IRELAND_SCOTLAND: AllocationMethod.STV,
+    # Alternative Vote
+    ElectionType.HOUSE_OF_LORDS_HEREDITARY: AllocationMethod.ALTERNATIVE_VOTE,
+    ElectionType.SCOTTISH_CROFTING_COMMISSION: AllocationMethod.ALTERNATIVE_VOTE,
+}
 
 class ElectionScope(str, enum.Enum):
     """

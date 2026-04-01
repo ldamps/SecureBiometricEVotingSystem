@@ -24,6 +24,7 @@ class TallyResultDTO(TallyResultBaseDTO):
     election_id: Optional[UUID] = None
     constituency_id: Optional[UUID] = None
     candidate_id: Optional[UUID] = None
+    party_id: Optional[UUID] = None
     referendum_id: Optional[UUID] = None
     choice: Optional[str] = None
     vote_count: int = 0
@@ -36,6 +37,7 @@ class TallyResultDTO(TallyResultBaseDTO):
             election_id=model.election_id,
             constituency_id=model.constituency_id,
             candidate_id=model.candidate_id,
+            party_id=model.party_id,
             referendum_id=model.referendum_id,
             choice=model.choice,
             vote_count=model.vote_count,
@@ -48,6 +50,7 @@ class TallyResultDTO(TallyResultBaseDTO):
             election_id=str(self.election_id) if self.election_id else None,
             constituency_id=str(self.constituency_id) if self.constituency_id else None,
             candidate_id=str(self.candidate_id) if self.candidate_id else None,
+            party_id=str(self.party_id) if self.party_id else None,
             referendum_id=str(self.referendum_id) if self.referendum_id else None,
             choice=self.choice,
             vote_count=self.vote_count,

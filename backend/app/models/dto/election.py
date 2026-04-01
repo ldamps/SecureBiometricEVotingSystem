@@ -7,7 +7,7 @@ from uuid import UUID
 
 from app.application.constants import Resource
 from app.models.schemas.election import ElectionItem, CreateElectionRequest, UpdateElectionRequest
-from app.models.sqlalchemy.election import Election, ElectionType, ElectionScope, ElectionStatus
+from app.models.sqlalchemy.election import Election, ElectionType, ElectionScope, ElectionStatus, AllocationMethod
 
 
 @dataclass

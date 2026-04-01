@@ -43,6 +43,15 @@ class TallyResult(Base, UUIDPrimaryKeyMixin):
         index=True,
     )
 
+    # Party tally field (set for AMS regional-list tallies)
+    party_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("party.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="Set for AMS regional-list tallies.",
+    )
+
     # Referendum tally fields (nullable — NULL for election tallies)
     referendum_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
