@@ -2,6 +2,7 @@
 
 import { ApiClient } from "../../../services/api-client.service";
 import {
+  AllocationMethod,
   CreateElectionRequest,
   Election,
   ElectionScope,
@@ -31,7 +32,7 @@ function mapElectionCore(b: BackendElectionItem): Election {
     title: b.title,
     election_type: b.election_type,
     scope: b.scope,
-    allocation_method: b.allocation_method,
+    allocation_method: b.allocation_method as AllocationMethod,
     status: b.status,
     voting_opens: b.voting_opens ?? undefined,
     voting_closes: b.voting_closes ?? undefined,
@@ -52,7 +53,6 @@ function createElectionBody(body: CreateElectionRequest): Record<string, unknown
     title: body.title,
     election_type: body.election_type,
     scope: body.scope,
-    allocation_method: body.allocation_method,
     status: body.status,
     voting_opens: body.voting_opens,
     voting_closes: body.voting_closes,
