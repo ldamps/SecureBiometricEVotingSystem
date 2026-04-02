@@ -1,4 +1,4 @@
-// Voter models - Based on the backend models
+// Voter models - Based on the backend models (includes passport model, address model, and voter ledger model)
 
 export enum VoterStatus {
     /** 

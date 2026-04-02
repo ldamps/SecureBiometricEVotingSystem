@@ -15,6 +15,7 @@ const VoterRegisterPage: React.FC = () => {
         lastName: "",
         email: "",
         dateOfBirth: "",
+        identificationMethod: "",
         nationalInsuranceNumber: "",
         passportNumber: "",
         passportCountry: "",
@@ -32,6 +33,10 @@ const VoterRegisterPage: React.FC = () => {
         postcode: "",
         county: "",
         country: "",
+        kycSessionId: "",
+        kycStatus: "",
+        addressKycSessionId: "",
+        addressKycStatus: "",
     });
 
     const next = () => setStep(s => Math.min(s + 1, 5));

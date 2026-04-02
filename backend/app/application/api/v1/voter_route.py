@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, Path, status
+from fastapi import APIRouter, Body, Depends, File, Path, UploadFile, status
 
 from app.application.api.dependencies import (
     get_address_service,
@@ -110,6 +110,28 @@ async def verify_voter_identity(
 ):
     """Verify a voter's identity by matching their name and address details against registered voters."""
     return await service.verify_voter_identity(body)
+
+
+# Verify a voter's proof of address
+@router.post(
+    "/{voter_id}/verify-address",
+    responses=voter_responses,
+    status_code=status.HTTP_200_OK,
+)
+async def verify_proof_of_address(
+    voter_id: UUID = Path(..., description="The unique identifier for the voter."),
+    file: UploadFile = File(..., description="Proof of address document (e.g. utility bill, bank statement, council tax bill)."),
+    service: AddressService = Depends(get_address_service),
+):
+    """Verify a voter's address by validating an uploaded proof of address document."""
+    # TODO: Implement proof of address verification logic
+    #   - Validate file type (PDF, JPG, PNG) and size
+    #   - Extract address details from the document (e.g. via OCR)
+    #   - Compare extracted address against the voter's registered address
+    #   - Update address verification status accordingly
+    #   - Create audit log entry
+    logger.info("verify_proof_of_address called", voter_id=str(voter_id), filename=file.filename)
+    return {"status": "pending", "message": "Proof of address verification is not yet implemented."}
 
 
 ### VOTER ADDRESS ROUTES ###
@@ -344,3 +366,14 @@ async def create_voter_ledger_entry(
     """Create a voter ledger entry."""
     dto = CreateVoterLedgerPlainDTO.create_dto(body, voter_id)
     return await service.create_voter_ledger(dto)
+
+### VOTER ELIGIBILITY ROUTES ###
+
+# Check voter eligibility
+@router.post(
+    "/{voter_id}/eligibility-review",
+    status_code=status.HTTP_200_OK,
+)
+async def check_voter_eligibility():
+    """Check voter eligibility."""
+    pass

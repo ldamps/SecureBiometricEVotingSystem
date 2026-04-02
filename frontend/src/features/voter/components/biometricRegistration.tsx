@@ -123,11 +123,16 @@ function BiometricRegistration({
         setQrPayload(null);
     };
 
+    const kycVerified = state.kycStatus === "verified";
+
     const statusMessages: Record<BiometricEnrollmentStatus, string> = {
         [BiometricEnrollmentStatus.NOT_STARTED]:
             "To secure your vote, we need to link your mobile device. " +
             "Your face and ear biometrics will be stored only on your phone \u2014 " +
-            "they are never sent to our servers.",
+            "they are never sent to our servers." +
+            (kycVerified
+                ? " Your biometric selfie will be cross-referenced with the photo ID you provided during identity verification to confirm they match."
+                : ""),
         [BiometricEnrollmentStatus.WAITING_FOR_DEVICE]:
             "Scan the QR code below with your mobile voting app. " +
             "The app will guide you through capturing your face and ear biometrics. " +

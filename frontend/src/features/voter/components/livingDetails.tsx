@@ -104,7 +104,7 @@ function LivingDetails({
                     {PREVIOUS_ADDRESS_FIELDS.map((f) => (
                         <div key={f.key} style={{ marginBottom: "0.75rem" }}>
                             <label htmlFor={f.key} style={getStepLabelStyle(theme)}>
-                                {f.label}{f.required ? "" : " (optional)"}
+                                {f.label}{f.required ? <span style={{ color: theme.colors.status.error }}> *</span> : " (optional)"}
                             </label>
                             {f.key === "prevAddrCounty" ? (
                                 <select
