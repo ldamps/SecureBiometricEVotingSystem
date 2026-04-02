@@ -51,7 +51,7 @@ router = APIRouter(
 )
 
 
-# get election by ID (any official)
+# get election by ID (public – voters browse before authenticating)
 @router.get(
     "/{election_id}",
     responses=election_responses,
@@ -60,13 +60,12 @@ router = APIRouter(
 async def get_election_by_id(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     service: ElectionService = Depends(get_election_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> ElectionItem:
     """Get election details by election ID."""
     return await service.get_election_by_id(election_id)
 
 
-# get all elections (any official)
+# get all elections (public – voters browse before authenticating)
 @router.get(
     "/",
     responses=election_responses,
@@ -75,7 +74,6 @@ async def get_election_by_id(
 )
 async def get_all_elections(
     service: ElectionService = Depends(get_election_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[ElectionItem]:
     """Get all elections."""
     return await service.get_all_elections()
