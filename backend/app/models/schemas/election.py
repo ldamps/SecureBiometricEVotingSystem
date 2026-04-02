@@ -31,12 +31,13 @@ class CreateElectionRequest(RequestSchema):
 
     The allocation_method is automatically derived from the election_type
     based on the UK electoral system mapping. It does not need to be provided.
+    Initial ``OPEN``/``CLOSED`` status is set from ``voting_opens`` / ``voting_closes``
+    and the current time (``CLOSED`` if neither time is set).
     """
     title: str = Field(..., description="The title of the election.")
     election_type: ElectionType = Field(..., description="The type of election.")
     scope: ElectionScope = Field(..., description="The scope of the election.")
     allocation_method: Optional[str] = Field(None, description="Auto-derived from election_type. Ignored if provided.")
-    status: ElectionStatus = Field(..., description="The status of the election.")
     voting_opens: Optional[datetime] = Field(None, description="The date and time the election opens for voting.")
     voting_closes: Optional[datetime] = Field(None, description="The date and time the election closes for voting.")
     created_by: Optional[str] = Field(None, description="The ID of the election official who created this election.")
@@ -54,6 +55,9 @@ class UpdateElectionRequest(RequestSchema):
     Only status, voting_opens, and voting_closes can be modified
     after an election has been created. All other fields are immutable.
     """
-    status: Optional[ElectionStatus] = Field(None, description="The status of the election.")
+    status: Optional[ElectionStatus] = Field(
+        None,
+        description="Election status. Officials may set CANCELLED from OPEN or CLOSED (terminal).",
+    )
     voting_opens: Optional[datetime] = Field(None, description="The date and time the election opens for voting.")
     voting_closes: Optional[datetime] = Field(None, description="The date and time the election closes for voting.")

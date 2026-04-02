@@ -51,6 +51,21 @@ router = APIRouter(
 )
 
 
+# get all elections (public – voters browse before authenticating).
+# Declared before /{election_id} so GET /election/ is not captured by the path param route.
+@router.get(
+    "/",
+    responses=election_responses,
+    response_model=List[ElectionItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_elections(
+    service: ElectionService = Depends(get_election_service),
+) -> List[ElectionItem]:
+    """Get all elections."""
+    return await service.get_all_elections()
+
+
 # get election by ID (public – voters browse before authenticating)
 @router.get(
     "/{election_id}",
@@ -65,20 +80,6 @@ async def get_election_by_id(
     return await service.get_election_by_id(election_id)
 
 
-# get all elections (public – voters browse before authenticating)
-@router.get(
-    "/",
-    responses=election_responses,
-    response_model=List[ElectionItem],
-    status_code=status.HTTP_200_OK,
-)
-async def get_all_elections(
-    service: ElectionService = Depends(get_election_service),
-) -> List[ElectionItem]:
-    """Get all elections."""
-    return await service.get_all_elections()
-
-
 # create an election (admin-only)
 @router.post(
     "/",
@@ -91,7 +92,7 @@ async def create_election(
     service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
-    """Create a new election."""
+    """Create a new election (status is derived from voting window times)."""
     dto = CreateElectionPlainDTO.create_dto(body)
     return await service.create_election(dto)
 

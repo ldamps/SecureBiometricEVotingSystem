@@ -1,6 +1,7 @@
 // election-api.repository.ts - Election API repository
 
 import { ApiClient } from "../../../services/api-client.service";
+import { isWithinScheduledVotingWindow } from "../../../utils/voting-window";
 import {
   AllocationMethod,
   CreateElectionRequest,
@@ -53,7 +54,6 @@ function createElectionBody(body: CreateElectionRequest): Record<string, unknown
     title: body.title,
     election_type: body.election_type,
     scope: body.scope,
-    status: body.status,
     voting_opens: body.voting_opens,
     voting_closes: body.voting_closes,
     created_by: body.created_by,
@@ -76,7 +76,9 @@ export class ElectionApiRepository {
 
   async listElections(): Promise<Election[]> {
     // Backend route is defined as "/election/" (with trailing slash).
-    const rows = await ApiClient.get<BackendElectionItem[]>(`${ROOT}/`);
+    const rows = await ApiClient.get<BackendElectionItem[]>(`${ROOT}/`, {
+      omitAuth: true,
+    });
     return rows.map(mapElectionCore);
   }
 
@@ -101,6 +103,10 @@ export class ElectionApiRepository {
 
   async listOpenElections(): Promise<Election[]> {
     const elections = await this.listElections();
-    return elections.filter((election) => election.status === ElectionStatus.OPEN);
+    return elections.filter(
+      (election) =>
+        election.status === ElectionStatus.OPEN &&
+        isWithinScheduledVotingWindow(election.voting_opens, election.voting_closes),
+    );
   }
 }

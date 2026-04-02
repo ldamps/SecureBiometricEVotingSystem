@@ -38,7 +38,13 @@ const VoteCastingPage = () => {
                 justifyContent: "flex-start",
             }}
         >
-            <div style={{ width: "100%", maxWidth: "480px", margin: "0 auto" }}>
+            <div
+                style={{
+                    width: "100%",
+                    maxWidth: step === 1 ? "min(100%, 52rem)" : "480px",
+                    margin: "0 auto",
+                }}
+            >
                 {pages[step-1]}
             </div>
         </div>

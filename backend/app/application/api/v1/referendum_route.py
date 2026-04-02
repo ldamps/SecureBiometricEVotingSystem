@@ -46,7 +46,7 @@ router = APIRouter(
 )
 
 
-# Get all referendums (any official)
+# Get all referendums (public – voters browse before authenticating)
 @router.get(
     "/",
     responses=referendum_responses,
@@ -55,13 +55,12 @@ router = APIRouter(
 )
 async def get_all_referendums(
     service: ReferendumService = Depends(get_referendum_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[ReferendumItem]:
     """Get all referendums."""
     return await service.get_all_referendums()
 
 
-# Get referendum by ID (any official)
+# Get referendum by ID (public – voters browse before authenticating)
 @router.get(
     "/{referendum_id}",
     responses=referendum_responses,
@@ -71,7 +70,6 @@ async def get_all_referendums(
 async def get_referendum_by_id(
     referendum_id: UUID = Path(..., description="The unique identifier for the referendum."),
     service: ReferendumService = Depends(get_referendum_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> ReferendumItem:
     """Get referendum details by ID."""
     return await service.get_referendum_by_id(referendum_id)
@@ -89,7 +87,7 @@ async def create_referendum(
     service: ReferendumService = Depends(get_referendum_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
-    """Create a new referendum with a yes/no question for voters."""
+    """Create a new referendum (status is derived from voting window times)."""
     dto = CreateReferendumPlainDTO.create_dto(body)
     return await service.create_referendum(dto)
 

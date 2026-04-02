@@ -9,6 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.core.exceptions import BusinessLogicError, NotFoundError, ValidationError
+from app.application.core.voting_window import is_within_scheduled_voting_window
+from app.service.voting_schedule_status_sync import (
+    sync_election_status_with_voting_schedule,
+    sync_referendum_status_with_voting_schedule,
+)
 from app.models.dto.vote import CreateVotePlainDTO, CreateVoteEncryptedDTO
 from app.models.sqlalchemy.election import AllocationMethod, ELECTION_TYPE_ALLOCATION_MAP, ElectionType
 from app.models.dto.referendum_vote import CreateReferendumVoteEncryptedDTO
@@ -19,6 +24,7 @@ from app.models.schemas.vote import (
     CastReferendumVoteResponse,
 )
 from app.models.sqlalchemy.election import Election, ElectionStatus
+from app.models.sqlalchemy.referendum import ReferendumStatus
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.tally_result_repo import TallyResultRepository
@@ -111,10 +117,19 @@ class VotingService(EncryptionUtilsMixin):
         blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
-        # 1. Validate the election exists and is OPEN
+        # 1. Validate the election exists, is OPEN, and within scheduled voting window
         election = await self.election_repo.get_election_by_id(self.session, election_id)
+        election = await sync_election_status_with_voting_schedule(
+            self.session, self.election_repo, election
+        )
         if election.status != ElectionStatus.OPEN.value:
+            if election.status == ElectionStatus.CANCELLED.value:
+                raise ValidationError("This election has been cancelled.")
             raise ValidationError("Election is not open for voting.")
+        if not is_within_scheduled_voting_window(
+            now, election.voting_opens, election.voting_closes
+        ):
+            raise ValidationError("Voting is not open at this time for this election.")
 
         allocation_method = election.allocation_method
 
@@ -318,12 +333,21 @@ class VotingService(EncryptionUtilsMixin):
         blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
-        # 1. Validate the referendum exists and is OPEN
+        # 1. Validate the referendum exists, is OPEN, and within scheduled voting window
         referendum = await self.referendum_repo.get_referendum_by_id(
             self.session, referendum_id
         )
-        if referendum.status != "OPEN":
+        referendum = await sync_referendum_status_with_voting_schedule(
+            self.session, self.referendum_repo, referendum
+        )
+        if referendum.status != ReferendumStatus.OPEN.value:
+            if referendum.status == ReferendumStatus.CANCELLED.value:
+                raise ValidationError("This referendum has been cancelled.")
             raise ValidationError("Referendum is not open for voting.")
+        if not is_within_scheduled_voting_window(
+            now, referendum.voting_opens, referendum.voting_closes
+        ):
+            raise ValidationError("Voting is not open at this time for this referendum.")
 
         # 1b. Validate the voter exists
         await self.voter_repo.get_voter_by_id(self.session, voter_id)

@@ -17,14 +17,19 @@ from app.models.sqlalchemy.election import ElectionStatus
 from app.repository.election_repo import ElectionRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 
-# Valid election status transitions: only OPEN -> CLOSED is allowed.
+# Valid election status transitions (CANCELLED is terminal).
 _VALID_TRANSITIONS: dict[str, set[str]] = {
-    ElectionStatus.OPEN.value: {ElectionStatus.CLOSED.value},
+    ElectionStatus.OPEN.value: {
+        ElectionStatus.CLOSED.value,
+        ElectionStatus.CANCELLED.value,
+    },
+    ElectionStatus.CLOSED.value: {ElectionStatus.CANCELLED.value},
 }
 from app.service.keys_manager_service import KeysManagerService
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.repository.audit_log_repo import AuditLogRepository
 from app.models.sqlalchemy.audit_log import AuditLog
+from app.service.voting_schedule_status_sync import sync_election_status_with_voting_schedule
 
 logger = structlog.get_logger()
 
@@ -57,6 +62,9 @@ class ElectionService(EncryptionUtilsMixin):
             )
             election = enc_row.to_model()
             election = await self.election_repo.create_election(self.session, election)
+            election = await sync_election_status_with_voting_schedule(
+                self.session, self.election_repo, election
+            )
 
             election_dto = await self._mapper.decrypt_model(
                 election, ElectionDTO, args, self.session
@@ -87,6 +95,9 @@ class ElectionService(EncryptionUtilsMixin):
         """Get an election by its ID."""
         try:
             election = await self.election_repo.get_election_by_id(self.session, election_id)
+            election = await sync_election_status_with_voting_schedule(
+                self.session, self.election_repo, election
+            )
             return await self.election_model_to_schema_item(election, self.session)
 
         except Exception:
@@ -97,9 +108,16 @@ class ElectionService(EncryptionUtilsMixin):
         """Get all elections."""
         try:
             elections = await self.election_repo.get_all_elections(self.session)
+            synced = []
+            for e in elections:
+                synced.append(
+                    await sync_election_status_with_voting_schedule(
+                        self.session, self.election_repo, e
+                    )
+                )
             return [
                 await self.election_model_to_schema_item(e, self.session)
-                for e in elections
+                for e in synced
             ]
 
         except Exception:
@@ -127,6 +145,12 @@ class ElectionService(EncryptionUtilsMixin):
             updated = await self.election_repo.update_election(
                 self.session, election_id, dto
             )
+            # When officials only change times, align status with the window. If they
+            # sent an explicit status, keep it for this response (schedule still applies on later reads).
+            if dto.status is None:
+                updated = await sync_election_status_with_voting_schedule(
+                    self.session, self.election_repo, updated
+                )
 
             # Audit: election updated
             summary = f"Election {election_id} updated"

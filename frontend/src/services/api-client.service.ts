@@ -77,7 +77,7 @@ async function request<T>(
   endpoint: string,
   config: RequestConfig = {},
 ): Promise<T> {
-  const { method = "GET", headers = {}, params, body } = config;
+  const { method = "GET", headers = {}, params, body, omitAuth = false } = config;
 
   // Build URL with query params
   let url = `${API_BASE_URL}${endpoint}`;
@@ -98,8 +98,8 @@ async function request<T>(
     ...headers,
   };
 
-  // Inject auth token
-  if (accessToken) {
+  // Inject auth token (skip for anonymous public reads)
+  if (accessToken && !omitAuth) {
     reqHeaders["Authorization"] = `Bearer ${accessToken}`;
   }
 
@@ -209,13 +209,20 @@ async function requestWithRetry<T>(
 // Public API client
 // ---------------------------------------------------------------------------
 
+/** Options for {@link ApiClient.get} (single object avoids confusing params vs auth flags). */
+export type ApiGetOptions = {
+  params?: RequestConfig["params"];
+  omitAuth?: boolean;
+};
+
 export class ApiClient {
   /** GET request with automatic retry on transient failures. */
-  static async get<T>(
-    endpoint: string,
-    params?: RequestConfig["params"],
-  ): Promise<T> {
-    return requestWithRetry<T>(endpoint, { method: "GET", params });
+  static async get<T>(endpoint: string, options?: ApiGetOptions): Promise<T> {
+    return requestWithRetry<T>(endpoint, {
+      method: "GET",
+      params: options?.params,
+      omitAuth: options?.omitAuth,
+    });
   }
 
   /** POST request. */

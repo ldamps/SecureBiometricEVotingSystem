@@ -25,6 +25,7 @@ from app.models.schemas.ballot_token import (
 )
 from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.election import Election, ElectionStatus
+from app.models.sqlalchemy.referendum import ReferendumStatus
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.election_repo import ElectionRepository
 from app.repository.referendum_repo import ReferendumRepository
@@ -99,8 +100,10 @@ class BallotTokenService(EncryptionUtilsMixin):
 
         # Validate election exists
         election = await self.election_repo.get_election_by_id(self.session, election_id)
-        if election.status == ElectionStatus.CLOSED.value:
-            raise ValidationError("Cannot issue tokens for a closed election.")
+        if election.status != ElectionStatus.OPEN.value:
+            raise ValidationError(
+                "Ballot tokens can only be issued while the election status is OPEN."
+            )
 
         now = datetime.now(timezone.utc)
 
@@ -154,8 +157,10 @@ class BallotTokenService(EncryptionUtilsMixin):
         referendum = await self.referendum_repo.get_referendum_by_id(
             self.session, referendum_id
         )
-        if referendum.status == "CLOSED":
-            raise ValidationError("Cannot issue tokens for a closed referendum.")
+        if referendum.status != ReferendumStatus.OPEN.value:
+            raise ValidationError(
+                "Ballot tokens can only be issued while the referendum status is OPEN."
+            )
 
         now = datetime.now(timezone.utc)
 

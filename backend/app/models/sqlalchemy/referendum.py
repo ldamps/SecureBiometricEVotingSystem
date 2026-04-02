@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,14 @@ from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin, Timestamp
 
 if TYPE_CHECKING:
     from app.models.sqlalchemy.voter_ledger import VoterLedger
+
+
+class ReferendumStatus(str, enum.Enum):
+    """Persisted referendum lifecycle status (stored as string in DB)."""
+
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    CANCELLED = "CANCELLED"
 
 
 class Referendum(Base, UUIDPrimaryKeyMixin, TimestampMixin):

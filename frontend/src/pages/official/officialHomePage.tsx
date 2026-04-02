@@ -47,10 +47,14 @@ function sortElectionsForSelect(rows: Election[]): Election[] {
 
 function formatElectionOptionLabel(election: Election): string {
   const open = election.status === ElectionStatus.OPEN;
-  const statusWord = open ? "Open" : "Closed";
+  const cancelled = election.status === ElectionStatus.CANCELLED;
+  const statusWord = cancelled ? "Cancelled" : open ? "Open" : "Closed";
   if (open) {
     const opens = datePartFromIso(election.voting_opens);
     return opens ? `${election.title} (${statusWord} · opens ${opens})` : `${election.title} (${statusWord})`;
+  }
+  if (cancelled) {
+    return `${election.title} (${statusWord})`;
   }
   const closes = datePartFromIso(election.voting_closes);
   return closes ? `${election.title} (${statusWord} · closed ${closes})` : `${election.title} (${statusWord})`;

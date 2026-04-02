@@ -82,10 +82,12 @@ class ElectionStatus(str, enum.Enum):
     """
     Election status.
     ** OPEN ** - Election is open for voting.
-    ** CLOSED ** - Election is closed for voting
+    ** CLOSED ** - Election is closed for voting.
+    ** CANCELLED ** - Election voided; no voting or ballot issuance.
     """
     OPEN = "OPEN"
     CLOSED = "CLOSED"
+    CANCELLED = "CANCELLED"
 
 
 class Election(Base, UUIDPrimaryKeyMixin, TimestampMixin):
