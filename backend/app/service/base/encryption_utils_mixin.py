@@ -317,7 +317,6 @@ def audit_log_orm_to_dto_unencrypted_row(entry: AuditLog) -> AuditLogDTO:
         resource_type=entry.resource_type,
         resource_id=entry.resource_id,
         election_id=entry.election_id,
-        ip_address=entry.ip_address,
         event_metadata=entry.event_metadata,
         created_at=entry.created_at,
     )

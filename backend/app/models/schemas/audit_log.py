@@ -17,6 +17,5 @@ class AuditLogItem(ResponseSchema):
     resource_type: Optional[str] = Field(None, description="Type of resource affected (e.g. voter, election).")
     resource_id: Optional[str] = Field(None, description="ID of the resource affected.")
     election_id: Optional[str] = Field(None, description="Election scope (if applicable).")
-    ip_address: Optional[str] = Field(None, description="IP address of the request origin.")
     event_metadata: Optional[Dict[str, Any]] = Field(None, description="Structured metadata for the event.")
     created_at: Optional[datetime] = Field(None, description="When the event occurred (UTC).")

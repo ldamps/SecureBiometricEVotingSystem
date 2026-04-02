@@ -9,7 +9,7 @@ from sqlalchemy import Boolean, Float, ForeignKey, SmallInteger, String, TIMESTA
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
+from app.models.base.sqlalchemy_base import Base, EncryptedColumn, EncryptedDBField, UUIDPrimaryKeyMixin
 
 
 class BiometricTemplate(Base, UUIDPrimaryKeyMixin):
@@ -24,7 +24,7 @@ class BiometricTemplate(Base, UUIDPrimaryKeyMixin):
         index=True,
     )
     modality: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    template_data: Mapped[bytes | None] = mapped_column(nullable=True)  # raw bytes
+    template_data: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     template_dimension: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

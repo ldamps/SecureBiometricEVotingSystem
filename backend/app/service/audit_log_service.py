@@ -46,7 +46,6 @@ class AuditLogService:
                 resource_type=dto.resource_type,
                 resource_id=dto.resource_id,
                 election_id=dto.election_id,
-                ip_address=dto.ip_address,
                 event_metadata=dto.event_metadata,
                 created_at=now,
             )

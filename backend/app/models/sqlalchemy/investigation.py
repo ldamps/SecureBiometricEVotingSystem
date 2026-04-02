@@ -9,7 +9,7 @@ from sqlalchemy import ForeignKey, String, Text, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
+from app.models.base.sqlalchemy_base import Base, EncryptedColumn, EncryptedDBField, UUIDPrimaryKeyMixin
 
 
 class Investigation(Base, UUIDPrimaryKeyMixin):
@@ -36,7 +36,7 @@ class Investigation(Base, UUIDPrimaryKeyMixin):
         index=True,
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
     severity: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     category: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
@@ -46,7 +46,7 @@ class Investigation(Base, UUIDPrimaryKeyMixin):
         nullable=True,
         index=True,
     )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("election_official.id", ondelete="SET NULL"),

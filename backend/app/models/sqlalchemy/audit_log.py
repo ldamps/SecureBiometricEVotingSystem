@@ -109,10 +109,7 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
         PG_UUID(as_uuid=True), nullable=True, index=True,
     )
 
-    # Request context
-    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
-
-    # Structured metadata (encrypted at rest via EncryptedBytes)
+    # Structured metadata
     event_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Immutable timestamp

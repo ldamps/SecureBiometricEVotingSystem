@@ -16,7 +16,7 @@ from sqlalchemy import Boolean, ForeignKey, Integer, String, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base.sqlalchemy_base import Base, UUIDPrimaryKeyMixin
+from app.models.base.sqlalchemy_base import Base, EncryptedColumn, EncryptedDBField, UUIDPrimaryKeyMixin
 
 
 class Vote(Base, UUIDPrimaryKeyMixin):
@@ -54,8 +54,10 @@ class Vote(Base, UUIDPrimaryKeyMixin):
         nullable=True,
         comment="Preference rank (1 = first choice). Set for STV and AV votes.",
     )
-    blind_token_hash: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    receipt_code: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    blind_token_hash: Mapped[EncryptedDBField] = mapped_column(EncryptedColumn, nullable=False)
+    blind_token_hash_search_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    receipt_code: Mapped[EncryptedDBField] = mapped_column(EncryptedColumn, nullable=False)
+    receipt_code_search_token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     email_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     cast_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
