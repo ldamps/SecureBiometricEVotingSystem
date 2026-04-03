@@ -6,7 +6,7 @@ import React from "react";
 import { useTheme } from "../../../styles/ThemeContext";
 
 interface CameraCaptureProps {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
+  videoRef: React.Ref<HTMLVideoElement>;
   onCapture: () => void;
   overlayShape: "oval" | "ear";
   instruction: string;
@@ -24,6 +24,9 @@ function CameraCapture({ videoRef, onCapture, overlayShape, instruction, capturi
         autoPlay
         playsInline
         muted
+        onLoadedMetadata={(e) => {
+          (e.target as HTMLVideoElement).play().catch(() => {});
+        }}
         style={{
           width: "100%",
           borderRadius: theme.borderRadius?.md || "8px",

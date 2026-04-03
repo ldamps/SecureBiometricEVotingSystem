@@ -35,6 +35,12 @@ class EnrollDeviceRequest(RequestSchema):
         None,
         description="Human-readable label for the device (e.g. 'My iPhone').",
     )
+    encrypted_key_bundle: Optional[str] = Field(
+        None,
+        description="JSON-encoded AES-GCM encrypted ECDSA private key bundle. "
+        "Encrypted with a key derived from the voter's biometric features. "
+        "The server cannot decrypt this — only a matching biometric can.",
+    )
 
 
 class EnrollDeviceResponse(ResponseSchema):
@@ -95,3 +101,4 @@ class DeviceCredentialItem(ResponseSchema):
     is_active: bool = Field(..., description="Whether the credential is currently active.")
     last_used_at: Optional[datetime] = Field(None, description="Last successful verification time.")
     created_at: datetime = Field(..., description="When the credential was enrolled.")
+    encrypted_key_bundle: Optional[str] = Field(None, description="AES-GCM encrypted private key bundle (biometric-bound).")

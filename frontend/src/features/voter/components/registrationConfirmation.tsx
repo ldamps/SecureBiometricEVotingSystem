@@ -4,20 +4,24 @@ import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
 import { PrimaryButton } from "../../../styles/ui";
 import { useNavigate } from "react-router-dom";
+import { VoterApiRepository } from "../repositories/voter-api.repository";
+import { NationalityCategory, AddressType, AddressStatus } from "../model/voter.model";
+
+const voterApi = new VoterApiRepository();
 
 /**
- * Check whether the voter is legally eligible to vote based on nationality
- * and KYC verification status. Returns an array of issues (empty = eligible).
+ * Check whether all registration steps have been completed and the voter
+ * is legally eligible to vote.  Returns an array of issues (empty = eligible).
  */
 function checkEligibility(state: any): string[] {
     const issues: string[] = [];
 
-    // Must have completed identity verification
+    // Step 2: Identity verification (KYC)
     if (state.kycStatus !== "verified") {
         issues.push("Identity verification (KYC) has not been completed.");
     }
 
-    // Must have a nationality that grants voting rights in the UK
+    // Step 2: Nationality
     const hasBritish = !!state.nationalityBritish;
     const hasIrish = !!state.nationalityIrish;
     const hasOther = !!state.nationalityOtherCountry;
@@ -26,7 +30,6 @@ function checkEligibility(state: any): string[] {
         issues.push("No nationality has been selected.");
     }
 
-    // If only "other" nationality with no British/Irish — eligibility is uncertain
     if (!hasBritish && !hasIrish && hasOther) {
         issues.push(
             "Citizens of countries other than the UK or Ireland may only vote " +
@@ -34,7 +37,7 @@ function checkEligibility(state: any): string[] {
         );
     }
 
-    // Must have provided either NI or passport
+    // Step 2: Identification method
     const idMethod = state.identificationMethod || "";
     if (!idMethod) {
         issues.push("No identification method has been selected.");
@@ -44,33 +47,75 @@ function checkEligibility(state: any): string[] {
         issues.push("Passport number has not been provided.");
     }
 
+    // Step 3: Address
+    if (!state.addressLine1?.trim()) {
+        issues.push("Current address has not been provided.");
+    }
+
+    // Step 3: Address verification
+    if (!state.addressVerified) {
+        issues.push("Proof of address has not been verified. Please go back and upload a valid document.");
+    }
+
+    // Step 4: Biometric enrollment
+    if (!state.biometricEnrolled) {
+        issues.push("Biometric enrollment has not been completed. Please link your mobile device and enroll your face and ear biometrics.");
+    }
+
     return issues;
+}
+
+/**
+ * Derive the nationality category from the registration state.
+ */
+function deriveNationalityCategory(state: any): NationalityCategory {
+    if (state.nationalityBritish) return NationalityCategory.BRITISH_CITIZEN;
+    if (state.nationalityIrish) return NationalityCategory.IRISH_CITIZEN;
+    return NationalityCategory.OTHER;
 }
 
 function RegistrationConfirmation({next, back, state, setState}: {next: () => void, back: () => void, state: any, setState: (state: any) => void}) {
     const { theme } = useTheme();
     const navigate = useNavigate();
     const [confirmed, setConfirmed] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const eligibilityIssues = checkEligibility(state);
     const isEligible = eligibilityIssues.length === 0;
 
-    const handleFinish = () => {
-        if (isEligible) {
+    const handleFinish = async () => {
+        if (!isEligible || submitting) return;
+        setSubmitting(true);
+        setSubmitError(null);
+
+        try {
+            const voterId = state.voterId;
+
+            // Update voter status to REGISTERED
+            await voterApi.updateVoter(voterId, {
+                registration_status: "REGISTERED",
+                nationality_category: deriveNationalityCategory(state),
+            });
+
+            // Create the voter's address (ACTIVE since proof was OCR-verified)
+            if (state.addressLine1?.trim()) {
+                await voterApi.createAddress(voterId, {
+                    address_type: AddressType.LOCAL_CURRENT,
+                    address_line1: state.addressLine1,
+                    address_line2: state.addressLine2 || undefined,
+                    city: state.city,
+                    postcode: state.postcode,
+                    county: state.county,
+                    country: state.country || "United Kingdom",
+                    address_status: state.addressVerified ? AddressStatus.ACTIVE : AddressStatus.PENDING,
+                });
+            }
+
             navigate("/voter/landing");
-        } else {
-            /*
-             * TODO: When the eligibility check fails, create a case/task in the
-             * system so the local electoral registration office can contact the
-             * voter with further information. This should:
-             *   1. POST to a backend endpoint (e.g. POST /voter/{voter_id}/eligibility-review)
-             *      that stores the voter's details and the specific issues found.
-             *   2. Notify the relevant electoral office (based on constituency).
-             *   3. Set the voter's registration_status to "pending_review".
-             *   4. Send an email to the voter explaining that their registration is
-             *      under review and they will be contacted by their local office.
-             */
-            navigate("/voter/landing");
+        } catch (err: any) {
+            setSubmitError(err.message || "Registration failed. Please try again.");
+            setSubmitting(false);
         }
     };
 
@@ -98,8 +143,7 @@ function RegistrationConfirmation({next, back, state, setState}: {next: () => vo
                         ))}
                     </ul>
                     <p style={{ fontSize: "0.85rem", color: "#92400e", marginTop: "0.75rem" }}>
-                        You can still submit your registration. Your local electoral registration office
-                        will be notified and will contact you with further information.
+                        Please go back and complete all required steps before finishing your registration.
                     </p>
                 </div>
             )}
@@ -112,7 +156,7 @@ function RegistrationConfirmation({next, back, state, setState}: {next: () => vo
                     border: "1px solid #38a169",
                 }}>
                     <p style={{ color: "#38a169", fontWeight: 600, fontSize: "0.9rem" }}>
-                        Eligibility check passed — you are eligible to register to vote.
+                        All checks passed — you are eligible to register to vote.
                     </p>
                 </div>
             )}
@@ -133,6 +177,13 @@ function RegistrationConfirmation({next, back, state, setState}: {next: () => vo
                 <br />
                 You will receive another email when your registration has been confirmed and you can start voting!
             </p>
+
+            {submitError && (
+                <p style={{ color: theme.colors.status.error, marginTop: theme.spacing.sm }}>
+                    {submitError}
+                </p>
+            )}
+
             <label
                 style={{
                     color: theme.colors.text.primary,
@@ -156,7 +207,12 @@ function RegistrationConfirmation({next, back, state, setState}: {next: () => vo
             {/* Navigation */}
             <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center", gap: theme.spacing.md }}>
                 <PrimaryButton onClick={back}>Back</PrimaryButton>
-                <PrimaryButton onClick={handleFinish} disabled={!confirmed}>Finish</PrimaryButton>
+                <PrimaryButton
+                    onClick={handleFinish}
+                    disabled={!confirmed || !isEligible || submitting}
+                >
+                    {submitting ? "Registering\u2026" : "Finish"}
+                </PrimaryButton>
             </div>
         </div>
     )

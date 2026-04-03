@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, File, Path, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Form, Path, UploadFile, status, HTTPException
 
 from app.application.api.dependencies import (
     get_address_service,
@@ -120,18 +120,62 @@ async def verify_voter_identity(
 )
 async def verify_proof_of_address(
     voter_id: UUID = Path(..., description="The unique identifier for the voter."),
-    file: UploadFile = File(..., description="Proof of address document (e.g. utility bill, bank statement, council tax bill)."),
-    service: AddressService = Depends(get_address_service),
+    file: UploadFile = File(..., description="Proof of address document (PDF, JPG, PNG, max 10 MB)."),
+    address_line1: str = Form("", description="Address line 1 to verify against."),
+    city: str = Form("", description="City to verify against."),
+    postcode: str = Form("", description="Postcode to verify against."),
 ):
-    """Verify a voter's address by validating an uploaded proof of address document."""
-    # TODO: Implement proof of address verification logic
-    #   - Validate file type (PDF, JPG, PNG) and size
-    #   - Extract address details from the document (e.g. via OCR)
-    #   - Compare extracted address against the voter's registered address
-    #   - Update address verification status accordingly
-    #   - Create audit log entry
-    logger.info("verify_proof_of_address called", voter_id=str(voter_id), filename=file.filename)
-    return {"status": "pending", "message": "Proof of address verification is not yet implemented."}
+    """Verify a voter's proof of address using OCR.
+
+    Extracts text from the uploaded document via Tesseract OCR and checks
+    whether the provided address components appear in the text.
+
+    The uploaded file is held in memory only and is **never saved**.
+    """
+    from app.service.address_verification_service import extract_text, verify_address_in_text
+
+    # Validate file type
+    allowed_types = {"application/pdf", "image/jpeg", "image/png"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type: {file.content_type}. Allowed: PDF, JPG, PNG.",
+        )
+
+    # Read file into memory (max 10 MB)
+    max_size = 10 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large. Maximum size is 10 MB.",
+        )
+
+    logger.info(
+        "verify_proof_of_address",
+        voter_id=str(voter_id),
+        filename=file.filename,
+        content_type=file.content_type,
+        size_bytes=len(contents),
+    )
+
+    # Extract text via OCR
+    extracted_text = extract_text(contents, file.content_type)
+
+    # Compare against provided address fields
+    result = verify_address_in_text(extracted_text, address_line1, city, postcode)
+
+    return {
+        "status": "verified" if result["passed"] else "failed",
+        "message": (
+            "Address verified — your document matches the address provided."
+            if result["passed"]
+            else "Address verification failed — the document does not match the address provided."
+        ),
+        "matched_fields": result["matched_fields"],
+        "total_fields": result["total_fields"],
+        "details": result["details"],
+    }
 
 
 ### VOTER ADDRESS ROUTES ###

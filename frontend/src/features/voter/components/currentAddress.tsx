@@ -5,6 +5,8 @@ import { useTheme } from "../../../styles/ThemeContext";
 import UK_COUNTIES from "../constants/ukCounties";
 import COUNTRIES from "../constants/countries";
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? "/api/v1";
+
 function CurrentAddress({
     next,
     back,
@@ -30,6 +32,8 @@ function CurrentAddress({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+    const [verifying, setVerifying] = useState(false);
+    const [addressVerified, setAddressVerified] = useState(state.addressVerified || false);
     const isUkAddress = (state.country || "").toLowerCase().includes("united kingdom") || (state.country || "").toLowerCase().includes("uk");
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,25 +140,80 @@ function CurrentAddress({
 
             <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: usePageLayout ? "flex-start" : "center", gap: theme.spacing?.md ?? theme.spacing?.sm ?? "1rem" }}>
                 <PrimaryButton onClick={back}>Back</PrimaryButton>
-                <PrimaryButton onClick={() => {
-                    const errors: Record<string, string> = {};
+                <PrimaryButton
+                    disabled={verifying}
+                    onClick={async () => {
+                        const errors: Record<string, string> = {};
 
-                    if (!state.addressLine1?.trim()) errors.addressLine1 = "Address line 1 is required.";
-                    if (!state.city?.trim()) errors.city = "City / Town is required.";
-                    if (!state.country?.trim()) errors.country = "Country is required.";
+                        if (!state.addressLine1?.trim()) errors.addressLine1 = "Address line 1 is required.";
+                        if (!state.city?.trim()) errors.city = "City / Town is required.";
+                        if (!state.country?.trim()) errors.country = "Country is required.";
 
-                    const ukAddress = (state.country || "").toLowerCase().includes("united kingdom") || (state.country || "").toLowerCase().includes("uk");
-                    if (ukAddress && !state.postcode?.trim()) errors.postcode = "Postcode is required for UK addresses.";
+                        const ukAddress = (state.country || "").toLowerCase().includes("united kingdom") || (state.country || "").toLowerCase().includes("uk");
+                        if (ukAddress && !state.postcode?.trim()) errors.postcode = "Postcode is required for UK addresses.";
 
-                    if (!state.proofOfAddressFile) {
-                        errors.proofOfAddress = "Please upload a proof of address before continuing.";
-                    }
+                        if (!state.proofOfAddressFile) {
+                            errors.proofOfAddress = "Please upload a proof of address before continuing.";
+                        }
 
-                    setValidationErrors(errors);
-                    if (Object.keys(errors).length > 0) return;
+                        setValidationErrors(errors);
+                        if (Object.keys(errors).length > 0) return;
 
-                    next();
-                }}>{primaryButtonLabel}</PrimaryButton>
+                        // If already verified (e.g. going back and forward), skip re-verification
+                        if (addressVerified) {
+                            next();
+                            return;
+                        }
+
+                        // Upload proof of address for OCR verification
+                        setVerifying(true);
+                        try {
+                            const formData = new FormData();
+                            formData.append("file", state.proofOfAddressFile);
+                            formData.append("address_line1", state.addressLine1 || "");
+                            formData.append("city", state.city || "");
+                            formData.append("postcode", state.postcode || "");
+
+                            // Use a placeholder voter ID for address verification during registration;
+                            // the actual voter record is created in the next step.
+                            const voterId = state.voterId || "00000000-0000-0000-0000-000000000000";
+                            const res = await fetch(`${API_BASE_URL}/voter/${voterId}/verify-address`, {
+                                method: "POST",
+                                body: formData,
+                            });
+
+                            const data = await res.json();
+
+                            if (!res.ok) {
+                                setValidationErrors({ proofOfAddress: data.detail || "Address verification failed." });
+                                setVerifying(false);
+                                return;
+                            }
+
+                            if (data.status === "verified") {
+                                setAddressVerified(true);
+                                setState({ ...state, addressVerified: true });
+                                setVerifying(false);
+                                next();
+                            } else {
+                                const details = data.details || {};
+                                const failedFields = Object.entries(details)
+                                    .filter(([, v]) => !v)
+                                    .map(([k]) => k.replace("_", " "))
+                                    .join(", ");
+                                setValidationErrors({
+                                    proofOfAddress: `Address verification failed. The following could not be found in your document: ${failedFields}. Please upload a clearer document or check your address details.`,
+                                });
+                                setVerifying(false);
+                            }
+                        } catch (err: any) {
+                            setValidationErrors({ proofOfAddress: err.message || "Failed to verify address. Please try again." });
+                            setVerifying(false);
+                        }
+                    }}
+                >
+                    {verifying ? "Verifying address\u2026" : primaryButtonLabel}
+                </PrimaryButton>
             </div>
         </>
     );

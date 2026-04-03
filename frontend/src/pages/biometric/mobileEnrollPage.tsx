@@ -88,7 +88,9 @@ function MobileEnrollPage() {
 
         setState("enrolling");
 
-        // Register the public key with the server.
+        // Register the public key AND the encrypted key bundle with the server.
+        // The server stores the bundle but cannot decrypt it — only a
+        // matching face+ear biometric can recover the signing key.
         const deviceId = getOrCreateDeviceId();
         await biometricApi.enrollDevice({
           voter_id: voterId,
@@ -96,6 +98,7 @@ function MobileEnrollPage() {
           device_id: deviceId,
           modalities: "face+ear",
           device_label: navigator.userAgent.slice(0, 100),
+          encrypted_key_bundle: JSON.stringify(encryptedBundle),
         });
 
         setState("success");

@@ -2,17 +2,13 @@
  * Mobile Biometric Verification Page
  *
  * Accessed by scanning the QR code shown on the desktop voting flow.
- * Re-captures face + ear biometrics, matches against stored templates,
- * decrypts the biometric-bound signing key, signs the server challenge,
- * and submits the signature for verification.
+ * Fetches the encrypted key bundle from the server, re-captures face +
+ * ear biometrics, decrypts the signing key with the biometric-derived
+ * AES key, signs the server challenge, and submits the signature.
  *
- * Flow:
- *   1. Retrieve stored biometric data (templates + encrypted key) from IndexedDB
- *   2. Capture face + ear via camera
- *   3. Match against stored templates (cosine similarity, AND-fusion)
- *   4. Derive biometric encryption key and decrypt ECDSA private key
- *   5. Sign the server's challenge
- *   6. Submit signature to the server
+ * The encrypted bundle is stored on the server but can only be decrypted
+ * with the voter's matching face + ear — the server cannot use it.
+ * This means the voter can verify from ANY device/browser.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -21,12 +17,9 @@ import { useTheme } from "../../styles/ThemeContext";
 import { getCardStyle, getPageTitleStyle, PrimaryButton } from "../../styles/ui";
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
-import { retrieveBiometricData } from "../../features/biometric/services/biometric-storage.service";
-import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
 import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
-import { FeatureDescriptor, StoredBiometricData } from "../../features/biometric/models/biometric-feature.model";
+import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
 
-const DEVICE_ID_KEY = "evoting_device_id";
 const biometricApi = new BiometricApiRepository();
 
 /**
@@ -42,20 +35,19 @@ async function signChallenge(privateKey: CryptoKey, challengeHex: string): Promi
     privateKey,
     challengeBytes,
   );
-  // Base64-encode to match backend's base64.b64decode().
   return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(signature))));
 }
 
 type VerifyState =
   | "ready"
+  | "loading"
   | "capturing"
-  | "matching"
-  | "signing"
+  | "decrypting"
   | "submitting"
   | "success"
   | "error"
-  | "no_key"
-  | "match_failed";
+  | "no_enrollment"
+  | "decrypt_failed";
 
 function MobileVerifyPage() {
   const { theme } = useTheme();
@@ -65,10 +57,9 @@ function MobileVerifyPage() {
 
   const [state, setState] = useState<VerifyState>("ready");
   const [error, setError] = useState<string | null>(null);
-  const [storedData, setStoredData] = useState<StoredBiometricData | null>(null);
-  const [matchDetails, setMatchDetails] = useState<string | null>(null);
+  const [encryptedBundle, setEncryptedBundle] = useState<EncryptedKeyBundle | null>(null);
+  const [deviceId, setDeviceId] = useState<string>("");
 
-  // Validate URL parameters.
   useEffect(() => {
     if (!challengeId || !voterId) {
       setError("Missing challenge or voter ID. Please scan the QR code again.");
@@ -76,72 +67,51 @@ function MobileVerifyPage() {
     }
   }, [challengeId, voterId]);
 
-  // Load stored biometric data when starting.
+  // Fetch the encrypted key bundle from the server.
   const handleStartVerify = useCallback(async () => {
     if (!voterId) return;
     setError(null);
+    setState("loading");
 
-    const data = await retrieveBiometricData(voterId);
-    if (!data) {
-      setState("no_key");
-      setError(
-        "No enrolled device found on this device. " +
-        "Please make sure you are using the same device you enrolled with.",
-      );
-      return;
+    try {
+      const credentials = await biometricApi.listCredentials(voterId);
+      const active = credentials.find((c) => c.is_active && c.encrypted_key_bundle);
+
+      if (!active || !active.encrypted_key_bundle) {
+        setState("no_enrollment");
+        setError("No biometric enrollment found. Please complete enrollment first.");
+        return;
+      }
+
+      setEncryptedBundle(JSON.parse(active.encrypted_key_bundle));
+      setDeviceId(active.device_id);
+      setState("capturing");
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch enrollment data.");
+      setState("error");
     }
-
-    setStoredData(data);
-    setState("capturing");
   }, [voterId]);
 
-  // After biometric capture completes.
+  // After biometric capture completes — decrypt and sign.
   const handleCaptureComplete = useCallback(
     async (result: { faceDescriptor: FeatureDescriptor; earDescriptor: FeatureDescriptor }) => {
-      if (!storedData || !voterId) return;
+      if (!encryptedBundle || !voterId) return;
 
       try {
-        setState("matching");
+        setState("decrypting");
 
-        // Compare against stored templates.
-        const faceRef = new Float32Array(storedData.faceTemplate);
-        const earRef = new Float32Array(storedData.earTemplate);
-        const matchResult = matchBoth(
-          result.faceDescriptor,
-          faceRef,
-          result.earDescriptor,
-          earRef,
-        );
-
-        setMatchDetails(
-          `Face similarity: ${(matchResult.face.similarity * 100).toFixed(1)}% | ` +
-          `Ear similarity: ${(matchResult.ear.similarity * 100).toFixed(1)}%`,
-        );
-
-        if (!matchResult.overallPassed) {
-          setState("match_failed");
-          setError(
-            `Biometric match failed. ` +
-            `Face: ${(matchResult.face.similarity * 100).toFixed(1)}% (need 60%) | ` +
-            `Ear: ${(matchResult.ear.similarity * 100).toFixed(1)}% (need 50%). ` +
-            `Please try again.`,
-          );
-          return;
-        }
-
-        // Decrypt the signing key using the biometric-derived encryption key.
-        setState("signing");
+        // Attempt to decrypt the signing key with the captured biometrics.
         let privateKey: CryptoKey;
         try {
           privateKey = await decryptPrivateKey(
             result.faceDescriptor,
             result.earDescriptor,
-            storedData.encryptedKeyBundle,
+            encryptedBundle,
           );
         } catch {
-          setState("match_failed");
+          setState("decrypt_failed");
           setError(
-            "Biometric key decryption failed. Your biometric features did not match " +
+            "Biometric verification failed. Your face and ear did not match " +
             "the enrollment closely enough to unlock the signing key. Please try again.",
           );
           return;
@@ -152,7 +122,6 @@ function MobileVerifyPage() {
         const challenge = await biometricApi.createChallenge({ voter_id: voterId });
         const signature = await signChallenge(privateKey, challenge.challenge);
 
-        const deviceId = localStorage.getItem(DEVICE_ID_KEY) || "";
         const verifyResult = await biometricApi.verifyBiometric({
           challenge_id: challenge.id,
           device_id: deviceId,
@@ -170,7 +139,7 @@ function MobileVerifyPage() {
         setState("error");
       }
     },
-    [storedData, voterId],
+    [encryptedBundle, voterId, deviceId],
   );
 
   const handleCaptureError = useCallback((message: string) => {
@@ -180,22 +149,20 @@ function MobileVerifyPage() {
 
   const messages: Record<VerifyState, string> = {
     ready:
-      "Verify your identity using the face and ear biometrics stored on this device. " +
+      "Verify your identity using your face and ear biometrics. " +
       "Your biometric data never leaves this device \u2014 only a cryptographic " +
       "signature is sent to confirm your identity.",
+    loading: "Fetching your enrollment data\u2026",
     capturing: "",
-    matching: "Comparing your biometrics against the enrolled templates\u2026",
-    signing: "Biometric match successful. Decrypting your signing key\u2026",
+    decrypting: "Verifying your biometrics and unlocking your signing key\u2026",
     submitting: "Submitting cryptographic proof to the server\u2026",
     success:
       "Identity verified successfully! " +
       "You can now close this page and return to the voting screen. " +
       "It will update automatically.",
     error: "Verification encountered a problem.",
-    no_key:
-      "No enrollment found on this device. " +
-      "Make sure you are using the same phone or tablet you used during registration.",
-    match_failed: "Biometric verification failed.",
+    no_enrollment: "No biometric enrollment found for your account.",
+    decrypt_failed: "Biometric verification failed.",
   };
 
   return (
@@ -211,7 +178,6 @@ function MobileVerifyPage() {
         Biometric Verification
       </h1>
 
-      {/* Status / instructions */}
       {state !== "capturing" && (
         <div style={{ ...getCardStyle(theme), marginTop: "1.25rem" }}>
           <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem" }}>
@@ -221,18 +187,6 @@ function MobileVerifyPage() {
           {error && (
             <p style={{ color: theme.colors.status.error, marginTop: theme.spacing.sm }}>
               {error}
-            </p>
-          )}
-
-          {matchDetails && (state === "success" || state === "match_failed") && (
-            <p
-              style={{
-                color: theme.colors.text.secondary || "#6b7280",
-                marginTop: theme.spacing.xs,
-                fontSize: "0.85rem",
-              }}
-            >
-              {matchDetails}
             </p>
           )}
 
@@ -256,7 +210,6 @@ function MobileVerifyPage() {
         </div>
       )}
 
-      {/* Biometric capture flow */}
       {state === "capturing" && (
         <BiometricCaptureFlow
           mode="verify"
@@ -265,17 +218,16 @@ function MobileVerifyPage() {
         />
       )}
 
-      {/* Action buttons */}
       <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "center" }}>
         {state === "ready" && (
           <PrimaryButton onClick={handleStartVerify}>Verify Identity</PrimaryButton>
         )}
 
-        {(state === "matching" || state === "signing" || state === "submitting") && (
+        {(state === "loading" || state === "decrypting" || state === "submitting") && (
           <PrimaryButton disabled>Verifying\u2026</PrimaryButton>
         )}
 
-        {(state === "error" || state === "no_key" || state === "match_failed") && (
+        {(state === "error" || state === "no_enrollment" || state === "decrypt_failed") && (
           <PrimaryButton onClick={handleStartVerify}>Retry</PrimaryButton>
         )}
       </div>

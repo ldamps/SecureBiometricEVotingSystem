@@ -35,12 +35,32 @@ export interface QuantisationParams {
   rangeMax: number;
 }
 
-/** Encrypted ECDSA private key bundle stored in IndexedDB. */
-export interface EncryptedKeyBundle {
+/** A single encrypted copy of the ECDSA private key. */
+export interface EncryptedKeyCopy {
   salt: string;
   iv: string;
   encryptedPrivateKey: string;
+}
+
+/**
+ * Encrypted ECDSA private key bundle.
+ *
+ * Contains multiple encrypted copies of the SAME private key, each
+ * encrypted with a slightly different quantisation offset.  This covers
+ * the natural biometric variation between devices/conditions.  During
+ * verification, the system tries each copy — if ANY one decrypts
+ * (AES-GCM tag validates), the private key is recovered.
+ *
+ * No biometric data is stored — only encrypted key material.
+ */
+export interface EncryptedKeyBundle {
+  copies: EncryptedKeyCopy[];
   quantisationParams: QuantisationParams;
+
+  /** @deprecated Single-copy fields kept for backward compatibility. */
+  salt?: string;
+  iv?: string;
+  encryptedPrivateKey?: string;
 }
 
 /** Full biometric enrollment data persisted on the device. */

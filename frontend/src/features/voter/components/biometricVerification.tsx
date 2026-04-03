@@ -142,13 +142,14 @@ function BiometricVerification({
     const statusMessages: Record<BiometricVerificationStatus, string> = {
         [BiometricVerificationStatus.IDLE]:
             "Before casting your vote, we need to verify your identity using " +
-            "the biometrics stored on your mobile device. Your biometric data " +
-            "never leaves your phone.",
+            "the face and ear biometrics stored on your mobile device. " +
+            "Please have your enrolled phone ready \u2014 you will need to scan " +
+            "a QR code with it. Your biometric data never leaves your phone.",
         [BiometricVerificationStatus.CHALLENGE_ISSUED]:
             "Preparing verification challenge\u2026",
         [BiometricVerificationStatus.AWAITING_DEVICE]:
-            "Scan the QR code below with your mobile voting app. " +
-            "The app will ask you to verify your face and ear. " +
+            "Open the camera on the phone you enrolled with and scan the QR code below. " +
+            "Your phone will ask you to verify your face and ear. " +
             "This page will update automatically once verification is complete.",
         [BiometricVerificationStatus.VERIFYING]:
             "Verifying your identity\u2026",

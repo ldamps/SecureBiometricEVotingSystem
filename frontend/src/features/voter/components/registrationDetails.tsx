@@ -6,8 +6,11 @@ import COUNTRIES from "../constants/countries";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { loadStripe } from "@stripe/stripe-js";
+import { VoterApiRepository } from "../repositories/voter-api.repository";
+import { NationalityCategory } from "../model/voter.model";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? "/api/v1";
+const voterApi = new VoterApiRepository();
 
 const NATIONALITY_OPTIONS = [
     { key: "nationalityBritish", label: "British" },
@@ -566,7 +569,7 @@ function RegistrationDetails({
             </div>
             <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: usePageLayout ? "flex-start" : "center", gap: theme.spacing.md }}>
                 <PrimaryButton onClick={back}>Back</PrimaryButton>
-                <PrimaryButton onClick={() => {
+                <PrimaryButton onClick={async () => {
                     const errors: Record<string, string> = {};
 
                     // Required common fields
@@ -615,6 +618,49 @@ function RegistrationDetails({
 
                     setValidationErrors(errors);
                     if (Object.keys(errors).length > 0) return;
+
+                    // Create the voter if not already created (needed for biometric enrollment in step 4)
+                    if (!state.voterId) {
+                        try {
+                            const passports = [];
+                            if (idMethod === "passport" && state.passportNumber?.trim()) {
+                                passports.push({
+                                    id: "",
+                                    passport_number: state.passportNumber.trim(),
+                                    issuing_country: state.passportCountry || "GB",
+                                    expiry_date: state.passportExpiryDate || "",
+                                    is_primary: true,
+                                });
+                            }
+
+                            const renewBy = new Date();
+                            renewBy.setFullYear(renewBy.getFullYear() + 1);
+
+                            let natCat = NationalityCategory.OTHER;
+                            if (state.nationalityBritish) natCat = NationalityCategory.BRITISH_CITIZEN;
+                            else if (state.nationalityIrish) natCat = NationalityCategory.IRISH_CITIZEN;
+
+                            const result = await voterApi.registerVoter({
+                                first_name: state.firstName,
+                                surname: state.lastName,
+                                previous_first_name: state.nameChanged ? state.previousFirstName : undefined,
+                                previous_surname: state.nameChanged ? state.previousLastName : undefined,
+                                date_of_birth: state.dateOfBirth,
+                                email: state.email,
+                                national_insurance_number:
+                                    idMethod === "ni" ? state.nationalInsuranceNumber : undefined,
+                                passports,
+                                nationality_category: natCat,
+                                renew_by: renewBy.toISOString(),
+                                registration_status: "PENDING",
+                            });
+
+                            setState((prev: any) => ({ ...prev, voterId: result.id }));
+                        } catch (err: any) {
+                            setValidationErrors({ submit: err.message || "Failed to create voter record. Please try again." });
+                            return;
+                        }
+                    }
 
                     next();
                 }}>{primaryButtonLabel}</PrimaryButton>

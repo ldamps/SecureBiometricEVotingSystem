@@ -8,6 +8,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ── Stage 2: Production image ───────────────────────────────────────────
 FROM python:3.12-slim
 
+# Install Tesseract OCR and poppler (for pdf2image) at OS level
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tesseract-ocr poppler-utils \
+ && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN groupadd --gid 1000 appuser \
  && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser

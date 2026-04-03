@@ -27,16 +27,26 @@ const VoterRegisterPage: React.FC = () => {
         nameChanged: false,
         previousFirstName: "",
         previousLastName: "",
-        address_line_1: "",
-        address_line_2: "",
+        addressLine1: "",
+        addressLine2: "",
         city: "",
         postcode: "",
         county: "",
         country: "",
+        proofOfAddressFile: null as File | null,
+        proofOfAddressFileName: "",
+        addressVerified: false,
         kycSessionId: "",
         kycStatus: "",
         addressKycSessionId: "",
         addressKycStatus: "",
+        // Biometric enrollment state
+        biometricEnrolled: false,
+        voterId: "",
+        credentialId: "",
+        deviceId: "",
+        // Living details
+        region: "",
     });
 
     const next = () => setStep(s => Math.min(s + 1, 5));

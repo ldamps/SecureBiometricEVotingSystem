@@ -92,6 +92,7 @@ class BiometricService:
             modalities=request.modalities,
             attestation=request.attestation,
             device_label=request.device_label,
+            encrypted_key_bundle=request.encrypted_key_bundle,
         )
         credential = await self.credentials_repo.create(self.session, credential)
 
@@ -265,6 +266,7 @@ class BiometricService:
                 is_active=row.is_active,
                 last_used_at=row.last_used_at,
                 created_at=row.created_at,
+                encrypted_key_bundle=row.encrypted_key_bundle,
             )
             for row in rows
         ]
