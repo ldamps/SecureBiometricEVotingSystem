@@ -262,7 +262,33 @@ def get_biometric_service(
         challenge_repo=BiometricChallengeRepository(),
         voter_repo=VoterRepository(Voter),
         session=session,
+        address_repo=AddressRepository(Address),
     )
+
+
+def get_address_verification_dependencies(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+    email_service: EmailService = Depends(get_email_service),
+) -> tuple:
+    """Return (AddressService, VoterService) for address verification endpoint."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    address_service = AddressService(
+        address_repo=AddressRepository(Address),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+        constituency_repo=ConstituencyRepository(),
+        voter_repo=VoterRepository(Voter),
+    )
+    voter_service = VoterService(
+        voter_repo=VoterRepository(Voter),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+        email_service=email_service,
+    )
+    return (address_service, voter_service)
 
 def get_ballot_token_service(
     session: AsyncSession = Depends(get_db),

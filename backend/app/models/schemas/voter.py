@@ -1,10 +1,18 @@
 # voter.py - Voter schemas for the e-voting system.
+import re
 from app.models.base.pydantic_base import ResponseSchema, RequestSchema
 from app.models.schemas.voter_passport import VoterPassportItem, PassportEntry
-from pydantic import Field, model_validator
-from datetime import datetime
+from pydantic import EmailStr, Field, model_validator
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 from uuid import UUID
+
+# UK NI number: 2 prefix letters, 6 digits, 1 suffix letter (A-D)
+# Certain prefixes are invalid: BG, GB, NK, KN, TN, NT, ZZ and temp prefixes.
+_NI_RE = re.compile(
+    r"^(?!BG|GB|NK|KN|TN|NT|ZZ)[A-Z]{2}\d{6}[A-D]$",
+    re.IGNORECASE,
+)
 
 
 def voter_orm_to_item_dict(voter: Any) -> dict[str, Any]:
@@ -35,6 +43,7 @@ class VoterItem(ResponseSchema):
     nationality_category: str = Field(..., description="The nationality category of the voter.")
     immigration_status: Optional[str] = Field(None, description="The immigration status of the voter (non-British only).")
     immigration_status_expiry: Optional[datetime] = Field(None, description="When the immigration status expires.")
+    voter_status: str = Field(..., description="The voter status (PENDING, ACTIVE, SUSPENDED).")
     registration_status: str = Field(..., description="The registration status of the voter.")
     failed_auth_attempts: int = Field(..., description="The number of failed authentication attempts for the voter.")
     locked_until: Optional[datetime] = Field(None, description="The date and time the voter was locked until.")
@@ -55,22 +64,23 @@ class VoterRegistrationRequest(RequestSchema):
     number or at least one passport entry (or both).  The NI number is the
     preferred anchor identifier.
     """
+    kyc_session_id: str = Field(..., description="The Stripe Identity verification session ID. Must be 'verified' status.")
     first_name: str = Field(..., description="The first name of the voter.")
     surname: str = Field(..., description="The surname of the voter.")
     previous_first_name: Optional[str] = Field(None, description="The previous first name of the voter.")
     previous_surname: Optional[str] = Field(None, description="The previous surname of the voter.")
     date_of_birth: datetime = Field(..., description="The date of birth of the voter.")
-    email: str = Field(..., description="The email address of the voter.")
+    email: EmailStr = Field(..., description="The email address of the voter.")
     national_insurance_number: Optional[str] = Field(None, description="The national insurance number of the voter.")
     passports: list[PassportEntry] = Field(default_factory=list, description="Passport entries for the voter. Required if no NI number.")
     nationality_category: str = Field(..., description="The nationality category of the voter.")
     immigration_status: Optional[str] = Field(None, description="The immigration status (non-British voters only).")
     immigration_status_expiry: Optional[datetime] = Field(None, description="When the immigration status expires.")
     renew_by: datetime = Field(..., description="The date and time the voter's account needs to be renewed by.")
-    registration_status: str = Field(..., description="The registration status of the voter.")
 
     @model_validator(mode="after")
-    def require_ni_or_passport(self) -> "VoterRegistrationRequest":
+    def validate_registration(self) -> "VoterRegistrationRequest":
+        # --- Identity: NI or passport required ---
         ni = self.national_insurance_number
         has_ni = ni is not None and ni.strip() != ""
         has_passport = len(self.passports) > 0
@@ -79,6 +89,50 @@ class VoterRegistrationRequest(RequestSchema):
                 "At least one form of identity is required: "
                 "provide a national insurance number or at least one passport entry."
             )
+
+        # --- NI format validation ---
+        if has_ni and not _NI_RE.match(ni.strip().replace(" ", "")):
+            raise ValueError(
+                "National Insurance number format is invalid. "
+                "Expected format: two letters, six digits, one letter (A–D), e.g. QQ123456C."
+            )
+
+        # --- Age validation (minimum 14 to register) ---
+        now = datetime.now(timezone.utc)
+        dob = self.date_of_birth
+        if dob:
+            if dob.tzinfo is None:
+                dob = dob.replace(tzinfo=timezone.utc)
+            age = (now - dob).days // 365
+            if age < 14:
+                raise ValueError(
+                    "You must be at least 14 years old to register to vote."
+                )
+
+        # --- Passport expiry: must not be expired more than 5 years ---
+        for p in self.passports:
+            if p.expiry_date:
+                exp = p.expiry_date
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
+                max_expired = now - timedelta(days=5 * 365)
+                if exp < max_expired:
+                    raise ValueError(
+                        f"Passport {p.passport_number} expired more than 5 years ago "
+                        f"and cannot be used for identification."
+                    )
+
+        # --- Immigration status expiry: must not be in the past ---
+        if self.immigration_status and self.immigration_status_expiry:
+            exp = self.immigration_status_expiry
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            if exp < now:
+                raise ValueError(
+                    "Immigration status has expired. You are not eligible to register "
+                    "with an expired immigration status."
+                )
+
         return self
 
 
@@ -102,6 +156,8 @@ class VoterUpdateRequest(RequestSchema):
     """Voter update request model.
 
     Passport entries are managed separately via the passport sub-routes.
+    System-controlled fields (voter_status, registration_status,
+    failed_auth_attempts, locked_until) cannot be updated via this endpoint.
     """
     first_name: Optional[str] = Field(None, description="The first name of the voter.")
     surname: Optional[str] = Field(None, description="The surname of the voter.")
@@ -112,9 +168,5 @@ class VoterUpdateRequest(RequestSchema):
     nationality_category: Optional[str] = Field(None, description="The nationality category of the voter.")
     immigration_status: Optional[str] = Field(None, description="The immigration status (non-British voters only).")
     immigration_status_expiry: Optional[datetime] = Field(None, description="When the immigration status expires.")
-    constituency_id: Optional[UUID] = Field(None, description="The constituency identifier for the voter.")
     renew_by: Optional[datetime] = Field(None, description="The date and time the voter's account needs to be renewed by.")
-    registration_status: Optional[str] = Field(None, description="The registration status of the voter.")
-    failed_auth_attempts: Optional[int] = Field(None, description="The number of failed authentication attempts for the voter.")
-    locked_until: Optional[datetime] = Field(None, description="The date and time the voter was locked until.")
 

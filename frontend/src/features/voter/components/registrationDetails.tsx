@@ -94,6 +94,7 @@ function RegistrationDetails({
     const [kycLoading, setKycLoading] = useLocalState(false);
     const [kycError, setKycError] = useLocalState<string | null>(null);
     const [kycMismatches, setKycMismatches] = useLocalState<string[]>([]);
+    const [submitting, setSubmitting] = useLocalState(false);
 
     const idMethod: string = state.identificationMethod || "";
     const kycStatus: string = state.kycStatus || "";
@@ -161,18 +162,23 @@ function RegistrationDetails({
                 if (newStatus === "processing") {
                     setTimeout(poll, 3000);
                 } else if (newStatus === "verified") {
-                    // Fetch extracted data and compare against form
-                    try {
-                        const verifiedRes = await fetch(`${API_BASE_URL}/kyc/session/${sid}/verified-data`);
-                        if (verifiedRes.ok) {
-                            const verifiedData = await verifiedRes.json();
-                            if (verifiedData.verified && verifiedData.extracted_data) {
-                                const mismatches = compareWithExtracted(verifiedData.extracted_data, state);
-                                setKycMismatches(mismatches);
+                    // Fetch extracted data and compare against form.
+                    // In Stripe test mode the extracted data is always dummy
+                    // ("Jenny Rosen"), so skip the comparison to avoid false warnings.
+                    const isTestMode = (process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || "").startsWith("pk_test_");
+                    if (!isTestMode) {
+                        try {
+                            const verifiedRes = await fetch(`${API_BASE_URL}/kyc/session/${sid}/verified-data`);
+                            if (verifiedRes.ok) {
+                                const verifiedData = await verifiedRes.json();
+                                if (verifiedData.verified && verifiedData.extracted_data) {
+                                    const mismatches = compareWithExtracted(verifiedData.extracted_data, state);
+                                    setKycMismatches(mismatches);
+                                }
                             }
+                        } catch {
+                            // Non-fatal — verification passed, comparison is best-effort
                         }
-                    } catch {
-                        // Non-fatal — verification passed, comparison is best-effort
                     }
                 }
             };
@@ -569,7 +575,8 @@ function RegistrationDetails({
             </div>
             <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: usePageLayout ? "flex-start" : "center", gap: theme.spacing.md }}>
                 <PrimaryButton onClick={back}>Back</PrimaryButton>
-                <PrimaryButton onClick={async () => {
+                <PrimaryButton disabled={submitting} onClick={async () => {
+                    if (submitting) return;
                     const errors: Record<string, string> = {};
 
                     // Required common fields
@@ -621,6 +628,7 @@ function RegistrationDetails({
 
                     // Create the voter if not already created (needed for biometric enrollment in step 4)
                     if (!state.voterId) {
+                        setSubmitting(true);
                         try {
                             const passports = [];
                             if (idMethod === "passport" && state.passportNumber?.trim()) {
@@ -641,6 +649,7 @@ function RegistrationDetails({
                             else if (state.nationalityIrish) natCat = NationalityCategory.IRISH_CITIZEN;
 
                             const result = await voterApi.registerVoter({
+                                kyc_session_id: state.kycSessionId,
                                 first_name: state.firstName,
                                 surname: state.lastName,
                                 previous_first_name: state.nameChanged ? state.previousFirstName : undefined,
@@ -652,12 +661,12 @@ function RegistrationDetails({
                                 passports,
                                 nationality_category: natCat,
                                 renew_by: renewBy.toISOString(),
-                                registration_status: "PENDING",
                             });
 
                             setState((prev: any) => ({ ...prev, voterId: result.id }));
                         } catch (err: any) {
                             setValidationErrors({ submit: err.message || "Failed to create voter record. Please try again." });
+                            setSubmitting(false);
                             return;
                         }
                     }

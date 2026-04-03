@@ -101,6 +101,8 @@ class AddressService(EncryptionUtilsMixin):
         """
         try:
             dto.renew_by = datetime.now(timezone.utc) + timedelta(days=730)
+            # Address always starts as PENDING — only verified via proof of address
+            dto.address_status = "PENDING"
 
             is_current = self._is_type(dto.address_type, AddressType.LOCAL_CURRENT)
             is_overseas = self._is_type(dto.address_type, AddressType.OVERSEAS)
@@ -162,12 +164,16 @@ class AddressService(EncryptionUtilsMixin):
         voter_id: UUID,
         address_id: UUID,
     ) -> AddressItem:
-        """Get an address by its ID."""
+        """Get an address by its ID. Validates that the address belongs to the voter."""
         try:
             address = await self.address_repo.get_address_by_id(
                 self.session, address_id
             )
+            if address.voter_id != voter_id:
+                raise ValidationError("Address does not belong to this voter.")
             return await self.address_model_to_schema_item(address, self.session)
+        except (ValidationError,):
+            raise
         except Exception:
             logger.exception("Failed to get address by ID", address_id=address_id)
             raise

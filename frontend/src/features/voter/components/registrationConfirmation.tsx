@@ -5,7 +5,7 @@ import ProgressBar from "./progressBar";
 import { PrimaryButton } from "../../../styles/ui";
 import { useNavigate } from "react-router-dom";
 import { VoterApiRepository } from "../repositories/voter-api.repository";
-import { NationalityCategory, AddressType, AddressStatus } from "../model/voter.model";
+import { NationalityCategory } from "../model/voter.model";
 
 const voterApi = new VoterApiRepository();
 
@@ -92,25 +92,12 @@ function RegistrationConfirmation({next, back, state, setState}: {next: () => vo
         try {
             const voterId = state.voterId;
 
-            // Update voter status to REGISTERED
+            // Update voter nationality if needed (address + status are handled
+            // automatically by the backend during address verification and
+            // biometric enrollment)
             await voterApi.updateVoter(voterId, {
-                registration_status: "REGISTERED",
                 nationality_category: deriveNationalityCategory(state),
             });
-
-            // Create the voter's address (ACTIVE since proof was OCR-verified)
-            if (state.addressLine1?.trim()) {
-                await voterApi.createAddress(voterId, {
-                    address_type: AddressType.LOCAL_CURRENT,
-                    address_line1: state.addressLine1,
-                    address_line2: state.addressLine2 || undefined,
-                    city: state.city,
-                    postcode: state.postcode,
-                    county: state.county,
-                    country: state.country || "United Kingdom",
-                    address_status: state.addressVerified ? AddressStatus.ACTIVE : AddressStatus.PENDING,
-                });
-            }
 
             navigate("/voter/landing");
         } catch (err: any) {

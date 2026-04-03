@@ -82,6 +82,8 @@ def prepare_voter_registration_plain_fields(dto: RegisterVoterPlainDTO) -> dict:
     voter_ref = f"VR-{uuid_module.uuid4().hex[:16]}"
     now = datetime.now(timezone.utc)
 
+    voter_status = dto.voter_status or "PENDING"
+
     return dict(
         first_name=dto.first_name,
         surname=dto.surname,
@@ -90,7 +92,7 @@ def prepare_voter_registration_plain_fields(dto: RegisterVoterPlainDTO) -> dict:
         else (dto.date_of_birth.isoformat() if dto.date_of_birth else None),
         email=dto.email,
         voter_reference=voter_ref,
-        voter_status=reg_status,
+        voter_status=voter_status,
         constituency_id=dto.constituency_id,
         registration_status=reg_status,
         failed_auth_attempts=0,

@@ -99,6 +99,11 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(64), nullable=True, unique=True, index=True
     )
 
+    # KYC linkage — Stripe VerificationSession ID, unique to prevent reuse
+    kyc_session_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, unique=True, index=True
+    )
+
     # Non-encrypted fields
 
     voter_status: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

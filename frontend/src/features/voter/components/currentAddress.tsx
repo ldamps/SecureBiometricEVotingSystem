@@ -4,8 +4,11 @@ import ProgressBar from "./progressBar";
 import { useTheme } from "../../../styles/ThemeContext";
 import UK_COUNTIES from "../constants/ukCounties";
 import COUNTRIES from "../constants/countries";
+import { VoterApiRepository } from "../repositories/voter-api.repository";
+import { AddressType } from "../model/voter.model";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? "/api/v1";
+const voterApi = new VoterApiRepository();
 
 function CurrentAddress({
     next,
@@ -151,6 +154,7 @@ function CurrentAddress({
 
                         const ukAddress = (state.country || "").toLowerCase().includes("united kingdom") || (state.country || "").toLowerCase().includes("uk");
                         if (ukAddress && !state.postcode?.trim()) errors.postcode = "Postcode is required for UK addresses.";
+                        if (ukAddress && !state.county?.trim()) errors.county = "County is required for UK addresses.";
 
                         if (!state.proofOfAddressFile) {
                             errors.proofOfAddress = "Please upload a proof of address before continuing.";
@@ -165,18 +169,38 @@ function CurrentAddress({
                             return;
                         }
 
-                        // Upload proof of address for OCR verification
+                        // 1. Create the address via API, then 2. verify with proof of address
                         setVerifying(true);
                         try {
+                            const voterId = state.voterId;
+                            if (!voterId) {
+                                setValidationErrors({ proofOfAddress: "Voter record not found. Please go back and complete identity verification." });
+                                setVerifying(false);
+                                return;
+                            }
+
+                            // Step 1: Create the address (starts as PENDING)
+                            let addressId = state.addressId;
+                            if (!addressId) {
+                                const isOverseas = (state.region || "").toLowerCase() === "overseas";
+                                const addr = await voterApi.createAddress(voterId, {
+                                    address_type: isOverseas ? AddressType.OVERSEAS : AddressType.LOCAL_CURRENT,
+                                    address_line1: state.addressLine1 || "",
+                                    address_line2: state.addressLine2 || undefined,
+                                    city: state.city || "",
+                                    postcode: state.postcode || "",
+                                    county: state.county || "",
+                                    country: state.country || "",
+                                });
+                                addressId = addr.id;
+                                setState((prev: any) => ({ ...prev, addressId }));
+                            }
+
+                            // Step 2: Upload proof of address for OCR verification against stored address
                             const formData = new FormData();
                             formData.append("file", state.proofOfAddressFile);
-                            formData.append("address_line1", state.addressLine1 || "");
-                            formData.append("city", state.city || "");
-                            formData.append("postcode", state.postcode || "");
+                            formData.append("address_id", addressId);
 
-                            // Use a placeholder voter ID for address verification during registration;
-                            // the actual voter record is created in the next step.
-                            const voterId = state.voterId || "00000000-0000-0000-0000-000000000000";
                             const res = await fetch(`${API_BASE_URL}/voter/${voterId}/verify-address`, {
                                 method: "POST",
                                 body: formData,
@@ -192,7 +216,7 @@ function CurrentAddress({
 
                             if (data.status === "verified") {
                                 setAddressVerified(true);
-                                setState({ ...state, addressVerified: true });
+                                setState((prev: any) => ({ ...prev, addressVerified: true }));
                                 setVerifying(false);
                                 next();
                             } else {

@@ -84,6 +84,7 @@ export interface Voter {
     nationality_category: NationalityCategory
     immigration_status?: ImmigrationStatus
     immigration_status_expiry?: string
+    voter_status: string
     registration_status: string
     failed_auth_attempts: number
     locked_until?: string
@@ -93,6 +94,7 @@ export interface Voter {
 
 // Voter create request model - Represents a request to create a new voter
 export interface VoterCreateRequest {
+    kyc_session_id: string
     first_name: string
     surname: string
     previous_first_name?: string
@@ -105,7 +107,6 @@ export interface VoterCreateRequest {
     immigration_status?: ImmigrationStatus
     immigration_status_expiry?: string
     renew_by: string
-    registration_status: string
 }
 
 // Verify identity request model - Represents a request to verify a voter's identity
@@ -135,11 +136,7 @@ export interface VoterUpdateRequest {
     nationality_category?: NationalityCategory
     immigration_status?: ImmigrationStatus
     immigration_status_expiry?: string
-    constituency_id?: string
     renew_by?: string
-    registration_status?: string
-    failed_auth_attempts?: number
-    locked_until?: string
 }
 
 
@@ -200,7 +197,6 @@ export interface CreateAddressRequest {
     postcode: string
     county: string
     country: string
-    address_status: AddressStatus
     renew_by?: string
 }
 

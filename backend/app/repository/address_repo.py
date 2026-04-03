@@ -210,4 +210,31 @@ class AddressRepository:
             )
             raise
 
+    async def update_address_status(
+        self,
+        session: AsyncSession,
+        address_id: UUID,
+        address_status: str,
+    ) -> Address:
+        """Update the status of an address (e.g. PENDING -> ACTIVE)."""
+        from app.models.sqlalchemy.address import AddressStatus
+        try:
+            stmt = (
+                update(self._model)
+                .where(self._model.id == address_id)
+                .values(address_status=AddressStatus(address_status))
+                .returning(self._model)
+            )
+            result = await session.execute(stmt)
+            updated = result.scalar_one_or_none()
+            if not updated:
+                raise NotFoundError("Address not found")
+            logger.info("Address status updated", address_id=address_id, status=address_status)
+            return updated
+        except NotFoundError:
+            raise
+        except Exception:
+            logger.exception("Failed to update address status", address_id=address_id)
+            raise
+
     # ------------------------------------------------------------

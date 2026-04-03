@@ -239,12 +239,7 @@ class VoterRepository:
                 "nationality_category",
                 "immigration_status",
                 "immigration_status_expiry",
-                "constituency_id",
                 "renew_by",
-                "registration_status",
-                "failed_auth_attempts",
-                "locked_until",
-                "registered_at",
             ]
 
             # DTO uses constituency_id (typo); Voter model uses constituency_id
@@ -284,5 +279,34 @@ class VoterRepository:
             )
             raise
 
+    async def update_voter_status(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+        voter_status: str,
+        registration_status: str | None = None,
+    ) -> Voter:
+        """Update the voter's status (and optionally registration_status)."""
+        try:
+            values: dict = {"voter_status": voter_status}
+            if registration_status is not None:
+                values["registration_status"] = registration_status
+            stmt = (
+                update(self._model)
+                .where(self._model.id == voter_id)
+                .values(**values)
+                .returning(self._model)
+            )
+            result = await session.execute(stmt)
+            updated = result.scalar_one_or_none()
+            if not updated:
+                raise NotFoundError("Voter not found")
+            logger.info("Voter status updated", voter_id=voter_id, voter_status=voter_status)
+            return updated
+        except NotFoundError:
+            raise
+        except Exception:
+            logger.exception("Failed to update voter status", voter_id=voter_id)
+            raise
 
     # ------------------------------------------------------------

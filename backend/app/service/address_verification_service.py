@@ -57,26 +57,54 @@ def verify_address_in_text(
 ) -> dict:
     """Check whether the key address components appear in the OCR text.
 
-    Returns a dict with per-field match results and an overall verdict.
+    At least address_line1 or postcode must be provided.
+    Postcode matching uses word-boundary matching to prevent partial matches.
+    Requires at least 2 out of 3 fields to match (or all if fewer provided).
     """
     norm_text = _normalise(extracted_text)
 
+    fields_provided = []
+    if address_line1 and address_line1.strip():
+        fields_provided.append("address_line1")
+    if postcode and postcode.strip():
+        fields_provided.append("postcode")
+    if city and city.strip():
+        fields_provided.append("city")
+
+    if not fields_provided:
+        logger.warning("address_verification_rejected: no address fields provided")
+        return {
+            "passed": False,
+            "matched_fields": 0,
+            "total_fields": 0,
+            "details": {},
+        }
+
     results: dict[str, bool] = {}
 
-    if address_line1:
+    if "address_line1" in fields_provided:
         results["address_line1"] = _normalise(address_line1) in norm_text
 
-    if postcode:
-        # Postcodes: strip spaces for a looser match
+    if "postcode" in fields_provided:
+        # Match the postcode as a word-bounded token.
+        # Try both the spaced form (e.g. "sw1a 1aa") and compact form ("sw1a1aa").
         norm_postcode = _normalise(postcode).replace(" ", "")
-        norm_text_no_spaces = norm_text.replace(" ", "")
-        results["postcode"] = norm_postcode in norm_text_no_spaces
+        if len(norm_postcode) >= 4:
+            spaced = f"{norm_postcode[:-3]} {norm_postcode[-3:]}"
+        else:
+            spaced = norm_postcode
+        spaced_pat = re.escape(spaced)
+        compact_pat = re.escape(norm_postcode)
+        results["postcode"] = bool(
+            re.search(rf"\b{spaced_pat}\b", norm_text)
+            or re.search(rf"\b{compact_pat}\b", norm_text)
+        )
 
-    if city:
+    if "city" in fields_provided:
         results["city"] = _normalise(city) in norm_text
 
     matched = sum(1 for v in results.values() if v)
-    total = len(results) or 1
+    total = len(results)
 
     # Require at least 2 out of 3 fields to match (or all if fewer fields).
     passed = matched >= min(2, total)
