@@ -219,7 +219,8 @@ export type VoterDetail = Voter & { passports: Passport[] }
 export interface VoterLedgerItem {
     id: string
     voter_id: string
-    election_id: string
+    election_id?: string
+    referendum_id?: string
     voted_at?: string
 }
 

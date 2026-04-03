@@ -13,8 +13,10 @@ from app.models.dto.referendum import (
 from app.application.core.exceptions import ValidationError
 from app.models.schemas.referendum import ReferendumItem
 from app.models.sqlalchemy.audit_log import AuditLog
-from app.models.sqlalchemy.referendum import ReferendumStatus
+from app.models.sqlalchemy.referendum import ReferendumStatus, referendum_constituency
+from sqlalchemy import insert
 from app.repository.audit_log_repo import AuditLogRepository
+from app.repository.constituency_repo import ConstituencyRepository
 from app.repository.referendum_repo import ReferendumRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.keys_manager_service import KeysManagerService
@@ -42,12 +44,14 @@ class ReferendumService(EncryptionUtilsMixin):
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
         audit_log_repo: AuditLogRepository | None = None,
+        constituency_repo: ConstituencyRepository | None = None,
     ):
         self.referendum_repo = referendum_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
         self._audit_log_repo = audit_log_repo or AuditLogRepository()
+        self._constituency_repo = constituency_repo or ConstituencyRepository()
 
     async def create_referendum(self, dto: CreateReferendumPlainDTO) -> ReferendumItem:
         """Create a new referendum."""
@@ -60,8 +64,25 @@ class ReferendumService(EncryptionUtilsMixin):
             )
             referendum = enc_row.to_model()
             referendum = await self.referendum_repo.create_referendum(self.session, referendum)
+
+            # Link constituencies (many-to-many) via direct insert to avoid lazy load
+            if dto.constituency_ids:
+                await self.session.execute(
+                    insert(referendum_constituency),
+                    [
+                        {"referendum_id": referendum.id, "constituency_id": UUID(cid)}
+                        for cid in dto.constituency_ids
+                    ],
+                )
+                await self.session.flush()
+
             referendum = await sync_referendum_status_with_voting_schedule(
                 self.session, self.referendum_repo, referendum
+            )
+
+            # Re-fetch with constituencies eagerly loaded
+            referendum = await self.referendum_repo.get_referendum_by_id(
+                self.session, referendum.id
             )
 
             await self._audit_log_repo.create_audit_log(
@@ -93,10 +114,15 @@ class ReferendumService(EncryptionUtilsMixin):
             logger.exception("Failed to get referendum by ID", referendum_id=referendum_id)
             raise
 
-    async def get_all_referendums(self) -> List[ReferendumItem]:
-        """Get all referendums."""
+    async def get_all_referendums(self, constituency_id: UUID | None = None) -> List[ReferendumItem]:
+        """Get all referendums, optionally filtered by constituency."""
         try:
-            referendums = await self.referendum_repo.get_all_referendums(self.session)
+            if constituency_id:
+                referendums = await self.referendum_repo.get_referendums_by_constituency(
+                    self.session, constituency_id
+                )
+            else:
+                referendums = await self.referendum_repo.get_all_referendums(self.session)
             synced = []
             for r in referendums:
                 synced.append(

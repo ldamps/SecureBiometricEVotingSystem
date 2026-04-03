@@ -21,6 +21,7 @@ interface BackendReferendumItem {
     status: ReferendumStatus;
     voting_opens: string;
     voting_closes: string;
+    constituency_ids: string[];
 }
 
 function mapReferendumCore(b: BackendReferendumItem): Referendum {
@@ -33,6 +34,7 @@ function mapReferendumCore(b: BackendReferendumItem): Referendum {
         status: b.status,
         voting_opens: b.voting_opens,
         voting_closes: b.voting_closes,
+        constituency_ids: b.constituency_ids ?? [],
     }
 }
 
@@ -50,6 +52,7 @@ function createReferendumBody(body: CreateReferendumRequest): Record<string, unk
         question: body.question,
         description: body.description,
         scope: body.scope,
+        constituency_ids: body.constituency_ids,
         voting_opens: body.voting_opens,
         voting_closes: body.voting_closes,
     });
@@ -91,6 +94,23 @@ export class ReferendumApiRepository {
 
     async listOpenReferendums(): Promise<Referendum[]> {
         const referendums = await this.listReferendums();
+        return referendums.filter(
+            (referendum) =>
+                referendum.status === ReferendumStatus.OPEN &&
+                isWithinScheduledVotingWindow(referendum.voting_opens, referendum.voting_closes),
+        );
+    }
+
+    async listReferendumsForConstituency(constituencyId: string): Promise<Referendum[]> {
+        const rows = await ApiClient.get<BackendReferendumItem[]>(
+            `${ROOT}/constituency/${constituencyId}`,
+            { omitAuth: true },
+        );
+        return rows.map(mapReferendumCore);
+    }
+
+    async listOpenReferendumsForConstituency(constituencyId: string): Promise<Referendum[]> {
+        const referendums = await this.listReferendumsForConstituency(constituencyId);
         return referendums.filter(
             (referendum) =>
                 referendum.status === ReferendumStatus.OPEN &&

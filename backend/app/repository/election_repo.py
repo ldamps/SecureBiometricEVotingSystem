@@ -1,9 +1,10 @@
 # election_repo.py - Repository layer for election-related operations.
 
-from app.models.sqlalchemy.election import Election
+from app.models.sqlalchemy.election import Election, election_constituency
 from app.models.dto.election import UpdateElectionPlainDTO
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
+from sqlalchemy.orm import selectinload
 import structlog
 from typing import Optional, Type
 from uuid import UUID
@@ -48,7 +49,9 @@ class ElectionRepository:
         """Get an election by its ID."""
         try:
             result = await session.execute(
-                select(self._model).where(self._model.id == election_id)
+                select(self._model)
+                .options(selectinload(self._model.constituencies))
+                .where(self._model.id == election_id)
             )
             election = result.scalar_one_or_none()
             if not election:
@@ -66,12 +69,56 @@ class ElectionRepository:
         """Get all elections ordered by creation date (newest first)."""
         try:
             result = await session.execute(
-                select(self._model).order_by(self._model.created_at.desc())
+                select(self._model)
+                .options(selectinload(self._model.constituencies))
+                .order_by(self._model.created_at.desc())
             )
             return list(result.scalars().all())
 
         except Exception:
             logger.exception("Failed to get all elections")
+            raise
+
+    async def get_elections_by_constituency(
+        self,
+        session: AsyncSession,
+        constituency_id: UUID,
+    ) -> list[Election]:
+        """Get elections for a constituency.
+
+        Returns elections that include the given constituency plus
+        national elections (those with no constituencies assigned).
+        """
+        try:
+            # Election IDs linked to this constituency
+            has_constituency = (
+                select(election_constituency.c.election_id)
+                .where(election_constituency.c.constituency_id == constituency_id)
+            )
+
+            # Election IDs that have any constituency links at all
+            has_any_constituency = (
+                select(election_constituency.c.election_id).distinct()
+            )
+
+            result = await session.execute(
+                select(self._model)
+                .options(selectinload(self._model.constituencies))
+                .where(
+                    or_(
+                        self._model.id.in_(has_constituency),
+                        ~self._model.id.in_(has_any_constituency),
+                    )
+                )
+                .order_by(self._model.created_at.desc())
+            )
+            return list(result.scalars().all())
+
+        except Exception:
+            logger.exception(
+                "Failed to get elections by constituency",
+                constituency_id=constituency_id,
+            )
             raise
 
     async def update_election(

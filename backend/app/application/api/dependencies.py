@@ -247,6 +247,7 @@ def get_voting_service(
         referendum_repo=ReferendumRepository(Referendum),
         candidate_repo=CandidateRepository(),
         voter_repo=VoterRepository(Voter),
+        address_repo=AddressRepository(),
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
@@ -354,6 +355,7 @@ def get_referendum_service(
         keys_manager=keys_manager,
         encryption_mapper=mapper,
         audit_log_repo=AuditLogRepository(),
+        constituency_repo=ConstituencyRepository(),
     )
 
 

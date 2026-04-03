@@ -349,16 +349,19 @@ class VoterService(EncryptionUtilsMixin):
             await self._keys_manager.init_org_keys(self.session, org_id=None)
             args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
 
-            # Build postcode search token from the submitted postcode
-            normalised_postcode = request.postcode.strip().upper()
-            postcode_token = await self._mapper.create_search_token(
-                normalised_postcode, args, self.session
-            )
-
-            # Find addresses matching this postcode
-            candidate_addresses = await self.address_repo.get_addresses_by_postcode_token(
-                self.session, postcode_token
-            )
+            # Find candidate addresses — by postcode token if provided, otherwise all active
+            normalised_postcode = (request.postcode or "").strip().upper()
+            if normalised_postcode:
+                postcode_token = await self._mapper.create_search_token(
+                    normalised_postcode, args, self.session
+                )
+                candidate_addresses = await self.address_repo.get_addresses_by_postcode_token(
+                    self.session, postcode_token
+                )
+            else:
+                candidate_addresses = await self.address_repo.get_all_addresses(
+                    self.session
+                )
 
             if not candidate_addresses:
                 return VerifyIdentityResponse(
@@ -385,12 +388,18 @@ class VoterService(EncryptionUtilsMixin):
                 db_addr1 = (addr_dto.address_line1 or "").strip().lower()
                 db_addr2 = (addr_dto.address_line2 or "").strip().lower()
                 db_city = (addr_dto.town or "").strip().lower()
+                db_postcode = (addr_dto.postcode or "").strip().upper()
 
                 if db_addr1 != submitted_addr1:
                     continue
-                if db_addr2 != submitted_addr2:
+                # Only compare address_line2 when both sides are non-empty
+                if submitted_addr2 and db_addr2 and db_addr2 != submitted_addr2:
                     continue
                 if db_city != submitted_city:
+                    continue
+                # If no postcode was submitted, skip postcode comparison;
+                # if one was submitted, confirm it matches the decrypted value
+                if normalised_postcode and db_postcode != normalised_postcode:
                     continue
 
                 # Address matches — now decrypt the voter and compare name
@@ -422,4 +431,8 @@ class VoterService(EncryptionUtilsMixin):
 
         except Exception:
             logger.exception("Failed to verify voter identity")
-            raise
+            return VerifyIdentityResponse(
+                verified=False,
+                voter_id=None,
+                message="Unable to verify your identity at this time. Please try again later.",
+            )

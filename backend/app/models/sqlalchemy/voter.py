@@ -30,6 +30,7 @@ class VoterStatus(str, enum.Enum):
     PENDING = "PENDING"
     SUSPENDED = "SUSPENDED"
     ACTIVE = "ACTIVE"
+    UNDER_AGE = "UNDER_AGE"
 
 
 class NationalityCategory(str, enum.Enum):

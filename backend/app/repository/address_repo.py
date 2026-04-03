@@ -237,4 +237,36 @@ class AddressRepository:
             logger.exception("Failed to update address status", address_id=address_id)
             raise
 
+    async def has_overseas_address(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+    ) -> bool:
+        """Return True if the voter has an active OVERSEAS address."""
+        from app.models.sqlalchemy.address import AddressType, AddressStatus
+        try:
+            result = await session.execute(
+                select(self._model.id).where(
+                    self._model.voter_id == voter_id,
+                    self._model.address_type == AddressType.OVERSEAS,
+                    self._model.address_status == AddressStatus.ACTIVE,
+                ).limit(1)
+            )
+            return result.scalar_one_or_none() is not None
+        except Exception:
+            logger.exception("Failed to check overseas address", voter_id=voter_id)
+            raise
+
+    async def get_all_addresses(
+        self,
+        session: AsyncSession,
+    ) -> List[Address]:
+        """Get all addresses (used for verification fallback when no postcode is provided)."""
+        try:
+            result = await session.execute(select(self._model))
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception("Failed to get all addresses")
+            raise
+
     # ------------------------------------------------------------

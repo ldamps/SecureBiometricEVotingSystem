@@ -72,7 +72,8 @@ interface BackendVoterItem {
 interface BackendVoterLedger {
     id: string;
     voter_id: string;
-    election_id: string;
+    election_id?: string | null;
+    referendum_id?: string | null;
     voted_at?: string | null;
 }
 
@@ -147,7 +148,8 @@ function mapLedger(row: BackendVoterLedger): VoterLedgerItem {
     return {
         id: row.id,
         voter_id: row.voter_id,
-        election_id: row.election_id,
+        election_id: row.election_id ?? undefined,
+        referendum_id: row.referendum_id ?? undefined,
         voted_at: row.voted_at ?? undefined,
     };
 }

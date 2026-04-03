@@ -1,8 +1,8 @@
 # referendum_dto.py - Referendum DTOs for the e-voting system.
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import ClassVar, Optional
+from typing import ClassVar, List, Optional
 from uuid import UUID
 
 from app.application.constants import Resource
@@ -31,6 +31,7 @@ class ReferendumDTO(ReferendumBaseDTO):
     voting_opens: Optional[datetime] = None
     voting_closes: Optional[datetime] = None
     is_active: bool = True
+    constituency_ids: List[str] = field(default_factory=list)
 
     def to_schema(self) -> ReferendumItem:
         return ReferendumItem(
@@ -43,6 +44,7 @@ class ReferendumDTO(ReferendumBaseDTO):
             voting_opens=self.voting_opens,
             voting_closes=self.voting_closes,
             is_active=self.is_active,
+            constituency_ids=self.constituency_ids,
         )
 
 
@@ -55,6 +57,7 @@ class CreateReferendumPlainDTO(ReferendumBaseDTO):
     description: Optional[str] = None
     scope: str = ""
     status: str = "OPEN"
+    constituency_ids: List[str] = field(default_factory=list)
     voting_opens: Optional[datetime] = None
     voting_closes: Optional[datetime] = None
 
@@ -70,6 +73,7 @@ class CreateReferendumPlainDTO(ReferendumBaseDTO):
             description=data.description,
             scope=data.scope,
             status=status,
+            constituency_ids=data.constituency_ids,
             voting_opens=data.voting_opens,
             voting_closes=data.voting_closes,
         )

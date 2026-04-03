@@ -3,7 +3,7 @@
 from app.models.base.pydantic_base import ResponseSchema, RequestSchema
 from app.models.sqlalchemy.referendum import ReferendumStatus
 from pydantic import Field
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 
@@ -18,6 +18,7 @@ class ReferendumItem(ResponseSchema):
     voting_opens: Optional[datetime] = Field(None, description="When voting opens.")
     voting_closes: Optional[datetime] = Field(None, description="When voting closes.")
     is_active: bool = Field(..., description="Whether the referendum is currently active.")
+    constituency_ids: List[str] = Field(default_factory=list, description="Constituencies this referendum is for (empty = national/all).")
 
 
 class CreateReferendumRequest(RequestSchema):
@@ -30,6 +31,7 @@ class CreateReferendumRequest(RequestSchema):
     question: str = Field(..., description="The yes/no question posed to voters.")
     description: Optional[str] = Field(None, description="Additional context for the question.")
     scope: str = Field(..., description="The scope of the referendum (NATIONAL, REGIONAL, LOCAL).")
+    constituency_ids: List[str] = Field(default_factory=list, description="Constituencies this referendum is for (empty = national/all).")
     voting_opens: Optional[datetime] = Field(None, description="When voting opens.")
     voting_closes: Optional[datetime] = Field(None, description="When voting closes.")
 

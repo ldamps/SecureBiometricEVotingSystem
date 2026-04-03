@@ -191,7 +191,7 @@ function RegistrationDetails({
     };
 
     const commonFields = [
-        { key: "firstName", label: "First Name", placeholder: "e.g. John", type: "text", required: true },
+        { key: "firstName", label: "First Name(s)", placeholder: "e.g. John", type: "text", required: true },
         { key: "lastName", label: "Last Name", placeholder: "e.g. Doe", type: "text", required: true },
         { key: "email", label: "Email", placeholder: "e.g. john.doe@example.com", type: "text", required: true },
         { key: "dateOfBirth", label: "Date of Birth", placeholder: "", type: "date", required: true },
@@ -516,8 +516,13 @@ function RegistrationDetails({
             {/* Have you ever changed your name? */}
             <div style={{ ...getCardStyle(theme), marginBottom: "1rem" }}>
                 <label style={{ ...getStepLabelStyle(theme), display: "block", marginBottom: "0.5rem" }}>
-                    Have you ever changed your name?
+                    Have you ever changed your name?<span style={{ color: theme.colors.status.error }}> *</span>
                 </label>
+                {validationErrors.nameChanged && (
+                    <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
+                        {validationErrors.nameChanged}
+                    </p>
+                )}
                 <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
                     <label style={labelBlockStyle(theme)}>
                         <input
@@ -533,7 +538,7 @@ function RegistrationDetails({
                         <input
                             type="radio"
                             name="nameChanged"
-                            checked={state.nameChanged === false || state.nameChanged == null}
+                            checked={state.nameChanged === false}
                             onChange={() => setState({ ...state, nameChanged: false, previousFirstName: "", previousLastName: "" })}
                             style={{ marginRight: theme.spacing.sm, cursor: "pointer" }}
                         />
@@ -544,8 +549,13 @@ function RegistrationDetails({
                     <>
                         <div style={{ marginTop: "1rem" }}>
                             <label htmlFor="previousFirstName" style={getStepLabelStyle(theme)}>
-                                Previous first name
+                                Previous first name<span style={{ color: theme.colors.status.error }}> *</span>
                             </label>
+                            {validationErrors.previousFirstName && (
+                                <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
+                                    {validationErrors.previousFirstName}
+                                </p>
+                            )}
                             <input
                                 type="text"
                                 id="previousFirstName"
@@ -558,8 +568,13 @@ function RegistrationDetails({
                         </div>
                         <div style={{ marginTop: "0.75rem" }}>
                             <label htmlFor="previousLastName" style={getStepLabelStyle(theme)}>
-                                Previous last name
+                                Previous last name<span style={{ color: theme.colors.status.error }}> *</span>
                             </label>
+                            {validationErrors.previousLastName && (
+                                <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
+                                    {validationErrors.previousLastName}
+                                </p>
+                            )}
                             <input
                                 type="text"
                                 id="previousLastName"
@@ -612,6 +627,14 @@ function RegistrationDetails({
                     // Identity verification required
                     if (kycStatus !== "verified") {
                         errors.kyc = "Please verify your identity before continuing.";
+                    }
+
+                    // Name change question required
+                    if (state.nameChanged == null) {
+                        errors.nameChanged = "Please indicate whether you have ever changed your name.";
+                    } else if (state.nameChanged === true) {
+                        if (!state.previousFirstName?.trim()) errors.previousFirstName = "Previous first name is required.";
+                        if (!state.previousLastName?.trim()) errors.previousLastName = "Previous last name is required.";
                     }
 
                     // Nationality required

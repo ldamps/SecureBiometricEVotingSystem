@@ -10,7 +10,7 @@ from app.models.sqlalchemy.election import (
 )
 from pydantic import Field, model_validator
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 
 class ElectionItem(ResponseSchema):
@@ -24,6 +24,7 @@ class ElectionItem(ResponseSchema):
     voting_opens: Optional[datetime] = Field(None, description="The date and time the election opens for voting.")
     voting_closes: Optional[datetime] = Field(None, description="The date and time the election closes for voting.")
     created_by: Optional[str] = Field(None, description="The ID of the election official who created this election.")
+    constituency_ids: List[str] = Field(default_factory=list, description="Constituencies this election is for (empty = national/all).")
 
 
 class CreateElectionRequest(RequestSchema):
@@ -41,6 +42,7 @@ class CreateElectionRequest(RequestSchema):
     voting_opens: Optional[datetime] = Field(None, description="The date and time the election opens for voting.")
     voting_closes: Optional[datetime] = Field(None, description="The date and time the election closes for voting.")
     created_by: Optional[str] = Field(None, description="The ID of the election official who created this election.")
+    constituency_ids: List[str] = Field(default_factory=list, description="Constituencies this election is for (empty = national/all).")
 
     @model_validator(mode="after")
     def derive_allocation_method(self) -> "CreateElectionRequest":

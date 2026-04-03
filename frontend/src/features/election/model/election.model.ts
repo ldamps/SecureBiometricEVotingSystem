@@ -88,12 +88,14 @@ export interface Election {
   voting_opens?: string;
   voting_closes?: string;
   created_by?: string;
+  constituency_ids: string[];
 }
 
 export interface CreateElectionRequest {
   title: string;
   election_type: ElectionType;
   scope: ElectionScope;
+  constituency_ids?: string[];
   voting_opens?: string;
   voting_closes?: string;
   created_by?: string;

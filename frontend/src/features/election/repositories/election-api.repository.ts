@@ -25,6 +25,7 @@ interface BackendElectionItem {
   voting_opens?: string | null;
   voting_closes?: string | null;
   created_by?: string | null;
+  constituency_ids?: string[];
 }
 
 function mapElectionCore(b: BackendElectionItem): Election {
@@ -38,6 +39,7 @@ function mapElectionCore(b: BackendElectionItem): Election {
     voting_opens: b.voting_opens ?? undefined,
     voting_closes: b.voting_closes ?? undefined,
     created_by: b.created_by ?? undefined,
+    constituency_ids: b.constituency_ids ?? [],
   };
 }
 
@@ -54,6 +56,7 @@ function createElectionBody(body: CreateElectionRequest): Record<string, unknown
     title: body.title,
     election_type: body.election_type,
     scope: body.scope,
+    constituency_ids: body.constituency_ids,
     voting_opens: body.voting_opens,
     voting_closes: body.voting_closes,
     created_by: body.created_by,
@@ -103,6 +106,23 @@ export class ElectionApiRepository {
 
   async listOpenElections(): Promise<Election[]> {
     const elections = await this.listElections();
+    return elections.filter(
+      (election) =>
+        election.status === ElectionStatus.OPEN &&
+        isWithinScheduledVotingWindow(election.voting_opens, election.voting_closes),
+    );
+  }
+
+  async listElectionsForConstituency(constituencyId: string): Promise<Election[]> {
+    const rows = await ApiClient.get<BackendElectionItem[]>(
+      `${ROOT}/constituency/${constituencyId}`,
+      { omitAuth: true },
+    );
+    return rows.map(mapElectionCore);
+  }
+
+  async listOpenElectionsForConstituency(constituencyId: string): Promise<Election[]> {
+    const elections = await this.listElectionsForConstituency(constituencyId);
     return elections.filter(
       (election) =>
         election.status === ElectionStatus.OPEN &&

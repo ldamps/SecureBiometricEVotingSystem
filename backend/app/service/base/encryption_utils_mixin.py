@@ -19,6 +19,7 @@ from app.models.dto.party import PartyBaseDTO, PartyDTO
 from app.models.dto.referendum import ReferendumBaseDTO, ReferendumDTO
 from app.models.dto.official import OfficialBaseDTO, OfficialDTO
 from app.models.dto.voter import RegisterVoterPlainDTO, VoterBaseDTO, VoterDTO
+from app.models.dto.voter_ledger import VoterLedgerBaseDTO, VoterLedgerDTO
 from app.models.dto.voter_passport import VoterPassportBaseDTO, VoterPassportDTO
 from app.models.schemas.audit_log import AuditLogItem
 from app.models.schemas.address import AddressItem
@@ -31,6 +32,7 @@ from app.models.schemas.official import OfficialItem
 from app.models.schemas.party import PartyItem
 from app.models.schemas.referendum import ReferendumItem
 from app.models.schemas.voter import VoterItem
+from app.models.schemas.voter_ledger import VoterLedgerItem
 from app.models.schemas.voter_passport import VoterPassportItem
 from app.models.sqlalchemy.audit_log import AuditLog
 from app.models.sqlalchemy.address import Address, AddressStatus, AddressType
@@ -43,6 +45,7 @@ from app.models.sqlalchemy.investigation import Investigation
 from app.models.sqlalchemy.party import Party
 from app.models.sqlalchemy.referendum import Referendum
 from app.models.sqlalchemy.voter import Voter
+from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.models.sqlalchemy.voter_passport import VoterPassport
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.encryption_service import EncryptionArgs
@@ -242,6 +245,7 @@ def referendum_orm_to_dto_unencrypted_row(referendum: Referendum) -> ReferendumD
         voting_opens=referendum.voting_opens,
         voting_closes=referendum.voting_closes,
         is_active=referendum.is_active,
+        constituency_ids=[str(c.id) for c in referendum.constituencies],
     )
 
 
@@ -324,6 +328,17 @@ def audit_log_orm_to_dto_unencrypted_row(entry: AuditLog) -> AuditLogDTO:
     )
 
 
+def voter_ledger_orm_to_dto_unencrypted_row(ledger: VoterLedger) -> VoterLedgerDTO:
+    """Map voter ledger ORM row to a plaintext DTO (no encrypted fields)."""
+    return VoterLedgerDTO(
+        id=ledger.id,
+        voter_id=ledger.voter_id,
+        election_id=ledger.election_id,
+        referendum_id=ledger.referendum_id,
+        voted_at=ledger.voted_at,
+    )
+
+
 def election_orm_to_dto_unencrypted_row(election: Election) -> ElectionDTO:
     """Map election ORM row to a plaintext DTO (elections have no encrypted fields)."""
     return ElectionDTO(
@@ -336,6 +351,7 @@ def election_orm_to_dto_unencrypted_row(election: Election) -> ElectionDTO:
         voting_opens=election.voting_opens,
         voting_closes=election.voting_closes,
         created_by=election.created_by,
+        constituency_ids=[str(c.id) for c in election.constituencies],
     )
 
 
@@ -599,4 +615,14 @@ class EncryptionUtilsMixin:
             base_dto_class=InvestigationBaseDTO,
             session=session,
             map_unencrypted_row=investigation_orm_to_dto_unencrypted_row,
+        )
+
+    async def voter_ledger_model_to_schema_item(self, ledger: VoterLedger, session: Any) -> VoterLedgerItem:
+        """VoterLedger ORM model → API schema (no encrypted fields)."""
+        return await self._orm_to_schema_item(
+            ledger,
+            plain_dto_class=VoterLedgerDTO,
+            base_dto_class=VoterLedgerBaseDTO,
+            session=session,
+            map_unencrypted_row=voter_ledger_orm_to_dto_unencrypted_row,
         )

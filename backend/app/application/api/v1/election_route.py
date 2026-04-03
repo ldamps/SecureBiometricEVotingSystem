@@ -66,6 +66,21 @@ async def get_all_elections(
     return await service.get_all_elections()
 
 
+# Get elections for a specific constituency (voter-facing).
+@router.get(
+    "/constituency/{constituency_id}",
+    responses=election_responses,
+    response_model=List[ElectionItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_elections_for_constituency(
+    constituency_id: UUID = Path(..., description="The constituency to filter elections by."),
+    service: ElectionService = Depends(get_election_service),
+) -> List[ElectionItem]:
+    """Get elections that have candidates in the given constituency."""
+    return await service.get_all_elections(constituency_id=constituency_id)
+
+
 # get election by ID (public – voters browse before authenticating)
 @router.get(
     "/{election_id}",
@@ -134,7 +149,7 @@ async def get_election_voters(
     return await service.get_election_voters(election_id)
 
 
-# Get all candidates for an election (any official)
+# Get all candidates for an election (public – voters need to see candidates)
 @router.get(
     "/{election_id}/candidates",
     responses=candidate_responses,
@@ -144,7 +159,6 @@ async def get_election_voters(
 async def get_candidates_by_election(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     service: CandidateService = Depends(get_candidate_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[CandidateItem]:
     """Get all candidates standing in an election."""
     return await service.get_candidates_by_election(election_id)

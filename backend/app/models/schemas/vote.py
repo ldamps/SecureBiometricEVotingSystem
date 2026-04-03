@@ -61,3 +61,41 @@ class CastReferendumVoteResponse(ResponseSchema):
     referendum_id: str = Field(..., description="The referendum the vote was cast on.")
     cast_at: Optional[datetime] = Field(None, description="The date and time the vote was cast.")
     message: str = Field(..., description="A confirmation message.")
+
+
+# ── Voter-facing simplified requests (no ballot token needed) ──
+
+
+class VoterCastVoteRequest(RequestSchema):
+    """Voter-facing request to cast a vote (ballot token is auto-issued)."""
+    voter_id: str = Field(..., description="The voter's unique identifier.")
+    election_id: str = Field(..., description="The election to vote in.")
+    constituency_id: Optional[str] = Field(None, description="The constituency the voter is voting in.")
+    candidate_id: Optional[str] = Field(None, description="The candidate to vote for (FPTP / AMS constituency vote).")
+    party_id: Optional[str] = Field(None, description="The party to vote for (AMS regional list vote).")
+    ranked_preferences: Optional[List[RankedPreference]] = Field(None, description="Ranked candidate preferences (STV / Alternative Vote).")
+    send_email_confirmation: bool = Field(False, description="Whether to send an email confirmation of the vote.")
+
+
+class VoterCastVoteResponse(ResponseSchema):
+    """Voter-facing response after casting a vote."""
+    receipt_code: str = Field(..., description="A unique receipt code for verification.")
+    election_id: str = Field(..., description="The election the vote was cast in.")
+    cast_at: Optional[datetime] = Field(None, description="When the vote was cast.")
+    message: str = Field(..., description="Confirmation message.")
+
+
+class VoterCastReferendumVoteRequest(RequestSchema):
+    """Voter-facing request to cast a referendum vote (ballot token is auto-issued)."""
+    voter_id: str = Field(..., description="The voter's unique identifier.")
+    referendum_id: str = Field(..., description="The referendum to vote on.")
+    choice: str = Field(..., description="The voter's choice: 'YES' or 'NO'.", pattern="^(YES|NO)$")
+    send_email_confirmation: bool = Field(False, description="Whether to send an email confirmation.")
+
+
+class VoterCastReferendumVoteResponse(ResponseSchema):
+    """Voter-facing response after casting a referendum vote."""
+    receipt_code: str = Field(..., description="A unique receipt code for verification.")
+    referendum_id: str = Field(..., description="The referendum the vote was cast on.")
+    cast_at: Optional[datetime] = Field(None, description="When the vote was cast.")
+    message: str = Field(..., description="Confirmation message.")

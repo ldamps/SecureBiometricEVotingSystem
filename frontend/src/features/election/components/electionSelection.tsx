@@ -12,10 +12,12 @@ import { ElectionApiRepository } from "../repositories/election-api.repository";
 import { Election } from "../model/election.model";
 import { ReferendumApiRepository } from "../../referendum/repositories/referendum-api.repository";
 import { Referendum } from "../../referendum/model/referendum.model";
+import { VoterApiRepository } from "../../voter/repositories/voter-api.repository";
 import { useEffect, useState, type CSSProperties } from "react";
 
 const electionApiRepository = new ElectionApiRepository();
 const referendumApiRepository = new ReferendumApiRepository();
+const voterApiRepository = new VoterApiRepository();
 
 function useMinWidthMd(breakpointPx: number) {
     const [matches, setMatches] = useState(false);
@@ -48,19 +50,37 @@ function ElectionSelection({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const constituencyId: string | undefined = state.constituencyId;
+    const voterId: string | undefined = state.voterId;
+
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        Promise.all([
-            electionApiRepository.listOpenElections(),
-            referendumApiRepository.listOpenReferendums(),
-        ])
-            .then(([openElections, openReferendums]) => {
-                if (!cancelled) {
-                    setElections(openElections);
-                    setReferendums(openReferendums);
-                    setError(null);
-                }
+
+        const electionsPromise = constituencyId
+            ? electionApiRepository.listOpenElectionsForConstituency(constituencyId)
+            : electionApiRepository.listOpenElections();
+
+        const referendumsPromise = constituencyId
+            ? referendumApiRepository.listOpenReferendumsForConstituency(constituencyId)
+            : referendumApiRepository.listOpenReferendums();
+
+        const ledgerPromise = voterId
+            ? voterApiRepository.listLedgerEntries(voterId)
+            : Promise.resolve([]);
+
+        Promise.all([electionsPromise, referendumsPromise, ledgerPromise])
+            .then(([openElections, openReferendums, ledgerEntries]) => {
+                if (cancelled) return;
+                const votedElectionIds = new Set(
+                    ledgerEntries.filter((l) => l.election_id).map((l) => l.election_id),
+                );
+                const votedReferendumIds = new Set(
+                    ledgerEntries.filter((l) => l.referendum_id).map((l) => l.referendum_id),
+                );
+                setElections(openElections.filter((e) => !votedElectionIds.has(e.id)));
+                setReferendums(openReferendums.filter((r) => !votedReferendumIds.has(r.id)));
+                setError(null);
             })
             .catch((err: Error) => {
                 if (!cancelled) {
@@ -73,7 +93,7 @@ function ElectionSelection({
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [constituencyId, voterId]);
 
     const hasSelection = Boolean(state.election) || Boolean(state.referendum);
 
@@ -95,7 +115,7 @@ function ElectionSelection({
     return (
         <div style={{ ...getVoterPageContentWrapperStyle(theme), maxWidth: "100%", margin: "0 auto" }}>
             <div style={{ ...getCardStyle(theme), marginBottom: "1.75rem" }}>
-                <ProgressBar step={1} theme={theme} />
+                <ProgressBar step={3} theme={theme} />
             </div>
             <h2 style={getStepTitleStyle(theme)}>Select an Election or Referendum</h2>
             <p style={getStepDescStyle(theme)}>Please select the election or referendum you wish to vote in.</p>

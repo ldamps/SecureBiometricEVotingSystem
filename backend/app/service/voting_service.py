@@ -23,9 +23,10 @@ from app.models.schemas.vote import (
     CastReferendumVoteRequest,
     CastReferendumVoteResponse,
 )
-from app.models.sqlalchemy.election import Election, ElectionStatus
+from app.models.sqlalchemy.election import Election, ElectionScope, ElectionStatus
 from app.models.sqlalchemy.referendum import ReferendumStatus
 from app.models.sqlalchemy.voter_ledger import VoterLedger
+from app.repository.address_repo import AddressRepository
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.tally_result_repo import TallyResultRepository
 from app.repository.candidate_repo import CandidateRepository
@@ -68,6 +69,7 @@ class VotingService(EncryptionUtilsMixin):
         referendum_repo: ReferendumRepository,
         candidate_repo: CandidateRepository,
         voter_repo: VoterRepository,
+        address_repo: AddressRepository,
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
@@ -83,6 +85,7 @@ class VotingService(EncryptionUtilsMixin):
         self.referendum_repo = referendum_repo
         self.candidate_repo = candidate_repo
         self.voter_repo = voter_repo
+        self.address_repo = address_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
@@ -135,6 +138,13 @@ class VotingService(EncryptionUtilsMixin):
 
         # 1b. Validate the voter exists
         await self.voter_repo.get_voter_by_id(self.session, voter_id)
+
+        # 1c. Overseas voters can only participate in general elections
+        if election.election_type != ElectionType.GENERAL.value:
+            if await self.address_repo.has_overseas_address(self.session, voter_id):
+                raise ValidationError(
+                    "Overseas voters can only participate in general elections."
+                )
 
         # 2. Validate ballot payload against the allocation method
         self._validate_ballot_payload(allocation_method, request)
@@ -351,6 +361,13 @@ class VotingService(EncryptionUtilsMixin):
 
         # 1b. Validate the voter exists
         await self.voter_repo.get_voter_by_id(self.session, voter_id)
+
+        # 1c. Overseas voters can only participate in UK-wide referendums
+        if referendum.scope != ElectionScope.NATIONAL.value:
+            if await self.address_repo.has_overseas_address(self.session, voter_id):
+                raise ValidationError(
+                    "Overseas voters can only participate in UK-wide referendums."
+                )
 
         # 2. Check Voter_Ledger — has this voter already voted?
         existing_ledger = await self._get_referendum_voter_ledger_entry(

@@ -39,6 +39,8 @@ export { getTableStyle, getTableHeaderStyle, getTableCellStyle } from "./table";
 
 export { getSelectorStyle, getSelectStyle } from "./selector";
 
+export { getSuccessAlertStyle, getErrorAlertStyle } from "./alert";
+
 export {
   getStepTitleStyle,
   getStepDescStyle,

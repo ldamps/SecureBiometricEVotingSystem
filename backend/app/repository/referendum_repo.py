@@ -1,8 +1,9 @@
 # referendum_repo.py - Repository layer for referendum-related operations.
 
-from app.models.sqlalchemy.referendum import Referendum
+from app.models.sqlalchemy.referendum import Referendum, referendum_constituency
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_
+from sqlalchemy.orm import selectinload
 import structlog
 from typing import Type
 from uuid import UUID
@@ -34,7 +35,9 @@ class ReferendumRepository:
         """Get a referendum by its ID."""
         try:
             result = await session.execute(
-                select(self._model).where(self._model.id == referendum_id)
+                select(self._model)
+                .options(selectinload(self._model.constituencies))
+                .where(self._model.id == referendum_id)
             )
             referendum = result.scalar_one_or_none()
             if not referendum:
@@ -48,11 +51,54 @@ class ReferendumRepository:
         """Get all referendums ordered by creation date (newest first)."""
         try:
             result = await session.execute(
-                select(self._model).order_by(self._model.created_at.desc())
+                select(self._model)
+                .options(selectinload(self._model.constituencies))
+                .order_by(self._model.created_at.desc())
             )
             return list(result.scalars().all())
         except Exception:
             logger.exception("Failed to get all referendums")
+            raise
+
+    async def get_referendums_by_constituency(
+        self,
+        session: AsyncSession,
+        constituency_id: UUID,
+    ) -> list[Referendum]:
+        """Get referendums for a constituency.
+
+        Returns referendums that include the given constituency plus
+        national referendums (those with no constituencies assigned).
+        """
+        try:
+            # Referendum IDs that are linked to this constituency
+            has_constituency = (
+                select(referendum_constituency.c.referendum_id)
+                .where(referendum_constituency.c.constituency_id == constituency_id)
+            )
+
+            # Referendum IDs that have no constituency links at all (national)
+            has_any_constituency = (
+                select(referendum_constituency.c.referendum_id).distinct()
+            )
+
+            result = await session.execute(
+                select(self._model)
+                .options(selectinload(self._model.constituencies))
+                .where(
+                    or_(
+                        self._model.id.in_(has_constituency),
+                        ~self._model.id.in_(has_any_constituency),
+                    )
+                )
+                .order_by(self._model.created_at.desc())
+            )
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception(
+                "Failed to get referendums by constituency",
+                constituency_id=constituency_id,
+            )
             raise
 
     async def update_referendum(

@@ -4,6 +4,7 @@ import ElectionSelection from "../../features/election/components/electionSelect
 import VoterIdentity from "../../features/voter/components/voterIdentity";
 import BiometricVerification from "../../features/voter/components/biometricVerification";
 import CandidateSelection from "../../features/voter/components/candidateSelection";
+import ReferendumAnswerSelection from "../../features/voter/components/referendumAnswerSelection";
 import VoteConfirmation from "../../features/voter/components/voteConfirmation";
 
 const VoteCastingPage = () => {
@@ -11,16 +12,21 @@ const VoteCastingPage = () => {
     const { colors, spacing, fonts } = theme;
     const [step, setStep] = useState(1);
     const [state, setState] = useState({
-        election:"", name:"", addr1:"", addr2:"", city:"", postcode:"", county:"", candidate:""
+        election:"", referendum:"", name:"", addr1:"", addr2:"", city:"", postcode:"", county:"", candidate:""
     });
 
     const next = () => setStep(s => Math.min(s+1, 5));
 
+    // Step 4 depends on whether the user selected an election or a referendum
+    const isReferendum = Boolean(state.referendum);
+
     const pages = [
-        <ElectionSelection next={next} state={state} setState={setState} />,
         <VoterIdentity next={next} state={state} setState={setState} />,
         <BiometricVerification next={next} state={state} setState={setState} />,
-        <CandidateSelection next={next} state={state} setState={setState} />,
+        <ElectionSelection next={next} state={state} setState={setState} />,
+        isReferendum
+            ? <ReferendumAnswerSelection next={next} state={state} setState={setState} />
+            : <CandidateSelection next={next} state={state} setState={setState} />,
         <VoteConfirmation next={next} state={state} setState={setState} />
     ]
 

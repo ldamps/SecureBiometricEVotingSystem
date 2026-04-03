@@ -16,6 +16,7 @@ from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
 from app.application.core.exceptions import ValidationError
+from app.infra.postcode.postcodes_io import lookup_postcode
 
 logger = structlog.get_logger()
 
@@ -41,13 +42,21 @@ class AddressService(EncryptionUtilsMixin):
         self._voter_repo = voter_repo or VoterRepository()
         self._audit_log_repo = audit_log_repo or AuditLogRepository()
 
-    async def _resolve_constituency(self, county: str) -> UUID:
-        """Look up a constituency by county name. Raises ValidationError if not found."""
-        constituency = await self._constituency_repo.get_by_name(self.session, county)
+    async def _resolve_constituency_from_postcode(self, postcode: str) -> UUID:
+        """Look up a constituency from a postcode via postcodes.io, then match to DB."""
+        result = await lookup_postcode(postcode)
+        if not result or not result.constituency:
+            raise ValidationError(
+                f"Could not determine a parliamentary constituency for postcode '{postcode}'. "
+                "Please check the postcode is valid."
+            )
+        constituency = await self._constituency_repo.get_by_name(
+            self.session, result.constituency
+        )
         if not constituency:
             raise ValidationError(
-                f"No constituency found matching county '{county}'. "
-                "The county must match a valid UK county name."
+                f"Constituency '{result.constituency}' from postcode lookup "
+                "was not found in the database."
             )
         return constituency.id
 
@@ -58,15 +67,15 @@ class AddressService(EncryptionUtilsMixin):
             raise ValidationError("Overseas constituency not found in the database.")
         return constituency.id
 
-    async def _sync_voter_constituency(self, voter_id: UUID, county: str) -> None:
-        """Resolve the constituency from the county name and update the voter record."""
-        constituency_id = await self._resolve_constituency(county)
+    async def _sync_voter_constituency(self, voter_id: UUID, postcode: str) -> None:
+        """Resolve the constituency from the postcode and update the voter record."""
+        constituency_id = await self._resolve_constituency_from_postcode(postcode)
         await self._voter_repo.update_constituency(self.session, voter_id, constituency_id)
         logger.info(
-            "Voter constituency synced from current address",
+            "Voter constituency synced from postcode",
             voter_id=voter_id,
             constituency_id=constituency_id,
-            county=county,
+            postcode=postcode,
         )
 
     async def _sync_voter_overseas_constituency(self, voter_id: UUID) -> None:
@@ -107,11 +116,11 @@ class AddressService(EncryptionUtilsMixin):
             is_current = self._is_type(dto.address_type, AddressType.LOCAL_CURRENT)
             is_overseas = self._is_type(dto.address_type, AddressType.OVERSEAS)
 
-            # Validate county against constituencies before persisting
+            # Validate postcode for constituency resolution before persisting
             if is_current:
-                if not dto.county or not dto.county.strip():
-                    raise ValidationError("County is required for a current local address.")
-                await self._resolve_constituency(dto.county)
+                if not dto.postcode or not dto.postcode.strip():
+                    raise ValidationError("Postcode is required for a current local address.")
+                await self._resolve_constituency_from_postcode(dto.postcode)
 
             # Both LOCAL_CURRENT and OVERSEAS demote the existing current address
             if is_current or is_overseas:
@@ -131,7 +140,7 @@ class AddressService(EncryptionUtilsMixin):
 
             # Sync voter constituency
             if is_current:
-                await self._sync_voter_constituency(dto.voter_id, dto.county)
+                await self._sync_voter_constituency(dto.voter_id, dto.postcode)
             elif is_overseas:
                 await self._sync_voter_overseas_constituency(dto.voter_id)
 
@@ -213,11 +222,11 @@ class AddressService(EncryptionUtilsMixin):
         is_currently_current = existing.address_type == AddressType.LOCAL_CURRENT
         is_currently_overseas = existing.address_type == AddressType.OVERSEAS
 
-        # Switching to LOCAL_CURRENT — validate county and demote old current
+        # Switching to LOCAL_CURRENT — validate postcode and demote old current
         if becoming_current and not is_currently_current:
-            if not dto.county or not dto.county.strip():
-                raise ValidationError("County is required for a current local address.")
-            await self._resolve_constituency(dto.county)
+            if not dto.postcode or not dto.postcode.strip():
+                raise ValidationError("Postcode is required for a current local address.")
+            await self._resolve_constituency_from_postcode(dto.postcode)
             await self.address_repo.demote_current_address(self.session, dto.voter_id)
 
         # Switching to OVERSEAS — demote old current
@@ -231,10 +240,10 @@ class AddressService(EncryptionUtilsMixin):
         )
 
         # Re-sync constituency
-        if becoming_current or (is_currently_current and dto.county):
-            county = dto.county if dto.county else None
-            if county:
-                await self._sync_voter_constituency(dto.voter_id, county)
+        if becoming_current or (is_currently_current and dto.postcode):
+            postcode = dto.postcode if dto.postcode else None
+            if postcode:
+                await self._sync_voter_constituency(dto.voter_id, postcode)
         elif becoming_overseas:
             await self._sync_voter_overseas_constituency(dto.voter_id)
 

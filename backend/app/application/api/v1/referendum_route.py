@@ -60,6 +60,21 @@ async def get_all_referendums(
     return await service.get_all_referendums()
 
 
+# Get referendums for a specific constituency (voter-facing).
+@router.get(
+    "/constituency/{constituency_id}",
+    responses=referendum_responses,
+    response_model=List[ReferendumItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_referendums_for_constituency(
+    constituency_id: UUID = Path(..., description="The constituency to filter referendums by."),
+    service: ReferendumService = Depends(get_referendum_service),
+) -> List[ReferendumItem]:
+    """Get referendums for a constituency (constituency-specific + national)."""
+    return await service.get_all_referendums(constituency_id=constituency_id)
+
+
 # Get referendum by ID (public – voters browse before authenticating)
 @router.get(
     "/{referendum_id}",

@@ -23,6 +23,7 @@ export interface Referendum {
     status: ReferendumStatus;
     voting_opens: string;
     voting_closes: string;
+    constituency_ids: string[];
 }
 
 export interface CreateReferendumRequest {
@@ -30,6 +31,7 @@ export interface CreateReferendumRequest {
     question: string;
     description: string;
     scope: ReferendumScope;
+    constituency_ids?: string[];
     voting_opens?: string;
     voting_closes?: string;
 }

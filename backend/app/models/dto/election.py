@@ -1,8 +1,8 @@
 # app/models/dto/election.py - DTOs for election related operations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import ClassVar, Optional
+from typing import ClassVar, List, Optional
 from uuid import UUID
 
 from app.application.constants import Resource
@@ -31,6 +31,7 @@ class ElectionDTO(ElectionBaseDTO):
     voting_opens: Optional[datetime] = None
     voting_closes: Optional[datetime] = None
     created_by: Optional[UUID] = None
+    constituency_ids: List[str] = field(default_factory=list)
 
     def to_schema(self) -> ElectionItem:
         return ElectionItem(
@@ -43,6 +44,7 @@ class ElectionDTO(ElectionBaseDTO):
             voting_opens=self.voting_opens,
             voting_closes=self.voting_closes,
             created_by=str(self.created_by) if self.created_by else None,
+            constituency_ids=self.constituency_ids,
         )
 
 
@@ -55,6 +57,7 @@ class CreateElectionPlainDTO(ElectionBaseDTO):
     scope: str = ""
     allocation_method: str = ""
     status: str = ""
+    constituency_ids: List[str] = field(default_factory=list)
     voting_opens: Optional[datetime] = None
     voting_closes: Optional[datetime] = None
     created_by: Optional[UUID] = None
@@ -76,6 +79,7 @@ class CreateElectionPlainDTO(ElectionBaseDTO):
             scope=d["scope"],
             allocation_method=d["allocation_method"],
             status=status,
+            constituency_ids=d.get("constituency_ids") or [],
             voting_opens=opens,
             voting_closes=closes,
             created_by=d.get("created_by"),

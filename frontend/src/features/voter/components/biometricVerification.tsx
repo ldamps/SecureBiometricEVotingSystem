@@ -13,6 +13,7 @@ import {
     getPageTitleStyle,
     PrimaryButton,
     SecondaryButton,
+    getSuccessAlertStyle,
 } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import { BiometricVerificationStatus } from "../model/biometric.model";
@@ -38,7 +39,7 @@ function BiometricVerification({
     next,
     state,
     setState,
-    progressStep = 3,
+    progressStep = 2,
     showProgressBar = true,
     usePageLayout = false,
 }: {
@@ -234,10 +235,7 @@ function BiometricVerification({
                 {status === BiometricVerificationStatus.VERIFIED && (
                     <div style={{
                         marginTop: theme.spacing.md,
-                        padding: theme.spacing.md,
-                        borderRadius: theme.borderRadius?.md || "8px",
-                        backgroundColor: "#f0fff4",
-                        border: `1px solid ${theme.colors.status.success}`,
+                        ...getSuccessAlertStyle(theme),
                     }}>
                         <strong>Identity verified</strong>
                         <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>
@@ -275,6 +273,16 @@ function BiometricVerification({
 
                 {status === BiometricVerificationStatus.VERIFIED && (
                     <PrimaryButton onClick={next}>Next</PrimaryButton>
+                )}
+
+                {/* Dev-only: skip biometric verification when testing locally */}
+                {process.env.NODE_ENV === "development" && status !== BiometricVerificationStatus.VERIFIED && (
+                    <SecondaryButton onClick={() => {
+                        setState({ ...state, biometricVerified: true });
+                        setStatus(BiometricVerificationStatus.VERIFIED);
+                    }}>
+                        Skip (dev only)
+                    </SecondaryButton>
                 )}
             </div>
         </>

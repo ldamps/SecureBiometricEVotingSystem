@@ -13,9 +13,10 @@ from app.models.dto.election import (
 )
 from app.models.schemas.election import ElectionItem
 from app.application.core.exceptions import ValidationError
-from app.models.sqlalchemy.election import ElectionStatus
+from app.models.sqlalchemy.election import ElectionStatus, election_constituency
 from app.repository.election_repo import ElectionRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
+from sqlalchemy import insert
 
 # Valid election status transitions (CANCELLED is terminal).
 _VALID_TRANSITIONS: dict[str, set[str]] = {
@@ -62,12 +63,25 @@ class ElectionService(EncryptionUtilsMixin):
             )
             election = enc_row.to_model()
             election = await self.election_repo.create_election(self.session, election)
+
+            # Link constituencies (many-to-many) via direct insert
+            if dto.constituency_ids:
+                await self.session.execute(
+                    insert(election_constituency),
+                    [
+                        {"election_id": election.id, "constituency_id": UUID(cid)}
+                        for cid in dto.constituency_ids
+                    ],
+                )
+                await self.session.flush()
+
             election = await sync_election_status_with_voting_schedule(
                 self.session, self.election_repo, election
             )
 
-            election_dto = await self._mapper.decrypt_model(
-                election, ElectionDTO, args, self.session
+            # Re-fetch with constituencies eagerly loaded
+            election = await self.election_repo.get_election_by_id(
+                self.session, election.id
             )
 
             # Audit: election created
@@ -85,7 +99,7 @@ class ElectionService(EncryptionUtilsMixin):
                 ),
             )
 
-            return election_dto.to_schema()
+            return await self.election_model_to_schema_item(election, self.session)
 
         except Exception:
             logger.exception("Failed to create election", dto=dto)
@@ -104,10 +118,15 @@ class ElectionService(EncryptionUtilsMixin):
             logger.exception("Failed to get election by ID", election_id=election_id)
             raise
 
-    async def get_all_elections(self) -> List[ElectionItem]:
-        """Get all elections."""
+    async def get_all_elections(self, constituency_id: UUID | None = None) -> List[ElectionItem]:
+        """Get all elections, optionally filtered by constituency."""
         try:
-            elections = await self.election_repo.get_all_elections(self.session)
+            if constituency_id:
+                elections = await self.election_repo.get_elections_by_constituency(
+                    self.session, constituency_id
+                )
+            else:
+                elections = await self.election_repo.get_all_elections(self.session)
             synced = []
             for e in elections:
                 synced.append(

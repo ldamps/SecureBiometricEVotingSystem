@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 import enum
 from typing import TYPE_CHECKING
-from sqlalchemy import ForeignKey, String, TIMESTAMP, func
+from sqlalchemy import Column, ForeignKey, String, Table, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base.sqlalchemy_base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.models.sqlalchemy.voter_ledger import VoterLedger
     from app.models.sqlalchemy.election_official import ElectionOfficial
     from app.models.sqlalchemy.candidate import Candidate
+    from app.models.sqlalchemy.constituency import Constituency
 
 
 class ElectionType(str, enum.Enum):
@@ -90,6 +91,25 @@ class ElectionStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
+# Many-to-many association table: election <-> constituency
+election_constituency = Table(
+    "election_constituency",
+    Base.metadata,
+    Column(
+        "election_id",
+        PG_UUID(as_uuid=True),
+        ForeignKey("election.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "constituency_id",
+        PG_UUID(as_uuid=True),
+        ForeignKey("constituency.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
 class Election(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Election with opening/closing times and status."""
 
@@ -110,6 +130,11 @@ class Election(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     # Relationships ----------
+
+    constituencies: Mapped[list["Constituency"]] = relationship(
+        "Constituency",
+        secondary=election_constituency,
+    )
 
     voter_ledger: Mapped[list["VoterLedger"]] = relationship(
         "VoterLedger",

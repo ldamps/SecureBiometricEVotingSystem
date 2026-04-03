@@ -142,7 +142,7 @@ class VerifyIdentityRequest(RequestSchema):
     address_line1: str = Field(..., description="Address line 1.")
     address_line2: Optional[str] = Field(None, description="Address line 2.")
     city: str = Field(..., description="City or town.")
-    postcode: str = Field(..., description="Postcode.")
+    postcode: Optional[str] = Field(None, description="Postcode.")
 
 
 class VerifyIdentityResponse(ResponseSchema):
