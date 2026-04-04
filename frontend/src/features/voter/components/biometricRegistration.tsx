@@ -23,6 +23,7 @@ function isMobileOrTablet(): boolean {
 
 /** Interval (ms) at which the laptop polls for enrollment completion. */
 const POLL_INTERVAL = 3000;
+const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function BiometricRegistration({
     next,
@@ -69,8 +70,15 @@ function BiometricRegistration({
      */
     const startPolling = useCallback(() => {
         if (pollRef.current) clearInterval(pollRef.current);
+        const pollStarted = Date.now();
 
         pollRef.current = setInterval(async () => {
+            if (Date.now() - pollStarted > POLL_TIMEOUT_MS) {
+                if (pollRef.current) clearInterval(pollRef.current);
+                setError("Enrollment timed out. Please try again.");
+                setEnrollmentStatus(BiometricEnrollmentStatus.ERROR);
+                return;
+            }
             try {
                 const credentials = await biometricApi.listCredentials(state.voterId);
                 const active = credentials.find((c) => c.is_active);

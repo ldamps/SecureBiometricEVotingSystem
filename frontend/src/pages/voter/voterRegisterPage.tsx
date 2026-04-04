@@ -36,6 +36,7 @@ const VoterRegisterPage: React.FC = () => {
         proofOfAddressFile: null as File | null,
         proofOfAddressFileName: "",
         addressVerified: false,
+        addressId: "",
         kycSessionId: "",
         kycStatus: "",
         addressKycSessionId: "",

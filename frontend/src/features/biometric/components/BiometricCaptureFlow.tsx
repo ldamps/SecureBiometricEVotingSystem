@@ -18,7 +18,7 @@ import { getCardStyle } from "../../../styles/ui";
 import { useCameraStream } from "../hooks/useCameraStream";
 import * as faceapi from "face-api.js";
 import { loadFaceModels, extractFaceDescriptor, extractStableFaceDescriptor } from "../services/face-recognition.service";
-import { loadEarModel, extractEarDescriptor, extractStableEarDescriptor } from "../services/ear-recognition.service";
+import { loadEarModel, extractEarDescriptor } from "../services/ear-recognition.service";
 import { FeatureDescriptor } from "../models/biometric-feature.model";
 
 type CaptureStep =
@@ -45,23 +45,8 @@ function eyeAspectRatio(eye: faceapi.Point[]): number {
   return h === 0 ? 1 : (v1 + v2) / (2 * h);
 }
 
-/** Estimate head yaw from landmarks. ~0.5 = front, <0.35 = turned left. */
-function estimateYaw(landmarks: faceapi.FaceLandmarks68): number {
-  const nose = landmarks.getNose();
-  const jaw = landmarks.getJawOutline();
-  const noseTip = nose[3];
-  const leftJaw = jaw[0];
-  const rightJaw = jaw[16];
-  const distLeft = Math.hypot(noseTip.x - leftJaw.x, noseTip.y - leftJaw.y);
-  const distRight = Math.hypot(noseTip.x - rightJaw.x, noseTip.y - rightJaw.y);
-  const total = distLeft + distRight;
-  return total === 0 ? 0.5 : distLeft / total;
-}
-
 const BLINK_THRESHOLD = 0.22;
 const BLINK_TIMEOUT_MS = 10000;
-const SIDE_PROFILE_THRESHOLD = 0.42; // More forgiving — slight head turn is enough
-const EAR_CAPTURE_TIMEOUT_MS = 8000; // Fallback: capture ear after 8s if any turn detected
 
 const INSTRUCTIONS = {
   loading: { title: "Preparing", detail: "Loading biometric models. This may take a moment on first use." },

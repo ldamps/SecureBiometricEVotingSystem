@@ -154,8 +154,8 @@ function mapLedger(row: BackendVoterLedger): VoterLedgerItem {
     };
 }
 
-/** Convert dd/mm/yyyy to ISO datetime string for the backend. */
-function dobToISO(dob: string): string {
+/** Convert dd/mm/yyyy to ISO datetime string for the backend. Works for any date field. */
+function dateToISO(dob: string): string {
     const parts = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (parts) {
         const [, dd, mm, yyyy] = parts;
@@ -171,14 +171,14 @@ function registrationBody(req: VoterCreateRequest): Record<string, unknown> {
         surname: req.surname,
         previous_first_name: req.previous_first_name,
         previous_surname: req.previous_surname,
-        date_of_birth: dobToISO(req.date_of_birth),
+        date_of_birth: dateToISO(req.date_of_birth),
         email: req.email,
         national_insurance_number: req.national_insurance_number,
         passports: req.passports.map((p) =>
             definedPayload({
                 passport_number: p.passport_number,
                 issuing_country: p.issuing_country,
-                expiry_date: p.expiry_date,
+                expiry_date: p.expiry_date ? dateToISO(p.expiry_date) : undefined,
                 is_primary: p.is_primary,
             }),
         ),
@@ -235,7 +235,7 @@ function createPassportBody(req: CreatePassportRequest): Record<string, unknown>
     return definedPayload({
         passport_number: req.passport_number,
         issuing_country: req.issuing_country,
-        expiry_date: req.expiry_date,
+        expiry_date: req.expiry_date ? dateToISO(req.expiry_date) : undefined,
         is_primary: req.is_primary,
     });
 }
@@ -244,7 +244,7 @@ function updatePassportBody(req: UpdatePassportRequest): Record<string, unknown>
     return definedPayload({
         passport_number: req.passport_number,
         issuing_country: req.issuing_country,
-        expiry_date: req.expiry_date,
+        expiry_date: req.expiry_date ? dateToISO(req.expiry_date) : undefined,
         is_primary: req.is_primary,
     });
 }

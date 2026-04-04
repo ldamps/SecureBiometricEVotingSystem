@@ -8,6 +8,7 @@ import {
     getStepTitleStyle,
     getStepDescStyle,
     PrimaryButton,
+    SecondaryButton,
 } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +33,7 @@ function VoteConfirmation({
     const [submitted, setSubmitted] = useState(false);
     const [receiptCode, setReceiptCode] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
 
     const isReferendum = Boolean(state.referendum);
 
@@ -160,16 +162,28 @@ function VoteConfirmation({
                             <p style={{ margin: 0, fontSize: theme.fontSizes.sm, color: theme.colors.text.secondary, marginBottom: theme.spacing.xs }}>
                                 Your receipt code (save this for verification):
                             </p>
-                            <p style={{
-                                margin: 0,
-                                fontSize: theme.fontSizes.base,
-                                fontWeight: 700,
-                                color: theme.colors.text.primary,
-                                fontFamily: "monospace",
-                                wordBreak: "break-all",
-                            }}>
-                                {receiptCode}
-                            </p>
+                            <div style={{ display: "flex", alignItems: "center", gap: theme.spacing.sm }}>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: theme.fontSizes.base,
+                                    fontWeight: 700,
+                                    color: theme.colors.text.primary,
+                                    fontFamily: "monospace",
+                                    wordBreak: "break-all",
+                                }}>
+                                    {receiptCode}
+                                </p>
+                                <SecondaryButton
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(receiptCode).then(() => {
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        });
+                                    }}
+                                >
+                                    {copied ? "Copied!" : "Copy"}
+                                </SecondaryButton>
+                            </div>
                         </div>
                     )}
 

@@ -237,7 +237,50 @@ const VoterUpdateRegistrationPage: React.FC = () => {
 
         // Address changes are already persisted by the CurrentAddress component
         // (it creates a new LOCAL_CURRENT address, which demotes the old one to PAST,
-        // then verifies it via proof-of-address upload). No additional API call needed.
+        // then verifies it via proof-of-address upload).
+        // However, verify the address was actually saved and verified.
+        if (editedSections.has("address")) {
+            if (!state.addressVerified) {
+                errors.push("Address: Your new address has not been verified. Please re-enter the address section and upload proof of address.");
+            }
+        }
+
+        // Handle biometric renewal — the BiometricRegistration component enrols
+        // a new credential via polling, but we need to update renew_by on the voter
+        // and revoke the old credential if a new one was enrolled.
+        if (editedSections.has("biometric")) {
+            try {
+                if (!state.biometricEnrolled) {
+                    errors.push("Biometrics: Biometric renewal has not been completed. Please re-enter the biometric section and link your device.");
+                } else {
+                    // Extend renew_by by 2 years from now
+                    const renewBy = new Date();
+                    renewBy.setFullYear(renewBy.getFullYear() + 2);
+                    await voterApi.updateVoter(voterId, {
+                        renew_by: renewBy.toISOString(),
+                    });
+                }
+            } catch (err: any) {
+                errors.push(`Biometrics: ${err.message || "Failed to finalise biometric renewal."}`);
+            }
+        }
+
+        // Handle identification method switch (NI→passport or passport→NI)
+        if (editedSections.has("identity")) {
+            try {
+                const existingPassportId = (state.existingPassportId as string || "").trim();
+
+                // Switched from passport to NI — remove old passport
+                if (state.identificationMethod === "ni" && existingPassportId) {
+                    await voterApi.deletePassport(voterId, existingPassportId);
+                }
+
+                // Switched from NI to passport — NI stays on record (cannot be removed)
+                // but passport needs creating (handled above in passport logic)
+            } catch {
+                // Non-fatal — old passport cleanup is best-effort
+            }
+        }
 
         setSaving(false);
 

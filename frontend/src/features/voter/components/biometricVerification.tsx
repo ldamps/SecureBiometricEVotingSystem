@@ -34,6 +34,7 @@ function isMobileOrTablet(): boolean {
 }
 
 const POLL_INTERVAL = 2000;
+const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function BiometricVerification({
     next,
@@ -112,8 +113,16 @@ function BiometricVerification({
             const credentialsBefore = await biometricApi.listCredentials(state.voterId);
             const activeBefore = credentialsBefore.find((c) => c.is_active);
             const lastUsedBefore = activeBefore?.last_used_at;
+            const pollStarted = Date.now();
 
             pollRef.current = setInterval(async () => {
+                // Timeout — stop polling after 5 minutes
+                if (Date.now() - pollStarted > POLL_TIMEOUT_MS) {
+                    if (pollRef.current) clearInterval(pollRef.current);
+                    setError("Verification timed out. Please try again.");
+                    setStatus(BiometricVerificationStatus.FAILED);
+                    return;
+                }
                 try {
                     const credentials = await biometricApi.listCredentials(state.voterId);
                     const active = credentials.find((c) => c.is_active);
@@ -275,8 +284,10 @@ function BiometricVerification({
                     <PrimaryButton onClick={next}>Next</PrimaryButton>
                 )}
 
-                {/* Dev-only: skip biometric verification when testing locally */}
-                {process.env.NODE_ENV === "development" && status !== BiometricVerificationStatus.VERIFIED && (
+                {/* Dev-only: skip biometric verification when testing locally.
+                    Guarded by both NODE_ENV and an explicit env flag to prevent
+                    accidental exposure in production. */}
+                {process.env.NODE_ENV === "development" && process.env.REACT_APP_ALLOW_BIOMETRIC_SKIP === "true" && status !== BiometricVerificationStatus.VERIFIED && (
                     <SecondaryButton onClick={() => {
                         setState({ ...state, biometricVerified: true });
                         setStatus(BiometricVerificationStatus.VERIFIED);
