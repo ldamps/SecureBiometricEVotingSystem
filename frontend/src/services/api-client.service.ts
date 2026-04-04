@@ -38,6 +38,29 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+/**
+ * Read `sub` from the access token payload without verifying the signature.
+ * Used client-side only to discover the signed-in official's id (matches backend TokenPayload.sub).
+ */
+export function getAccessTokenSubject(): string | null {
+  const token = accessToken;
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const segment = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = (4 - (segment.length % 4)) % 4;
+    const base64 = segment + "=".repeat(pad);
+    const json = atob(base64);
+    const payload = JSON.parse(json) as { sub?: string };
+    return typeof payload.sub === "string" && payload.sub.length > 0
+      ? payload.sub
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Access token present and not past stored expiry (if any). */
 export function hasValidOfficialSession(): boolean {
   if (!accessToken) return false;

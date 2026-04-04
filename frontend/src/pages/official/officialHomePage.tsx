@@ -16,10 +16,10 @@ import {
   getSelectStyle,
   getStatusBadgeStyle,
 } from "../../styles/ui";
-import VotesPerConstituencyChart from "../../features/admin/components/votesPerConstituencyChart";
-import SeatAllocationChart from "../../features/admin/components/seatAllocationChart";
-import ReportErrorModal from "../../features/admin/components/reportErrorModal";
-import ManageOfficials from "../../features/admin/components/manageOfficials";
+import VotesPerConstituencyChart from "../../features/officials/components/votesPerConstituencyChart";
+import SeatAllocationChart from "../../features/officials/components/seatAllocationChart";
+import ReportErrorModal from "../../features/officials/components/reportErrorModal";
+import ManageOfficials from "../../features/officials/components/manageOfficials";
 import { ElectionApiRepository } from "../../features/election/repositories/election-api.repository";
 import { Election, ElectionStatus } from "../../features/election/model/election.model";
 
