@@ -7,7 +7,6 @@ import COUNTRIES from "../constants/countries";
 import { VoterApiRepository } from "../repositories/voter-api.repository";
 import { AddressType } from "../model/voter.model";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? "/api/v1";
 const voterApi = new VoterApiRepository();
 
 function CurrentAddress({
@@ -197,22 +196,7 @@ function CurrentAddress({
                             }
 
                             // Step 2: Upload proof of address for OCR verification against stored address
-                            const formData = new FormData();
-                            formData.append("file", state.proofOfAddressFile);
-                            formData.append("address_id", addressId);
-
-                            const res = await fetch(`${API_BASE_URL}/voter/${voterId}/verify-address`, {
-                                method: "POST",
-                                body: formData,
-                            });
-
-                            const data = await res.json();
-
-                            if (!res.ok) {
-                                setValidationErrors({ proofOfAddress: data.detail || "Address verification failed." });
-                                setVerifying(false);
-                                return;
-                            }
+                            const data = await voterApi.verifyAddress(voterId, addressId, state.proofOfAddressFile);
 
                             if (data.status === "verified") {
                                 setAddressVerified(true);

@@ -394,6 +394,24 @@ export class VoterApiRepository {
         return rows.map(mapLedger);
     }
 
+    async verifyAddress(
+        voterId: string,
+        addressId: string,
+        file: File,
+    ): Promise<{
+        status: string;
+        message: string;
+        matched_fields: number;
+        total_fields: number;
+        details: Record<string, boolean>;
+        address_status: string;
+    }> {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("address_id", addressId);
+        return ApiClient.postForm(`${ROOT}/${voterId}/verify-address`, formData);
+    }
+
     async createLedgerEntry(
         voterId: string,
         body: CreateVoterLedgerRequest,

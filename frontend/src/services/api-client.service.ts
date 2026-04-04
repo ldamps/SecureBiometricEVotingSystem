@@ -252,6 +252,11 @@ export class ApiClient {
     return request<T>(endpoint, { ...config, method: "PUT", body });
   }
 
+  /** POST request with FormData body (file uploads). */
+  static async postForm<T>(endpoint: string, formData: FormData): Promise<T> {
+    return request<T>(endpoint, { method: "POST", body: formData });
+  }
+
   /** DELETE request. */
   static async delete<T>(endpoint: string): Promise<T> {
     return request<T>(endpoint, { method: "DELETE" });
