@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import io
 import re
+from difflib import SequenceMatcher
 import structlog
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter
 from pdf2image import convert_from_bytes
 import pytesseract
 
 logger = structlog.get_logger()
+
+FUZZY_THRESHOLD = 0.75
 
 
 def _normalise(text: str) -> str:
@@ -27,17 +30,49 @@ def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _preprocess_image(image: Image.Image) -> Image.Image:
+    """Enhance an image for better OCR accuracy."""
+    image = image.convert("L")
+    image = ImageOps.autocontrast(image, cutoff=2)
+    image = image.filter(ImageFilter.SHARPEN)
+    return image
+
+
+def _fuzzy_contains(haystack: str, needle: str) -> bool:
+    """Check if *needle* appears in *haystack* using sliding-window fuzzy matching."""
+    if not needle:
+        return False
+    if needle in haystack:
+        return True
+    needle_len = len(needle)
+    words = haystack.split()
+    # Build windows of roughly the same character length as the needle
+    for start in range(len(words)):
+        window = ""
+        for end in range(start, len(words)):
+            window = " ".join(words[start : end + 1])
+            if len(window) >= needle_len:
+                ratio = SequenceMatcher(None, needle, window[: needle_len + 5]).ratio()
+                if ratio >= FUZZY_THRESHOLD:
+                    return True
+                if len(window) > needle_len * 2:
+                    break
+    return False
+
+
 def extract_text_from_image(image_bytes: bytes, content_type: str) -> str:
     """Run Tesseract OCR on an image buffer and return the raw text."""
     image = Image.open(io.BytesIO(image_bytes))
+    image = _preprocess_image(image)
     return pytesseract.image_to_string(image)
 
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     """Convert each PDF page to an image, OCR it, and concatenate."""
-    pages = convert_from_bytes(pdf_bytes, dpi=200)
+    pages = convert_from_bytes(pdf_bytes, dpi=300)
     texts: list[str] = []
     for page in pages:
+        page = _preprocess_image(page)
         texts.append(pytesseract.image_to_string(page))
     return "\n".join(texts)
 
@@ -63,6 +98,12 @@ def verify_address_in_text(
     """
     norm_text = _normalise(extracted_text)
 
+    logger.info(
+        "address_ocr_extracted",
+        raw_length=len(extracted_text),
+        normalised_preview=norm_text[:500],
+    )
+
     fields_provided = []
     if address_line1 and address_line1.strip():
         fields_provided.append("address_line1")
@@ -83,7 +124,8 @@ def verify_address_in_text(
     results: dict[str, bool] = {}
 
     if "address_line1" in fields_provided:
-        results["address_line1"] = _normalise(address_line1) in norm_text
+        norm_line1 = _normalise(address_line1)
+        results["address_line1"] = _fuzzy_contains(norm_text, norm_line1)
 
     if "postcode" in fields_provided:
         # Match the postcode as a word-bounded token.
@@ -98,10 +140,12 @@ def verify_address_in_text(
         results["postcode"] = bool(
             re.search(rf"\b{spaced_pat}\b", norm_text)
             or re.search(rf"\b{compact_pat}\b", norm_text)
+            or _fuzzy_contains(norm_text, spaced)
         )
 
     if "city" in fields_provided:
-        results["city"] = _normalise(city) in norm_text
+        norm_city = _normalise(city)
+        results["city"] = norm_city in norm_text or _fuzzy_contains(norm_text, norm_city)
 
     matched = sum(1 for v in results.values() if v)
     total = len(results)

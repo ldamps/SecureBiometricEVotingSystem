@@ -1,5 +1,5 @@
 import { useState as useLocalState } from "react";
-import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, getStepFormInputStyle, getFirstSectionStyle, getPageTitleStyle, PrimaryButton, SecondaryButton } from "../../../styles/ui";
+import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, getStepFormInputStyle, getFirstSectionStyle, getPageTitleStyle, getErrorAlertStyle, PrimaryButton, SecondaryButton } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
 import COUNTRIES from "../constants/countries";
@@ -75,6 +75,9 @@ function RegistrationDetails({
     showProgressBar = true,
     primaryButtonLabel = "Next",
     usePageLayout = false,
+    isUpdate = false,
+    existingNI = "",
+    existingPassportNumber = "",
 }: {
     next: () => void;
     back: () => void;
@@ -85,6 +88,9 @@ function RegistrationDetails({
     showProgressBar?: boolean;
     primaryButtonLabel?: string;
     usePageLayout?: boolean;
+    isUpdate?: boolean;
+    existingNI?: string;
+    existingPassportNumber?: string;
 }) {
     const { theme } = useTheme();
     const showOtherCountryInput = state.nationalityOtherCountry === true;
@@ -98,6 +104,12 @@ function RegistrationDetails({
 
     const idMethod: string = state.identificationMethod || "";
     const kycStatus: string = state.kycStatus || "";
+
+    // In update mode, KYC is only required when adding a new NI or changing passport
+    const isAddingNI = isUpdate && !existingNI && idMethod === "ni" && !!state.nationalInsuranceNumber?.trim();
+    const isChangingPassport = isUpdate && idMethod === "passport" && !!state.passportNumber?.trim() && state.passportNumber.trim() !== existingPassportNumber;
+    const updateRequiresKyc = isAddingNI || isChangingPassport;
+    const niIsReadOnly = isUpdate && !!existingNI;
 
     /** Compare form inputs against Stripe-extracted data and return mismatches. */
     const compareWithExtracted = (extracted: any, currentState: any): string[] => {
@@ -191,10 +203,10 @@ function RegistrationDetails({
     };
 
     const commonFields = [
-        { key: "firstName", label: "First Name(s)", placeholder: "e.g. John", type: "text", required: true },
-        { key: "lastName", label: "Last Name", placeholder: "e.g. Doe", type: "text", required: true },
-        { key: "email", label: "Email", placeholder: "e.g. john.doe@example.com", type: "text", required: true },
-        { key: "dateOfBirth", label: "Date of Birth", placeholder: "", type: "date", required: true },
+        { key: "firstName", label: "First Name(s)", placeholder: "e.g. John", type: "text", required: !isUpdate },
+        { key: "lastName", label: "Last Name", placeholder: "e.g. Doe", type: "text", required: !isUpdate },
+        { key: "email", label: "Email", placeholder: "e.g. john.doe@example.com", type: "text", required: !isUpdate },
+        ...(!isUpdate ? [{ key: "dateOfBirth", label: "Date of Birth", placeholder: "", type: "date", required: true }] : []),
     ];
 
     const niFields = [
@@ -235,6 +247,18 @@ function RegistrationDetails({
                 <div style={{ ...getCardStyle(theme), marginBottom: "1.75rem" }}>
                     {showProgressBar && <ProgressBar step={progressStep} theme={theme} />}
                     <h1 style={getStepTitleStyle(theme)}>{heading}</h1>
+                </div>
+            )}
+
+            {validationErrors.submit && (
+                <div style={{
+                    ...getCardStyle(theme),
+                    ...getErrorAlertStyle(theme),
+                    marginBottom: "1rem",
+                }}>
+                    <p style={{ color: theme.colors.status.error, fontSize: "0.9rem", fontWeight: 600, margin: 0 }}>
+                        {validationErrors.submit}
+                    </p>
                 </div>
             )}
 
@@ -289,7 +313,7 @@ function RegistrationDetails({
             {/* Identity verification method + conditional fields in one card */}
             <div style={{ ...getCardStyle(theme), marginBottom: "1rem" }}>
                 <label style={{ ...getStepLabelStyle(theme), display: "block", marginBottom: "0.5rem" }}>
-                    How would you like to verify your identity?<span style={{ color: theme.colors.status.error }}> *</span>
+                    How would you like to verify your identity?{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                 </label>
                 {validationErrors.identificationMethod && (
                     <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
@@ -330,11 +354,18 @@ function RegistrationDetails({
                 {/* Conditional fields rendered inside the same card */}
                 {idMethod && (
                     <div style={{ marginTop: "0.75rem" }}>
-                        {(idMethod === "ni" ? niFields : passportFields).map((field) => (
+                        {(idMethod === "ni" ? niFields : passportFields).map((field) => {
+                            const fieldIsNIReadOnly = niIsReadOnly && field.key === "nationalInsuranceNumber";
+                            return (
                             <div key={field.key} style={{ marginBottom: "0.75rem" }}>
                                 <label htmlFor={field.key} style={getStepLabelStyle(theme)}>
-                                    {field.label}<span style={{ color: theme.colors.status.error }}> *</span>
+                                    {field.label}{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                                 </label>
+                                {fieldIsNIReadOnly && (
+                                    <p style={{ fontSize: "0.85rem", color: theme.colors.text.secondary, marginTop: "0.25rem", marginBottom: "0.25rem" }}>
+                                        Your National Insurance Number cannot be changed once registered.
+                                    </p>
+                                )}
                                 {validationErrors[field.key] && (
                                     <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
                                         {validationErrors[field.key]}
@@ -380,18 +411,33 @@ function RegistrationDetails({
                                         name={field.key}
                                         placeholder={field.placeholder}
                                         value={state[field.key] || ""}
-                                        onChange={(e) => setState({ ...state, [field.key]: e.target.value })}
-                                        style={getStepFormInputStyle(theme)}
+                                        onChange={(e) => {
+                                            if (!fieldIsNIReadOnly) setState({ ...state, [field.key]: e.target.value });
+                                        }}
+                                        readOnly={fieldIsNIReadOnly}
+                                        style={{
+                                            ...getStepFormInputStyle(theme),
+                                            ...(fieldIsNIReadOnly ? { backgroundColor: "#f3f4f6", cursor: "not-allowed" } : {}),
+                                        }}
                                     />
                                 )}
                             </div>
-                        ))}
+                            );
+                        })}
 
-                        {/* Stripe Identity verification */}
+                        {/* Stripe Identity verification – always for registration, only when needed for update */}
+                        {(!isUpdate || updateRequiresKyc) && (
                         <div style={{ marginTop: "1rem", paddingTop: "0.75rem", borderTop: `1px solid ${theme.colors.border}` }}>
                             <p style={{ ...getStepLabelStyle(theme), marginBottom: "0.5rem" }}>
-                                Verify your identity<span style={{ color: theme.colors.status.error }}> *</span>
+                                Verify your identity{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                             </p>
+                            {isUpdate && (
+                                <p style={{ fontSize: "0.85rem", color: theme.colors.text.secondary, marginBottom: "0.5rem" }}>
+                                    {isAddingNI
+                                        ? "Adding a National Insurance Number requires identity verification."
+                                        : "Changing your passport details requires identity verification."}
+                                </p>
+                            )}
                             {validationErrors.kyc && (
                                 <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
                                     {validationErrors.kyc}
@@ -454,6 +500,7 @@ function RegistrationDetails({
                                 </p>
                             )}
                         </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -461,7 +508,7 @@ function RegistrationDetails({
             {/* Nationality – multiple selection allowed */}
             <div style={{ ...getCardStyle(theme), marginBottom: "1rem" }}>
                 <label style={{ ...getStepLabelStyle(theme), display: "block", marginBottom: "0.5rem" }}>
-                    Nationality (select all that apply – include every country you are a citizen of)<span style={{ color: theme.colors.status.error }}> *</span>
+                    Nationality (select all that apply – include every country you are a citizen of){!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                 </label>
                 {validationErrors.nationality && (
                     <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
@@ -482,7 +529,7 @@ function RegistrationDetails({
                 {showOtherCountryInput && (
                     <div style={{ marginTop: "0.75rem" }}>
                         <label htmlFor="otherCountries" style={getStepLabelStyle(theme)}>
-                            Which countries are you a citizen of?<span style={{ color: theme.colors.status.error }}> *</span>
+                            Which countries are you a citizen of?{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                         </label>
                         {validationErrors.otherCountries && (
                             <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
@@ -516,7 +563,7 @@ function RegistrationDetails({
             {/* Have you ever changed your name? */}
             <div style={{ ...getCardStyle(theme), marginBottom: "1rem" }}>
                 <label style={{ ...getStepLabelStyle(theme), display: "block", marginBottom: "0.5rem" }}>
-                    Have you ever changed your name?<span style={{ color: theme.colors.status.error }}> *</span>
+                    Have you ever changed your name?{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                 </label>
                 {validationErrors.nameChanged && (
                     <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
@@ -549,7 +596,7 @@ function RegistrationDetails({
                     <>
                         <div style={{ marginTop: "1rem" }}>
                             <label htmlFor="previousFirstName" style={getStepLabelStyle(theme)}>
-                                Previous first name<span style={{ color: theme.colors.status.error }}> *</span>
+                                Previous first name{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                             </label>
                             {validationErrors.previousFirstName && (
                                 <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
@@ -568,7 +615,7 @@ function RegistrationDetails({
                         </div>
                         <div style={{ marginTop: "0.75rem" }}>
                             <label htmlFor="previousLastName" style={getStepLabelStyle(theme)}>
-                                Previous last name<span style={{ color: theme.colors.status.error }}> *</span>
+                                Previous last name{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                             </label>
                             {validationErrors.previousLastName && (
                                 <p style={{ color: theme.colors.status.error, fontSize: "0.875rem", marginTop: "0.25rem", marginBottom: "0.25rem" }}>
@@ -594,63 +641,77 @@ function RegistrationDetails({
                     if (submitting) return;
                     const errors: Record<string, string> = {};
 
-                    // Required common fields
-                    if (!state.firstName?.trim()) errors.firstName = "First name is required.";
-                    if (!state.lastName?.trim()) errors.lastName = "Surname is required.";
-                    if (!state.email?.trim()) errors.email = "Email is required.";
-                    if (!state.dateOfBirth?.trim()) errors.dateOfBirth = "Date of birth is required.";
-
-                    // Date of birth validation
-                    const dob = parseDDMMYYYY(state.dateOfBirth || "");
-                    if (state.dateOfBirth && !dob) {
-                        errors.dateOfBirth = "Please enter a valid date in dd/mm/yyyy format.";
+                    if (!isUpdate) {
+                        // Required common fields (registration only)
+                        if (!state.firstName?.trim()) errors.firstName = "First name is required.";
+                        if (!state.lastName?.trim()) errors.lastName = "Surname is required.";
+                        if (!state.email?.trim()) errors.email = "Email is required.";
+                        if (!state.dateOfBirth?.trim()) errors.dateOfBirth = "Date of birth is required.";
                     }
-                    if (dob && state.region) {
-                        const minAge = getMinAge(state.region);
-                        const age = getAge(dob);
-                        if (age < minAge) {
-                            errors.dateOfBirth = `You must be at least ${minAge} years old to register to vote in ${getRegionLabel(state.region)}.`;
+
+                    // Date of birth validation (not shown in update mode)
+                    if (!isUpdate) {
+                        const dob = parseDDMMYYYY(state.dateOfBirth || "");
+                        if (state.dateOfBirth && !dob) {
+                            errors.dateOfBirth = "Please enter a valid date in dd/mm/yyyy format.";
+                        }
+                        if (dob && state.region) {
+                            const minAge = getMinAge(state.region);
+                            const age = getAge(dob);
+                            if (age < minAge) {
+                                errors.dateOfBirth = `You must be at least ${minAge} years old to register to vote in ${getRegionLabel(state.region)}.`;
+                            }
                         }
                     }
 
-                    // Identification method required
-                    if (!idMethod) {
-                        errors.identificationMethod = "Please select an identification method.";
-                    } else if (idMethod === "ni") {
-                        if (!state.nationalInsuranceNumber?.trim()) errors.nationalInsuranceNumber = "National Insurance Number is required.";
-                    } else if (idMethod === "passport") {
-                        if (!state.passportNumber?.trim()) errors.passportNumber = "Passport number is required.";
-                        if (!state.passportCountry) errors.passportCountry = "Passport country is required.";
-                        if (!state.passportExpiryDate?.trim()) errors.passportExpiryDate = "Passport expiry date is required.";
-                    }
+                    if (!isUpdate) {
+                        // Identification method required (registration only)
+                        if (!idMethod) {
+                            errors.identificationMethod = "Please select an identification method.";
+                        } else if (idMethod === "ni") {
+                            if (!state.nationalInsuranceNumber?.trim()) errors.nationalInsuranceNumber = "National Insurance Number is required.";
+                        } else if (idMethod === "passport") {
+                            if (!state.passportNumber?.trim()) errors.passportNumber = "Passport number is required.";
+                            if (!state.passportCountry) errors.passportCountry = "Passport country is required.";
+                            if (!state.passportExpiryDate?.trim()) errors.passportExpiryDate = "Passport expiry date is required.";
+                        }
 
-                    // Identity verification required
-                    if (kycStatus !== "verified") {
-                        errors.kyc = "Please verify your identity before continuing.";
-                    }
+                        // Identity verification required (registration only)
+                        if (kycStatus !== "verified") {
+                            errors.kyc = "Please verify your identity before continuing.";
+                        }
 
-                    // Name change question required
-                    if (state.nameChanged == null) {
-                        errors.nameChanged = "Please indicate whether you have ever changed your name.";
-                    } else if (state.nameChanged === true) {
-                        if (!state.previousFirstName?.trim()) errors.previousFirstName = "Previous first name is required.";
-                        if (!state.previousLastName?.trim()) errors.previousLastName = "Previous last name is required.";
-                    }
+                        // Name change question required (registration only)
+                        if (state.nameChanged == null) {
+                            errors.nameChanged = "Please indicate whether you have ever changed your name.";
+                        } else if (state.nameChanged === true) {
+                            if (!state.previousFirstName?.trim()) errors.previousFirstName = "Previous first name is required.";
+                            if (!state.previousLastName?.trim()) errors.previousLastName = "Previous last name is required.";
+                        }
 
-                    // Nationality required
-                    const hasNationality = state.nationalityBritish || state.nationalityIrish || state.nationalityOtherCountry;
-                    if (!hasNationality) {
-                        errors.nationality = "Please select at least one nationality.";
-                    }
-                    if (state.nationalityOtherCountry && (!state.otherCountries || (state.otherCountries as string[]).length === 0)) {
-                        errors.otherCountries = "Please select at least one country.";
+                        // Nationality required (registration only)
+                        const hasNationality = state.nationalityBritish || state.nationalityIrish || state.nationalityOtherCountry;
+                        if (!hasNationality) {
+                            errors.nationality = "Please select at least one nationality.";
+                        }
+                        if (state.nationalityOtherCountry && (!state.otherCountries || (state.otherCountries as string[]).length === 0)) {
+                            errors.otherCountries = "Please select at least one country.";
+                        }
+                    } else {
+                        // Update mode: KYC required only if adding NI or changing passport
+                        if (updateRequiresKyc && kycStatus !== "verified") {
+                            errors.kyc = isAddingNI
+                                ? "Please verify your identity before adding a National Insurance Number."
+                                : "Please verify your identity before changing your passport details.";
+                        }
                     }
 
                     setValidationErrors(errors);
                     if (Object.keys(errors).length > 0) return;
 
                     // Create the voter if not already created (needed for biometric enrollment in step 4)
-                    if (!state.voterId) {
+                    // In update mode, voter already exists — skip creation
+                    if (!isUpdate && !state.voterId) {
                         setSubmitting(true);
                         try {
                             const passports = [];

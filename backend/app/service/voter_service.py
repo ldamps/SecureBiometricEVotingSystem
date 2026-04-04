@@ -350,6 +350,7 @@ class VoterService(EncryptionUtilsMixin):
             args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
 
             # Find candidate addresses — by postcode token if provided, otherwise all active
+            # Only consider ACTIVE addresses (PAST/PENDING must not be used for verification)
             normalised_postcode = (request.postcode or "").strip().upper()
             if normalised_postcode:
                 postcode_token = await self._mapper.create_search_token(
@@ -362,6 +363,12 @@ class VoterService(EncryptionUtilsMixin):
                 candidate_addresses = await self.address_repo.get_all_addresses(
                     self.session
                 )
+
+            from app.models.sqlalchemy.address import AddressStatus as AddrStatus
+            candidate_addresses = [
+                a for a in candidate_addresses
+                if a.address_status == AddrStatus.ACTIVE
+            ]
 
             if not candidate_addresses:
                 return VerifyIdentityResponse(

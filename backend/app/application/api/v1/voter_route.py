@@ -207,9 +207,11 @@ async def verify_proof_of_address(
             address_service.session, address_id, "ACTIVE"
         )
 
-        # Sync constituency from county if this is a local address
-        if address_item.county:
-            await address_service._sync_voter_constituency(voter_id, address_item.county)
+        # Sync constituency from postcode (UK) or set to Overseas
+        if address_item.address_type == "OVERSEAS":
+            await address_service._sync_voter_overseas_constituency(voter_id)
+        elif address_item.postcode:
+            await address_service._sync_voter_constituency(voter_id, address_item.postcode)
 
         # Try to activate voter if all steps are complete
         activated = await voter_service.activate_voter_if_ready(voter_id)
