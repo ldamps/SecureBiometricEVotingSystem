@@ -278,10 +278,12 @@ function AMSBallot({
 
 function CandidateSelection({
     next,
+    back,
     state,
     setState,
 }: {
     next: () => void;
+    back: () => void;
     state: any;
     setState: (state: any) => void;
 }) {
@@ -440,7 +442,8 @@ function CandidateSelection({
                 </p>
             )}
 
-            <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center" }}>
+            <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center", gap: theme.spacing?.md ?? theme.spacing?.sm ?? "1rem" }}>
+                <PrimaryButton onClick={back}>Back</PrimaryButton>
                 <PrimaryButton onClick={handleNext} disabled={loading || candidates.length === 0}>
                     Next
                 </PrimaryButton>

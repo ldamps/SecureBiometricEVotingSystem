@@ -16,7 +16,7 @@ const VoteCastingPage = () => {
     });
 
     const next = () => setStep(s => Math.min(s+1, 5));
-
+    const previous = () => setStep(s => Math.max(s-1, 1));
     // Step 4 depends on whether the user selected an election or a referendum
     const isReferendum = Boolean(state.referendum);
 
@@ -25,8 +25,8 @@ const VoteCastingPage = () => {
         <BiometricVerification next={next} state={state} setState={setState} />,
         <ElectionSelection next={next} state={state} setState={setState} />,
         isReferendum
-            ? <ReferendumAnswerSelection next={next} state={state} setState={setState} />
-            : <CandidateSelection next={next} state={state} setState={setState} />,
+            ? <ReferendumAnswerSelection next={next} back={previous} state={state} setState={setState} />
+            : <CandidateSelection next={next} back={previous} state={state} setState={setState} />,
         <VoteConfirmation next={next} state={state} setState={setState} />
     ]
 

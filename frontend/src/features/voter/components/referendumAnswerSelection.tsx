@@ -17,10 +17,12 @@ import type { Referendum } from "../../referendum/model/referendum.model";
 const referendumApi = new ReferendumApiRepository();
 
 function ReferendumAnswerSelection({
+    back,
     next,
     state,
     setState,
 }: {
+    back: () => void;
     next: () => void;
     state: any;
     setState: (state: any) => void;
@@ -119,7 +121,8 @@ function ReferendumAnswerSelection({
                 </>
             )}
 
-            <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center" }}>
+            <div style={{ marginTop: "1.75rem", display: "flex", justifyContent: "center", gap: theme.spacing?.md ?? theme.spacing?.sm ?? "1rem"  }}>
+                <PrimaryButton onClick={back}>Back</PrimaryButton>
                 <PrimaryButton onClick={handleNext} disabled={loading}>
                     Next
                 </PrimaryButton>
