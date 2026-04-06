@@ -10,6 +10,7 @@ interface LoginResponse {
   refresh_token: string;
   token_type: string;
   expires_in: number;
+  must_reset_password: boolean;
 }
 
 const OfficialLandingPage: React.FC = () => {
@@ -48,7 +49,11 @@ const OfficialLandingPage: React.FC = () => {
         String(Date.now() + response.expires_in * 1000),
       );
 
-      navigate("/official/home");
+      if (response.must_reset_password) {
+        navigate("/official/onboarding");
+      } else {
+        navigate("/official/home");
+      }
     } catch (error) {
       if (error instanceof ApiException) {
         setErrorMessage(error.message || "Invalid username or password.");

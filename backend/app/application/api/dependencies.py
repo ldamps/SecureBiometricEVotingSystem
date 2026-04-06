@@ -309,11 +309,13 @@ def get_ballot_token_service(
 
 def get_official_service(
     session: AsyncSession = Depends(get_db),
+    email_service: EmailService = Depends(get_email_service),
 ) -> OfficialService:
     """Get an official service (EncryptedBytes handled at column level)."""
     return OfficialService(
         official_repo=OfficialRepository(),
         session=session,
+        email_service=email_service,
     )
 
 def get_error_report_service(

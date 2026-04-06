@@ -12,6 +12,7 @@ export interface Official {
     last_name: string;
     email: string;
     role: OfficialRole;
+    is_active: boolean;
 }
 
 export interface CreateOfficialRequest {

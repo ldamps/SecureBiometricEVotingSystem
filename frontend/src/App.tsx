@@ -21,6 +21,7 @@ import VoterUpdateRegistrationPage from './pages/voter/voterUpdateRegistrationPa
 import OfficialLandingPage from './pages/official/officialLandingPage';
 import OfficialHomePage from './pages/official/officialHomePage';
 import OfficialProfilePage from './pages/official/officialProfilePage';
+import OfficialOnboardingPage from './pages/official/officialOnboardingPage';
 
 // Mobile biometric pages (accessed via QR code from phone/tablet)
 import MobileEnrollPage from './pages/biometric/mobileEnrollPage';
@@ -52,6 +53,7 @@ const App: React.FC = () => {
               <Route element={<OfficialAuthGuard />}>
                 <Route path="home" element={<OfficialHomePage />} />
                 <Route path="profile" element={<OfficialProfilePage />} />
+                <Route path="onboarding" element={<OfficialOnboardingPage />} />
               </Route>
             </Route>
             

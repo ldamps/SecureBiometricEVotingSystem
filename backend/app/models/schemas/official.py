@@ -28,7 +28,7 @@ class CreateOfficialRequest(RequestSchema):
     first_name: Optional[str] = Field(None, max_length=255, description="First name of the official.")
     last_name: Optional[str] = Field(None, max_length=255, description="Last name of the official.")
     email: Optional[str] = Field(None, max_length=255, description="Email address of the official.")
-    password: str = Field(..., min_length=8, max_length=128, description="Temporary password for the official.")
+    password: Optional[str] = Field(None, min_length=8, max_length=128, description="Temporary password. If omitted, one is generated automatically.")
     role: OfficialRole = Field(..., description="Role to assign (ADMIN or OFFICER).")
     created_by: Optional[str] = Field(None, description="ID of the admin creating this official.")
 

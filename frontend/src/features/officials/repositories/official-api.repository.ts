@@ -28,6 +28,7 @@ function mapOfficialCore(b: BackendOfficialItem): Official {
         last_name: b.last_name ?? "",
         email: b.email ?? "",
         role: b.role,
+        is_active: b.is_active,
     };
 }
 
@@ -46,6 +47,7 @@ function createOfficialBody(body: CreateOfficialRequest): Record<string, unknown
         last_name: body.last_name,
         email: body.email,
         role: body.role,
+        created_by: body.created_by,
     });
 }
 
@@ -66,14 +68,12 @@ export class OfficialApiRepository {
     }
 
     async listOfficials(): Promise<Official[]> {
-        const rows = await ApiClient.get<BackendOfficialItem[]>(`${ROOT}/`, {
-            omitAuth: true,
-        });
+        const rows = await ApiClient.get<BackendOfficialItem[]>(ROOT);
         return rows.map(mapOfficialCore);
     }
 
     async createOfficial(body: CreateOfficialRequest): Promise<Official> {
-        const raw = await ApiClient.post<BackendOfficialItem>(`${ROOT}/`, createOfficialBody(body));
+        const raw = await ApiClient.post<BackendOfficialItem>(ROOT, createOfficialBody(body));
         return mapOfficialCore(raw);
     }
 

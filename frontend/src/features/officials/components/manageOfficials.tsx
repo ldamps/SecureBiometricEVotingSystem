@@ -56,7 +56,7 @@ const ManageOfficials: React.FC = () => {
       first_name: data.firstName,
       last_name: data.lastName,
       email: data.email,
-      role: OfficialRole.OFFICER,
+      role: (data.role as OfficialRole) || OfficialRole.OFFICER,
       created_by: currentOfficialId ?? "",
     });
     setAddModalOpen(false);
@@ -142,6 +142,7 @@ const ManageOfficials: React.FC = () => {
                     <th style={getTableHeaderStyle(theme)}>Username</th>
                     <th style={getTableHeaderStyle(theme)}>Email</th>
                     <th style={getTableHeaderStyle(theme)}>Role</th>
+                    <th style={getTableHeaderStyle(theme)}>Status</th>
                     <th style={getTableHeaderStyle(theme)}>Actions</th>
                   </tr>
                 </thead>
@@ -149,7 +150,7 @@ const ManageOfficials: React.FC = () => {
                   {officials.map((official) => {
                     const fullName = [official.first_name, official.last_name].filter(Boolean).join(" ") || official.username;
                     return (
-                      <tr key={official.id}>
+                      <tr key={official.id} style={{ opacity: official.is_active ? 1 : 0.6 }}>
                         <td style={getTableCellStyle(theme)}>{fullName}</td>
                         <td style={getTableCellStyle(theme)}>{official.username}</td>
                         <td style={getTableCellStyle(theme)}>{official.email || "—"}</td>
@@ -159,19 +160,40 @@ const ManageOfficials: React.FC = () => {
                           </span>
                         </td>
                         <td style={getTableCellStyle(theme)}>
-                          <button
-                            type="button"
-                            disabled={actionInProgress === official.id}
-                            onClick={() => handleDeactivate(official.id)}
-                            style={{
-                              ...getTabButtonStyle(theme, false),
-                              padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-                              fontSize: theme.fontSizes.xs,
-                              color: theme.colors.status.error,
-                            }}
-                          >
-                            {actionInProgress === official.id ? "…" : "Deactivate"}
-                          </button>
+                          <span style={getStatusBadgeStyle(theme, official.is_active ? "resolved" : "mismatch")}>
+                            {official.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td style={getTableCellStyle(theme)}>
+                          {official.is_active ? (
+                            <button
+                              type="button"
+                              disabled={actionInProgress === official.id}
+                              onClick={() => handleDeactivate(official.id)}
+                              style={{
+                                ...getTabButtonStyle(theme, false),
+                                padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                                fontSize: theme.fontSizes.xs,
+                                color: theme.colors.status.error,
+                              }}
+                            >
+                              {actionInProgress === official.id ? "…" : "Deactivate"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={actionInProgress === official.id}
+                              onClick={() => handleActivate(official.id)}
+                              style={{
+                                ...getTabButtonStyle(theme, false),
+                                padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                                fontSize: theme.fontSizes.xs,
+                                color: theme.colors.status.success,
+                              }}
+                            >
+                              {actionInProgress === official.id ? "…" : "Activate"}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

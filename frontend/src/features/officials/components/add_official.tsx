@@ -7,14 +7,15 @@ import {
   getStepFormInputStyle,
   getStepLabelStyle,
   getTabButtonStyle,
+  getSelectStyle,
 } from "../../../styles/ui";
-import { getSelectStyle } from "../../../styles/ui";
+import { OfficialRole } from "../model/official.model";
 
 export interface NewOfficialData {
   firstName: string;
   lastName: string;
   email: string;
-  accessLevel: string;
+  role: string;
 }
 
 interface AddOfficialProps {
@@ -27,14 +28,12 @@ const BLANK_FORM: NewOfficialData = {
   firstName: "",
   lastName: "",
   email: "",
-  accessLevel: "",
+  role: "",
 };
 
-const ACCESS_LEVELS = [
-  "Returning Officer",
-  "Presiding Officer",
-  "Poll Clerk",
-  "Electoral Registration Officer",
+const ROLE_OPTIONS: { value: OfficialRole; label: string }[] = [
+  { value: OfficialRole.OFFICER, label: "Election Officer" },
+  { value: OfficialRole.ADMIN, label: "Administrator" },
 ];
 
 const AddOfficial: React.FC<AddOfficialProps> = ({ open, onClose, onAdd }) => {
@@ -68,7 +67,7 @@ const AddOfficial: React.FC<AddOfficialProps> = ({ open, onClose, onAdd }) => {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       next.email = "Enter a valid email address";
     }
-    if (!form.accessLevel) next.accessLevel = "Required";
+    if (!form.role) next.role = "Required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -161,30 +160,30 @@ const AddOfficial: React.FC<AddOfficialProps> = ({ open, onClose, onAdd }) => {
             {field("email", "Email address", "email", "e.g. jane.smith@gov.uk")}
 
             <div>
-              <label htmlFor="add-official-accessLevel" style={labelStyle}>
-                Access level
+              <label htmlFor="add-official-role" style={labelStyle}>
+                Role
               </label>
               <select
-                id="add-official-accessLevel"
-                value={form.accessLevel}
-                onChange={(e) => setForm((prev) => ({ ...prev, accessLevel: e.target.value }))}
+                id="add-official-role"
+                value={form.role}
+                onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
                 style={{
                   ...getSelectStyle(theme),
                   width: "100%",
                   boxSizing: "border-box",
-                  borderColor: errors.accessLevel ? theme.colors.status.error : theme.colors.border,
+                  borderColor: errors.role ? theme.colors.status.error : theme.colors.border,
                 }}
               >
-                <option value="">— Select access level —</option>
-                {ACCESS_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
+                <option value="">— Select role —</option>
+                {ROLE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
-              {errors.accessLevel && (
+              {errors.role && (
                 <p style={{ margin: `${theme.spacing.xs} 0 0`, fontSize: theme.fontSizes.xs, color: theme.colors.status.error }}>
-                  {errors.accessLevel}
+                  {errors.role}
                 </p>
               )}
             </div>
