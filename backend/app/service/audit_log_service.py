@@ -46,6 +46,7 @@ class AuditLogService:
                 resource_type=dto.resource_type,
                 resource_id=dto.resource_id,
                 election_id=dto.election_id,
+                referendum_id=dto.referendum_id,
                 event_metadata=dto.event_metadata,
                 created_at=now,
             )
@@ -75,6 +76,17 @@ class AuditLogService:
             return [audit_log_orm_to_dto_unencrypted_row(e).to_schema() for e in entries]
         except Exception:
             logger.exception("Failed to get audit logs by election", election_id=election_id)
+            raise
+
+    async def get_audit_logs_by_referendum(self, referendum_id: UUID) -> List[AuditLogItem]:
+        """Get all audit log entries scoped to a referendum."""
+        try:
+            entries = await self.audit_log_repo.get_audit_logs_by_referendum(
+                self.session, referendum_id,
+            )
+            return [audit_log_orm_to_dto_unencrypted_row(e).to_schema() for e in entries]
+        except Exception:
+            logger.exception("Failed to get audit logs by referendum", referendum_id=referendum_id)
             raise
 
     async def get_audit_logs_by_actor(self, actor_id: UUID) -> List[AuditLogItem]:

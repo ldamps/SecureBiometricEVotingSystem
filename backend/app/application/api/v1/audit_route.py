@@ -7,12 +7,14 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Path, Query, status
 
-from app.application.api.dependencies import get_audit_log_service, require_role
+from app.application.api.dependencies import get_audit_log_service, get_audit_report_service, require_role
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.models.dto.auth import TokenPayload
 from app.models.schemas.audit_log import AuditLogItem
+from app.models.schemas.audit_report import ElectionAuditReportResponse, ReferendumAuditReportResponse
 from app.service.audit_log_service import AuditLogService
+from app.service.audit_report_service import AuditReportService
 
 audit_responses = responses(Resource.AUDIT_LOG)
 logger = structlog.get_logger()
@@ -38,6 +40,50 @@ async def get_recent_audit_logs(
 ) -> List[AuditLogItem]:
     """Get the most recent audit log entries."""
     return await service.get_recent_audit_logs(limit)
+
+
+# Generate election audit report (admin-only, privacy-safe)
+@router.get(
+    "/report/election/{election_id}",
+    responses=audit_responses,
+    response_model=ElectionAuditReportResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_audit_report(
+    election_id: UUID = Path(..., description="The election ID."),
+    service: AuditReportService = Depends(get_audit_report_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
+) -> ElectionAuditReportResponse:
+    """Generate an aggregated, privacy-safe audit report for an election.
+
+    Contains NO voter-identifiable information — only aggregate statistics,
+    system events, official activity, and investigation summaries.
+    """
+    return await service.generate_election_report(
+        election_id, generated_by=UUID(current_user.sub),
+    )
+
+
+# Generate referendum audit report (admin-only, privacy-safe)
+@router.get(
+    "/report/referendum/{referendum_id}",
+    responses=audit_responses,
+    response_model=ReferendumAuditReportResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_referendum_audit_report(
+    referendum_id: UUID = Path(..., description="The referendum ID."),
+    service: AuditReportService = Depends(get_audit_report_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
+) -> ReferendumAuditReportResponse:
+    """Generate an aggregated, privacy-safe audit report for a referendum.
+
+    Contains NO voter-identifiable information — only aggregate statistics,
+    system events, official activity, and investigation summaries.
+    """
+    return await service.generate_referendum_report(
+        referendum_id, generated_by=UUID(current_user.sub),
+    )
 
 
 # List audit logs by date range (admin-only)
@@ -78,6 +124,22 @@ async def get_audit_logs_by_election(
 ) -> List[AuditLogItem]:
     """List all audit log entries for a specific election."""
     return await service.get_audit_logs_by_election(election_id)
+
+
+# List audit logs by referendum (admin-only)
+@router.get(
+    "/referendum/{referendum_id}",
+    responses=audit_responses,
+    response_model=List[AuditLogItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_audit_logs_by_referendum(
+    referendum_id: UUID = Path(..., description="The referendum ID."),
+    service: AuditLogService = Depends(get_audit_log_service),
+    current_user: TokenPayload = Depends(require_role("ADMIN")),
+) -> List[AuditLogItem]:
+    """List all audit log entries for a specific referendum."""
+    return await service.get_audit_logs_by_referendum(referendum_id)
 
 
 # List audit logs by actor (admin-only)

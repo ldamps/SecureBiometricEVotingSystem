@@ -10,6 +10,7 @@ export interface AuditLog {
     resource_type: string;
     resource_id: string;
     election_id: string;
+    referendum_id: string;
     event_metadata: Record<string, unknown> | null;
     created_at: string;
 }

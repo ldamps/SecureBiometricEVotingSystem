@@ -58,6 +58,7 @@ from app.service.audit_log_service import AuditLogService
 from app.service.tally_service import TallyService
 from app.service.result_service import ResultService
 from app.repository.audit_log_repo import AuditLogRepository
+from app.service.audit_report_service import AuditReportService
 from app.service.auth_service import AuthService
 from app.models.dto.auth import TokenPayload
 from app.application.core.exceptions import AuthenticationError, AuthorizationError
@@ -380,6 +381,17 @@ def get_result_service(
         tally_result_repo=TallyResultRepository(),
         election_repo=ElectionRepository(Election),
         vote_repo=VoteRepository(),
+        session=session,
+    )
+
+
+def get_audit_report_service(
+    session: AsyncSession = Depends(get_db),
+) -> AuditReportService:
+    """Get an audit report service (generates privacy-safe audit reports)."""
+    return AuditReportService(
+        election_repo=ElectionRepository(Election),
+        referendum_repo=ReferendumRepository(Referendum),
         session=session,
     )
 

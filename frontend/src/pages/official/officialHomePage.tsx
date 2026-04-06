@@ -35,7 +35,8 @@ import { ElectionResult, ReferendumResult } from "../../features/results/model/r
 import { Constituency } from "../../features/election/model/constituency.model";
 import { Party } from "../../features/election/model/candidate.model";
 import { OfficialRole } from "../../features/officials/model/official.model";
-import { AuditLog } from "../../features/officials/model/audit-log.model";
+import type { ElectionAuditReport, ReferendumAuditReport } from "../../features/officials/model/audit-report.model";
+import { generateElectionAuditPdf, generateReferendumAuditPdf } from "../../features/officials/components/auditReportGenerator";
 import { Investigation } from "../../features/investigation/models/investigation.model";
 import { getAccessTokenSubject } from "../../services/api-client.service";
 
@@ -243,23 +244,27 @@ const OfficialHomePage: React.FC = () => {
 
   useEffect(() => { loadResults(); }, [loadResults]);
 
-  // ── Audit logs ──
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditError, setAuditError] = useState<string | null>(null);
+  // ── Audit report ──
+  const [auditReportLoading, setAuditReportLoading] = useState(false);
+  const [auditReportError, setAuditReportError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isAdmin || !selectedItem || selectedItem.kind !== "election") {
-      setAuditLogs([]);
-      return;
+  const handleDownloadAuditReport = useCallback(() => {
+    if (!selectedItem || !isAdmin) return;
+    setAuditReportLoading(true);
+    setAuditReportError(null);
+
+    if (selectedItem.kind === "election") {
+      auditLogApiRepository.getElectionAuditReport(selectedItem.id)
+        .then((report: ElectionAuditReport) => generateElectionAuditPdf(report, partyMap))
+        .catch((err: Error) => setAuditReportError(err.message || "Failed to generate audit report."))
+        .finally(() => setAuditReportLoading(false));
+    } else {
+      auditLogApiRepository.getReferendumAuditReport(selectedItem.id)
+        .then((report: ReferendumAuditReport) => generateReferendumAuditPdf(report))
+        .catch((err: Error) => setAuditReportError(err.message || "Failed to generate audit report."))
+        .finally(() => setAuditReportLoading(false));
     }
-    setAuditLoading(true);
-    setAuditError(null);
-    auditLogApiRepository.getAuditLogsByElection(selectedItem.id)
-      .then(setAuditLogs)
-      .catch((err: Error) => { setAuditError(err.message || "Failed to load audit logs."); setAuditLogs([]); })
-      .finally(() => setAuditLoading(false));
-  }, [isAdmin, selectedItem]);
+  }, [selectedItem, isAdmin, partyMap]);
 
   // ── Investigations ──
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
@@ -771,63 +776,45 @@ const OfficialHomePage: React.FC = () => {
               </section>
             )}
 
-            {/* ─── AUDIT LOGS TAB (admin only) ─── */}
+            {/* ─── AUDIT REPORT TAB (admin only) ─── */}
             {activeTab === "audit logs" && isAdmin && (
               <section>
-                <h2 style={sectionH2}>Audit logs</h2>
+                <h2 style={sectionH2}>Audit report</h2>
                 <p style={{ ...cardText, marginBottom: theme.spacing.lg }}>
-                  Chronological log of verification actions, system events, and official activity for this election. (Admin only.)
+                  Generate a formal audit report for this {selectedItem.kind}. The report contains aggregate
+                  statistics, system event timelines, official activity, and investigation summaries.
+                  It does not contain any voter-identifiable information. (Admin only.)
                 </p>
 
-                {selectedItem.kind === "referendum" && (
-                  <p style={{ ...cardText, fontStyle: "italic", color: theme.colors.text.secondary }}>
-                    Audit logs are available for elections only.
+                <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl }}>
+                  <p style={{ ...cardText, marginBottom: theme.spacing.lg, color: theme.colors.text.secondary }}>
+                    The audit report is a PDF document suitable for legal and compliance purposes.
+                    It includes election metadata, turnout figures, result summaries, system integrity events,
+                    and investigation records — with no individual voter data.
                   </p>
-                )}
 
-                {selectedItem.kind === "election" && auditLoading && (
-                  <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading audit logs…</p>
-                )}
+                  <button
+                    type="button"
+                    onClick={handleDownloadAuditReport}
+                    disabled={auditReportLoading}
+                    style={{
+                      ...getTabButtonStyle(theme, true),
+                      padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                      fontSize: theme.fontSizes.base,
+                      opacity: auditReportLoading ? 0.6 : 1,
+                    }}
+                  >
+                    {auditReportLoading ? "Generating report…" : "Download audit report (PDF)"}
+                  </button>
 
-                {selectedItem.kind === "election" && auditError && (
-                  <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}` }}>
-                    <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>{auditError}</p>
-                  </div>
-                )}
-
-                {selectedItem.kind === "election" && !auditLoading && !auditError && (
-                  <div style={{ ...card, overflowX: "auto" }}>
-                    {auditLogs.length === 0 ? (
-                      <p style={{ ...cardText, fontStyle: "italic" }}>No audit log entries found for this election.</p>
-                    ) : (
-                      <table style={getTableStyle(theme)}>
-                        <thead>
-                          <tr>
-                            <th style={getTableHeaderStyle(theme)}>Timestamp</th>
-                            <th style={getTableHeaderStyle(theme)}>Event type</th>
-                            <th style={getTableHeaderStyle(theme)}>Action</th>
-                            <th style={getTableHeaderStyle(theme)}>Summary</th>
-                            <th style={getTableHeaderStyle(theme)}>Actor</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {auditLogs.map((entry) => (
-                            <tr key={entry.id}>
-                              <td style={getTableCellStyle(theme)}>{formatDateTime(entry.created_at)}</td>
-                              <td style={getTableCellStyle(theme)}>{entry.event_type}</td>
-                              <td style={getTableCellStyle(theme)}>{entry.action}</td>
-                              <td style={getTableCellStyle(theme)}>{entry.summary}</td>
-                              <td style={getTableCellStyle(theme)}>
-                                {entry.actor_type ? `${entry.actor_type}` : "—"}
-                                {entry.actor_id ? ` (${entry.actor_id.slice(0, 8)}…)` : ""}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                )}
+                  {auditReportError && (
+                    <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}`, marginTop: theme.spacing.lg, textAlign: "left" }}>
+                      <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>
+                        {auditReportError}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </section>
             )}
 
