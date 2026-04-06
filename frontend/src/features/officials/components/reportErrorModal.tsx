@@ -1,42 +1,101 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTheme } from "../../../styles/ThemeContext";
-import { getCardStyle, getCardTextStyle, getH3Style } from "../../../styles/ui";
-import type { Theme } from "../../../styles/theme";
+import {
+  getCardStyle,
+  getCardTextStyle,
+  getH3Style,
+  getStepFormInputStyle,
+  getStepLabelStyle,
+  getSelectStyle,
+  getTabButtonStyle,
+} from "../../../styles/ui";
+import { InvestigationApiRepository } from "../../investigation/repositories/investigation-api.repository";
+import { getAccessTokenSubject } from "../../../services/api-client.service";
 
-const getSelectStyle = (theme: Theme) => ({
-  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-  borderRadius: theme.borderRadius.md,
-  border: `1px solid ${theme.colors.border}`,
-  background: theme.colors.surface,
-  color: theme.colors.text.primary,
-  fontSize: theme.fontSizes.base,
-  minWidth: "280px",
-});
+const investigationApiRepository = new InvestigationApiRepository();
 
-const getTabButtonStyle = (theme: Theme, active: boolean) => ({
-  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-  border: "none",
-  borderRadius: theme.borderRadius.md,
-  background: active ? theme.colors.primary : "transparent",
-  color: active ? theme.colors.text.inverse : theme.colors.text.primary,
-  fontWeight: theme.fontWeights.medium,
-  cursor: "pointer",
-  fontSize: theme.fontSizes.base,
-});
+const SEVERITY_OPTIONS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
 interface ReportErrorModalProps {
   open: boolean;
   onClose: () => void;
+  onSubmitted?: () => void;
   context?: string | null;
+  electionId?: string;
 }
 
-const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, context = null }) => {
+const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, onSubmitted, context = null, electionId }) => {
   const { theme } = useTheme();
   const card = getCardStyle(theme);
   const cardText = getCardTextStyle(theme);
   const h3 = getH3Style(theme);
 
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [severity, setSeverity] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   if (!open) return null;
+
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    if (!title.trim() || title.trim().length < 3) next.title = "Title is required (min 3 characters)";
+    if (!severity) next.severity = "Please select a severity level";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    if (!electionId) {
+      setSubmitError("No election selected. Error reports can only be filed for elections.");
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    const officialId = getAccessTokenSubject();
+    await investigationApiRepository.createErrorReport({
+      election_id: electionId,
+      reported_by: officialId ?? undefined,
+      title: context ? `${context} — ${title}` : title,
+      description: description || undefined,
+      severity,
+    })
+      .then(() => {
+        setTitle("");
+        setDescription("");
+        setSeverity("");
+        setErrors({});
+        onSubmitted?.();
+      })
+      .catch((err: Error) => {
+        setSubmitError(err.message || "Failed to submit error report.");
+      })
+      .finally(() => setSubmitting(false));
+  };
+
+  const handleClose = () => {
+    setTitle("");
+    setDescription("");
+    setSeverity("");
+    setErrors({});
+    setSubmitError(null);
+    onClose();
+  };
+
+  const labelStyle = {
+    ...getStepLabelStyle(theme),
+    display: "block" as const,
+    marginBottom: theme.spacing.xs,
+  };
+
+  const inputStyle = {
+    ...getStepFormInputStyle(theme),
+    boxSizing: "border-box" as const,
+    width: "100%",
+  };
 
   return (
     <div
@@ -52,7 +111,7 @@ const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, cont
         justifyContent: "center",
         zIndex: 1000,
       }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         style={{
@@ -73,66 +132,82 @@ const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, cont
           </p>
         )}
         <p style={{ ...cardText, marginBottom: theme.spacing.md }}>
-          Report discrepancies or issues when you see them. (Form submission not implemented.)
+          Report discrepancies or issues you have identified. An investigation will be automatically opened.
         </p>
+
+        {submitError && (
+          <p style={{ ...cardText, color: theme.colors.status.error, marginBottom: theme.spacing.md }}>
+            {submitError}
+          </p>
+        )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.md }}>
           <div>
-            <label
+            <label style={labelStyle}>Severity</label>
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
               style={{
-                display: "block",
-                marginBottom: theme.spacing.xs,
-                fontSize: theme.fontSizes.sm,
-                color: theme.colors.text.secondary,
+                ...getSelectStyle(theme),
+                width: "100%",
+                boxSizing: "border-box",
+                borderColor: errors.severity ? theme.colors.status.error : theme.colors.border,
               }}
             >
-              Category
-            </label>
-            <select style={getSelectStyle(theme)} disabled>
-              <option>— Select category —</option>
+              <option value="">— Select severity —</option>
+              {SEVERITY_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
+            {errors.severity && (
+              <p style={{ margin: `${theme.spacing.xs} 0 0`, fontSize: theme.fontSizes.xs, color: theme.colors.status.error }}>
+                {errors.severity}
+              </p>
+            )}
           </div>
           <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: theme.spacing.xs,
-                fontSize: theme.fontSizes.sm,
-                color: theme.colors.text.secondary,
-              }}
-            >
-              Summary
-            </label>
+            <label style={labelStyle}>Summary</label>
             <input
               type="text"
-              placeholder="Brief summary"
-              disabled
-              style={{ ...getSelectStyle(theme), width: "100%" }}
+              placeholder="Brief summary of the issue"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{
+                ...inputStyle,
+                borderColor: errors.title ? theme.colors.status.error : theme.colors.border,
+              }}
             />
+            {errors.title && (
+              <p style={{ margin: `${theme.spacing.xs} 0 0`, fontSize: theme.fontSizes.xs, color: theme.colors.status.error }}>
+                {errors.title}
+              </p>
+            )}
           </div>
           <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: theme.spacing.xs,
-                fontSize: theme.fontSizes.sm,
-                color: theme.colors.text.secondary,
-              }}
-            >
-              Description
-            </label>
+            <label style={labelStyle}>Description (optional)</label>
             <textarea
-              placeholder="Details"
-              disabled
+              placeholder="Detailed description of what you observed"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              style={{ ...getSelectStyle(theme), width: "100%", resize: "vertical" }}
+              style={{ ...inputStyle, resize: "vertical" as const }}
             />
           </div>
           <div style={{ display: "flex", gap: theme.spacing.sm, justifyContent: "flex-end" }}>
-            <button type="button" onClick={onClose} style={getTabButtonStyle(theme, false)}>
+            <button type="button" onClick={handleClose} style={getTabButtonStyle(theme, false)} disabled={submitting}>
               Cancel
             </button>
-            <button type="button" disabled style={getTabButtonStyle(theme, true)}>
-              Submit (not implemented)
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              style={{
+                ...getTabButtonStyle(theme, true),
+                background: theme.colors.primary,
+                color: theme.colors.text.inverse,
+              }}
+            >
+              {submitting ? "Submitting…" : "Submit report"}
             </button>
           </div>
         </div>

@@ -89,6 +89,11 @@ const lightColors = {
       md: "0 4px 6px -1px rgba(0, 0, 0, 0.08)",
       lg: "0 10px 15px -3px rgba(0, 0, 0, 0.08)",
     },
+
+    chart: [
+      "#1B2444", "#EF4444", "#F59E0B", "#22C55E", "#3B82F6",
+      "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#6366F1",
+    ],
 } as const;
   
 // Dark theme colors
@@ -129,6 +134,11 @@ const darkColors = {
       md: "0 4px 6px -1px rgba(0, 0, 0, 0.4)",
       lg: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
     },
+
+    chart: [
+      "#7B8FCC", "#FB7185", "#FBBF24", "#4ADE80", "#60A5FA",
+      "#A78BFA", "#F472B6", "#2DD4BF", "#FB923C", "#818CF8",
+    ],
 } as const;
   
 export const lightTheme = { ...shared, colors: lightColors } as const;

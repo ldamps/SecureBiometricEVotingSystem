@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, Path, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
 
 from app.application.api.dependencies import (
     get_ballot_token_service,
@@ -203,7 +203,7 @@ async def get_referendum_ballot_tokens(
 # ── Results & tallies ──
 
 
-# Get aggregated referendum results (any official)
+# Get aggregated referendum results (any official, only after voting closes)
 @router.get(
     "/{referendum_id}/results",
     responses=referendum_responses,
@@ -213,13 +213,23 @@ async def get_referendum_ballot_tokens(
 async def get_referendum_results(
     referendum_id: UUID = Path(..., description="The unique identifier for the referendum."),
     service: ResultService = Depends(get_result_service),
+    referendum_service: ReferendumService = Depends(get_referendum_service),
     current_user: TokenPayload = Depends(get_current_user),
 ) -> ReferendumResultResponse:
-    """Get aggregated YES/NO results for a referendum."""
+    """Get aggregated YES/NO results for a referendum.
+
+    Results are only available once the referendum status is CLOSED.
+    """
+    referendum = await referendum_service.get_referendum_by_id(referendum_id)
+    if referendum.status != "CLOSED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Results are only available after voting has closed.",
+        )
     return await service.get_referendum_results(referendum_id)
 
 
-# Get tallies for a referendum (admin-only)
+# Get tallies for a referendum (admin-only, only after voting closes)
 @router.get(
     "/{referendum_id}/tallies",
     responses=referendum_responses,
@@ -229,7 +239,17 @@ async def get_referendum_results(
 async def get_referendum_tallies(
     referendum_id: UUID = Path(..., description="The unique identifier for the referendum."),
     service: TallyService = Depends(get_tally_service),
+    referendum_service: ReferendumService = Depends(get_referendum_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[TallyResultItem]:
-    """Get YES/NO tallies for a referendum."""
+    """Get YES/NO tallies for a referendum.
+
+    Tallies are only available once the referendum status is CLOSED.
+    """
+    referendum = await referendum_service.get_referendum_by_id(referendum_id)
+    if referendum.status != "CLOSED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tallies are only available after voting has closed.",
+        )
     return await service.get_tallies_by_referendum(referendum_id)

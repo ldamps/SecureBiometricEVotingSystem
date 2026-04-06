@@ -4,7 +4,7 @@ from typing import List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, Path, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 
 from app.application.api.dependencies import (
     get_ballot_token_service,
@@ -272,7 +272,7 @@ async def get_election_ballot_tokens(
 # ── Results & tallies ──
 
 
-# Get aggregated election results (any official)
+# Get aggregated election results (any official, only after voting closes)
 @router.get(
     "/{election_id}/results",
     responses=election_responses,
@@ -282,13 +282,23 @@ async def get_election_ballot_tokens(
 async def get_election_results(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     service: ResultService = Depends(get_result_service),
+    election_service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(get_current_user),
 ) -> ElectionResultResponse:
-    """Get aggregated results for an election with per-constituency breakdowns and seat allocation."""
+    """Get aggregated results for an election with per-constituency breakdowns and seat allocation.
+
+    Results are only available once the election status is CLOSED.
+    """
+    election = await election_service.get_election_by_id(election_id)
+    if election.status != "CLOSED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Results are only available after voting has closed.",
+        )
     return await service.get_election_results(election_id)
 
 
-# Get tallies for an election (admin-only)
+# Get tallies for an election (admin-only, only after voting closes)
 @router.get(
     "/{election_id}/tallies",
     responses=election_responses,
@@ -298,13 +308,23 @@ async def get_election_results(
 async def get_election_tallies(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     service: TallyService = Depends(get_tally_service),
+    election_service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[TallyResultItem]:
-    """Get all vote tallies for an election, ordered by vote count."""
+    """Get all vote tallies for an election, ordered by vote count.
+
+    Tallies are only available once the election status is CLOSED.
+    """
+    election = await election_service.get_election_by_id(election_id)
+    if election.status != "CLOSED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tallies are only available after voting has closed.",
+        )
     return await service.get_tallies_by_election(election_id)
 
 
-# Get tallies for an election + constituency (admin-only)
+# Get tallies for an election + constituency (admin-only, only after voting closes)
 @router.get(
     "/{election_id}/constituency/{constituency_id}/tallies",
     responses=election_responses,
@@ -315,7 +335,17 @@ async def get_election_constituency_tallies(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     constituency_id: UUID = Path(..., description="The constituency ID."),
     service: TallyService = Depends(get_tally_service),
+    election_service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[TallyResultItem]:
-    """Get vote tallies for a specific constituency within an election."""
+    """Get vote tallies for a specific constituency within an election.
+
+    Tallies are only available once the election status is CLOSED.
+    """
+    election = await election_service.get_election_by_id(election_id)
+    if election.status != "CLOSED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tallies are only available after voting has closed.",
+        )
     return await service.get_tallies_by_constituency(election_id, constituency_id)

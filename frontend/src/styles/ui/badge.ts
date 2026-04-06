@@ -18,12 +18,15 @@ export const getStatusBadgeStyle = (theme: Theme, variant: StatusBadgeVariant) =
     resolved: theme.colors.status.success,
   };
   const color = colors[variant];
+  // Use higher alpha on dark backgrounds for better contrast
+  const isDark = theme.colors.background === "#0A1228";
+  const bgAlpha = isDark ? "33" : "22";
   return {
     padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
     borderRadius: theme.borderRadius.full,
     fontSize: theme.fontSizes.xs,
     fontWeight: theme.fontWeights.medium,
-    backgroundColor: color + "22",
+    backgroundColor: color + bgAlpha,
     color,
   };
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
 import {
@@ -16,108 +16,87 @@ import {
   getSelectStyle,
   getStatusBadgeStyle,
 } from "../../styles/ui";
+import type { StatusBadgeVariant } from "../../styles/ui";
 import VotesPerConstituencyChart from "../../features/officials/components/votesPerConstituencyChart";
 import SeatAllocationChart from "../../features/officials/components/seatAllocationChart";
 import ReportErrorModal from "../../features/officials/components/reportErrorModal";
 import ManageOfficials from "../../features/officials/components/manageOfficials";
 import { ElectionApiRepository } from "../../features/election/repositories/election-api.repository";
-import { Election, ElectionStatus } from "../../features/election/model/election.model";
-
-// --- Mock data (replace with backend when available) ---
-
-/** Set to true to show Audit logs tab (admin only). */
-const MOCK_USER_IS_ADMIN = true;
+import { ReferendumApiRepository } from "../../features/referendum/repositories/referendum-api.repository";
+import { ResultApiRepository } from "../../features/results/repositories/result-api.repository";
+import { OfficialApiRepository } from "../../features/officials/repositories/official-api.repository";
+import { AuditLogApiRepository } from "../../features/officials/repositories/audit-log-api.repository";
+import { ConstituencyApiRepository } from "../../features/election/repositories/constituency-api.repository";
+import { PartyApiRepository } from "../../features/election/repositories/candidate-api.repository";
+import { InvestigationApiRepository } from "../../features/investigation/repositories/investigation-api.repository";
+import { Election, ElectionStatus, ELECTION_TYPE_LABELS, ALLOCATION_METHOD_LABELS } from "../../features/election/model/election.model";
+import { Referendum, ReferendumStatus } from "../../features/referendum/model/referendum.model";
+import { ElectionResult, ReferendumResult } from "../../features/results/model/result.model";
+import { Constituency } from "../../features/election/model/constituency.model";
+import { Party } from "../../features/election/model/candidate.model";
+import { OfficialRole } from "../../features/officials/model/official.model";
+import { AuditLog } from "../../features/officials/model/audit-log.model";
+import { Investigation } from "../../features/investigation/models/investigation.model";
+import { getAccessTokenSubject } from "../../services/api-client.service";
 
 const electionApiRepository = new ElectionApiRepository();
+const referendumApiRepository = new ReferendumApiRepository();
+const resultApiRepository = new ResultApiRepository();
+const officialApiRepository = new OfficialApiRepository();
+const auditLogApiRepository = new AuditLogApiRepository();
+const constituencyApiRepository = new ConstituencyApiRepository();
+const partyApiRepository = new PartyApiRepository();
+const investigationApiRepository = new InvestigationApiRepository();
+
+// ── Helpers ──
 
 function datePartFromIso(iso: string | undefined): string | undefined {
   if (!iso) return undefined;
   return iso.includes("T") ? iso.split("T")[0] : iso.slice(0, 10);
 }
 
-/** Sort: open elections first, then by title. */
-function sortElectionsForSelect(rows: Election[]): Election[] {
-  return [...rows].sort((a, b) => {
-    const rank = (e: Election) => (e.status === ElectionStatus.OPEN ? 0 : 1);
+function formatDateTime(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+}
+
+type SelectableItem = { id: string; title: string; status: string; kind: "election" | "referendum"; voting_opens?: string; voting_closes?: string };
+
+/** Derive the effective status from the voting schedule if the backend status is stale. */
+function effectiveStatus(backendStatus: string, votingOpens?: string, votingCloses?: string): string {
+  if (backendStatus === "CANCELLED") return "CANCELLED";
+  const now = Date.now();
+  if (votingCloses) {
+    const close = Date.parse(votingCloses);
+    if (!isNaN(close) && now > close) return "CLOSED";
+  }
+  if (votingOpens) {
+    const open = Date.parse(votingOpens);
+    if (!isNaN(open) && now < open) return "CLOSED";
+  }
+  return backendStatus;
+}
+
+function sortItemsForSelect(items: SelectableItem[]): SelectableItem[] {
+  return [...items].sort((a, b) => {
+    const rank = (e: SelectableItem) => (e.status === "OPEN" ? 0 : e.status === "CLOSED" ? 1 : 2);
     const byStatus = rank(a) - rank(b);
     if (byStatus !== 0) return byStatus;
     return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
   });
 }
 
-function formatElectionOptionLabel(election: Election): string {
-  const open = election.status === ElectionStatus.OPEN;
-  const cancelled = election.status === ElectionStatus.CANCELLED;
-  const statusWord = cancelled ? "Cancelled" : open ? "Open" : "Closed";
-  if (open) {
-    const opens = datePartFromIso(election.voting_opens);
-    return opens ? `${election.title} (${statusWord} · opens ${opens})` : `${election.title} (${statusWord})`;
-  }
-  if (cancelled) {
-    return `${election.title} (${statusWord})`;
-  }
-  const closes = datePartFromIso(election.voting_closes);
-  return closes ? `${election.title} (${statusWord} · closed ${closes})` : `${election.title} (${statusWord})`;
+function formatOptionLabel(item: SelectableItem): string {
+  const typeLabel = item.kind === "referendum" ? "Referendum" : "Election";
+  const statusWord = item.status === "CANCELLED" ? "Cancelled" : item.status === "OPEN" ? "Open" : "Closed";
+  const dateStr = item.status === "OPEN"
+    ? (datePartFromIso(item.voting_opens) ? ` · opens ${datePartFromIso(item.voting_opens)}` : "")
+    : (datePartFromIso(item.voting_closes) ? ` · closed ${datePartFromIso(item.voting_closes)}` : "");
+  return `[${typeLabel}] ${item.title} (${statusWord}${dateStr})`;
 }
 
-interface ConstituencyResult {
-  id: string;
-  name: string;
-  votesCast: number;
-  votersWhoVoted: number;
-  matchStatus: "ok" | "mismatch" | "pending";
-}
-
-interface SeatAllocation {
-  party: string;
-  seats: number;
-  fill: string;
-}
-
-interface AuditLogEntry {
-  id: string;
-  timestamp: string;
-  action: string;
-  userId: string;
-  details: string;
-}
-
-interface Investigation {
-  id: string;
-  title: string;
-  status: "open" | "in_progress" | "resolved";
-  reportedAt: string;
-}
-
-const MOCK_CONSTITUENCY_RESULTS: ConstituencyResult[] = [
-  { id: "c1", name: "Edinburgh North", votesCast: 45231, votersWhoVoted: 45231, matchStatus: "ok" },
-  { id: "c2", name: "Glasgow South", votesCast: 38102, votersWhoVoted: 38102, matchStatus: "ok" },
-  { id: "c3", name: "Aberdeen Central", votesCast: 29450, votersWhoVoted: 29448, matchStatus: "mismatch" },
-  { id: "c4", name: "Dundee West", votesCast: 22100, votersWhoVoted: 22100, matchStatus: "ok" },
-  { id: "c5", name: "Inverness & Nairn", votesCast: 18500, votersWhoVoted: 18500, matchStatus: "ok" },
-];
-
-const MOCK_SEAT_ALLOCATIONS: SeatAllocation[] = [
-  { party: "Party A", seats: 312, fill: "#1B2444" },
-  { party: "Party B", seats: 242, fill: "#EF4444" },
-  { party: "Party C", seats: 72, fill: "#F59E0B" },
-  { party: "Party D", seats: 24, fill: "#22C55E" },
-];
-
-const MOCK_AUDIT_LOGS: AuditLogEntry[] = [
-  { id: "a1", timestamp: "2024-07-06 09:15:00", action: "Verification started", userId: "official-001", details: "Election el-1 verification session started" },
-  { id: "a2", timestamp: "2024-07-06 09:22:00", action: "Constituency checked", userId: "official-001", details: "Edinburgh North — vote count verified" },
-  { id: "a3", timestamp: "2024-07-06 10:05:00", action: "Mismatch flagged", userId: "system", details: "Aberdeen Central — votesCast vs votersWhoVoted discrepancy" },
-  { id: "a4", timestamp: "2024-07-06 10:30:00", action: "Error reported", userId: "official-002", details: "Report #ERR-1042 — ballot batch re-scan requested" },
-  { id: "a5", timestamp: "2024-07-06 11:00:00", action: "Investigation created", userId: "official-001", details: "INV-008 — Aberdeen Central count investigation" },
-];
-
-const MOCK_INVESTIGATIONS: Investigation[] = [
-  { id: "INV-008", title: "Aberdeen Central vote count discrepancy", status: "in_progress", reportedAt: "2024-07-06" },
-  { id: "INV-007", title: "Duplicate ballot scan concern", status: "open", reportedAt: "2024-07-05" },
-  { id: "INV-006", title: "Voter identity verification query", status: "resolved", reportedAt: "2024-07-04" },
-  { id: "INV-005", title: "Biometric verification timeout", status: "resolved", reportedAt: "2024-07-03" },
-];
 
 const tabToSlug = (tab: string) => tab.replace(/\s+/g, "-");
 const slugToTab = (slug: string) => slug.replace(/-/g, " ");
@@ -125,8 +104,24 @@ const slugToTab = (slug: string) => slug.replace(/-/g, " ");
 const OfficialHomePage: React.FC = () => {
   const { theme } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Current official and admin check ──
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true);
+
+  useEffect(() => {
+    const officialId = getAccessTokenSubject();
+    if (!officialId) { setAdminLoading(false); return; }
+    officialApiRepository.getOfficial(officialId)
+      .then((official) => setIsAdmin(official.role === OfficialRole.ADMIN))
+      .catch(() => setIsAdmin(false))
+      .finally(() => setAdminLoading(false));
+  }, []);
+
   const baseTabs = ["overview", "investigations"] as const;
-  const tabs = MOCK_USER_IS_ADMIN ? (["overview", "audit logs", "investigations", "manage officials"] as const) : baseTabs;
+  const tabs = isAdmin
+    ? (["overview", "audit logs", "investigations", "manage officials"] as const)
+    : baseTabs;
 
   const tabFromUrl = searchParams.get("tab");
   const tabFromSlug = tabFromUrl ? slugToTab(tabFromUrl) : null;
@@ -134,46 +129,173 @@ const OfficialHomePage: React.FC = () => {
     tabFromSlug && (tabs as readonly string[]).includes(tabFromSlug) ? tabFromSlug : tabs[0];
 
   const [activeTab, setActiveTab] = useState<string>(resolvedTab);
-  const [selectedElectionId, setSelectedElectionId] = useState<string>("");
-  const [elections, setElections] = useState<Election[]>([]);
-  const [electionsLoadError, setElectionsLoadError] = useState<string | null>(null);
-  const [electionsLoading, setElectionsLoading] = useState(true);
-  const [reportErrorModalOpen, setReportErrorModalOpen] = useState(false);
-  const [reportErrorContext, setReportErrorContext] = useState<string | null>(null);
+
+  // ── Elections + referendums selector ──
+  const [selectableItems, setSelectableItems] = useState<SelectableItem[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsLoadError, setItemsLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setElectionsLoading(true);
-    setElectionsLoadError(null);
-    electionApiRepository
-      .listElections()
-      .then((rows) => {
+    setItemsLoading(true);
+    setItemsLoadError(null);
+
+    Promise.all([
+      electionApiRepository.listElections(),
+      referendumApiRepository.listReferendums(),
+    ])
+      .then(([elections, referendums]) => {
         if (cancelled) return;
-        const sorted = sortElectionsForSelect(rows);
-        setElections(sorted);
+        const electionItems: SelectableItem[] = elections.map((e) => ({
+          id: e.id, title: e.title,
+          status: effectiveStatus(e.status, e.voting_opens, e.voting_closes),
+          kind: "election" as const,
+          voting_opens: e.voting_opens, voting_closes: e.voting_closes,
+        }));
+        const referendumItems: SelectableItem[] = referendums.map((r) => ({
+          id: r.id, title: r.title,
+          status: effectiveStatus(r.status, r.voting_opens, r.voting_closes),
+          kind: "referendum" as const,
+          voting_opens: r.voting_opens, voting_closes: r.voting_closes,
+        }));
+        const sorted = sortItemsForSelect([...electionItems, ...referendumItems]);
+        setSelectableItems(sorted);
         if (sorted.length > 0) {
-          setSelectedElectionId((current) =>
-            current && sorted.some((e) => e.id === current) ? current : sorted[0].id,
+          setSelectedItemId((current) =>
+            current && sorted.some((i) => i.id === current) ? current : sorted[0].id,
           );
         } else {
-          setSelectedElectionId("");
+          setSelectedItemId("");
         }
       })
       .catch((err: Error) => {
         if (!cancelled) {
-          setElectionsLoadError(err.message || "Failed to load elections.");
-          setElections([]);
-          setSelectedElectionId("");
+          setItemsLoadError(err.message || "Failed to load elections and referendums.");
+          setSelectableItems([]);
+          setSelectedItemId("");
         }
       })
-      .finally(() => {
-        if (!cancelled) setElectionsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .finally(() => { if (!cancelled) setItemsLoading(false); });
+
+    return () => { cancelled = true; };
   }, []);
 
+  const selectedItem = selectableItems.find((i) => i.id === selectedItemId);
+
+  // ── Results data ──
+  const [electionResult, setElectionResult] = useState<ElectionResult | null>(null);
+  const [referendumResult, setReferendumResult] = useState<ReferendumResult | null>(null);
+  const [resultsLoading, setResultsLoading] = useState(false);
+  const [resultsError, setResultsError] = useState<string | null>(null);
+
+  // ── Lookup maps ──
+  const [constituencyMap, setConstituencyMap] = useState<Record<string, Constituency>>({});
+  const [partyMap, setPartyMap] = useState<Record<string, Party>>({});
+
+  useEffect(() => {
+    constituencyApiRepository.listConstituencies()
+      .then((rows) => {
+        const map: Record<string, Constituency> = {};
+        for (const c of rows) map[c.id] = c;
+        setConstituencyMap(map);
+      })
+      .catch(() => {});
+    partyApiRepository.listParties()
+      .then((rows) => {
+        const map: Record<string, Party> = {};
+        for (const p of rows) map[p.id] = p;
+        setPartyMap(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  const votingClosed = selectedItem
+    ? selectedItem.status === "CLOSED" ||
+      (selectedItem.voting_closes != null && selectedItem.voting_closes !== "" && Date.now() > Date.parse(selectedItem.voting_closes))
+    : false;
+
+  const loadResults = useCallback(() => {
+    if (!selectedItem) return;
+    setElectionResult(null);
+    setReferendumResult(null);
+    setResultsError(null);
+
+    if (!votingClosed) {
+      setResultsLoading(false);
+      return;
+    }
+
+    setResultsLoading(true);
+
+    if (selectedItem.kind === "election") {
+      resultApiRepository.getElectionResults(selectedItem.id)
+        .then(setElectionResult)
+        .catch((err: Error) => setResultsError(err.message || "Failed to load results."))
+        .finally(() => setResultsLoading(false));
+    } else {
+      resultApiRepository.getReferendumResults(selectedItem.id)
+        .then(setReferendumResult)
+        .catch((err: Error) => setResultsError(err.message || "Failed to load results."))
+        .finally(() => setResultsLoading(false));
+    }
+  }, [selectedItem, votingClosed]);
+
+  useEffect(() => { loadResults(); }, [loadResults]);
+
+  // ── Audit logs ──
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAdmin || !selectedItem || selectedItem.kind !== "election") {
+      setAuditLogs([]);
+      return;
+    }
+    setAuditLoading(true);
+    setAuditError(null);
+    auditLogApiRepository.getAuditLogsByElection(selectedItem.id)
+      .then(setAuditLogs)
+      .catch((err: Error) => { setAuditError(err.message || "Failed to load audit logs."); setAuditLogs([]); })
+      .finally(() => setAuditLoading(false));
+  }, [isAdmin, selectedItem]);
+
+  // ── Investigations ──
+  const [investigations, setInvestigations] = useState<Investigation[]>([]);
+  const [investigationsLoading, setInvestigationsLoading] = useState(false);
+  const [investigationsError, setInvestigationsError] = useState<string | null>(null);
+
+  const loadInvestigations = useCallback(() => {
+    if (!selectedItem || selectedItem.kind !== "election") {
+      setInvestigations([]);
+      return;
+    }
+    setInvestigationsLoading(true);
+    setInvestigationsError(null);
+    investigationApiRepository.getInvestigationsByElection(selectedItem.id)
+      .then(setInvestigations)
+      .catch((err: Error) => { setInvestigationsError(err.message || "Failed to load investigations."); setInvestigations([]); })
+      .finally(() => setInvestigationsLoading(false));
+  }, [selectedItem]);
+
+  useEffect(() => { loadInvestigations(); }, [loadInvestigations]);
+
+  // ── Report error modal ──
+  const [reportErrorModalOpen, setReportErrorModalOpen] = useState(false);
+  const [reportErrorContext, setReportErrorContext] = useState<string | null>(null);
+
+  const openReportError = (context?: string) => {
+    setReportErrorContext(context ?? null);
+    setReportErrorModalOpen(true);
+  };
+
+  const handleReportSubmitted = () => {
+    setReportErrorModalOpen(false);
+    loadInvestigations();
+  };
+
+  // ── Tab URL sync ──
   useEffect(() => {
     setSearchParams(
       (prev) => {
@@ -181,11 +303,24 @@ const OfficialHomePage: React.FC = () => {
         next.set("tab", tabToSlug(activeTab));
         return next;
       },
-      { replace: true }
+      { replace: true },
     );
   }, [activeTab, setSearchParams]);
 
-  const selectedElection = elections.find((e) => e.id === selectedElectionId);
+  // ── Derived data for charts ──
+  const constituencyChartData = (electionResult?.constituencies ?? []).map((c) => ({
+    id: c.constituency_id,
+    name: constituencyMap[c.constituency_id]?.name ?? c.constituency_id.slice(0, 8),
+    votesCast: c.total_votes,
+  }));
+
+  const seatAllocationData = Object.entries(electionResult?.seat_allocation ?? {}).map(([partyId, seats], i) => ({
+    party: partyMap[partyId]?.party_name ?? partyMap[partyId]?.abbreviation ?? partyId.slice(0, 8),
+    seats,
+    fill: theme.colors.chart[i % theme.colors.chart.length],
+  }));
+
+  // ── Styles ──
   const pageWrapper = getPageContentWrapperStyle(theme);
   const pageTitle = getPageTitleStyle(theme);
   const sectionH2 = getSectionH2Style(theme);
@@ -193,49 +328,83 @@ const OfficialHomePage: React.FC = () => {
   const cardTitle = getCardTitleStyle(theme);
   const cardText = getCardTextStyle(theme);
 
-  const openReportError = (context?: string) => {
-    setReportErrorContext(context ?? null);
-    setReportErrorModalOpen(true);
+  const summaryCardStyle: React.CSSProperties = {
+    ...card,
+    textAlign: "center",
+    padding: theme.spacing.lg,
   };
 
-  return (
-    <div style={{ ...pageWrapper }}>
-      <h1 style={{ ...pageTitle }}>Election verification dashboard</h1>
+  const summaryValueStyle: React.CSSProperties = {
+    fontSize: theme.fontSizes["2xl"],
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.text.primary,
+    margin: 0,
+  };
 
+  const summaryLabelStyle: React.CSSProperties = {
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.text.secondary,
+    margin: `${theme.spacing.xs} 0 0 0`,
+  };
+
+  const investStatusToBadge = (s: string): StatusBadgeVariant => {
+    const lower = s.toLowerCase();
+    if (lower === "resolved" || lower === "closed") return "resolved";
+    if (lower === "in_progress") return "in_progress";
+    return "open";
+  };
+
+  if (adminLoading) {
+    return (
+      <div style={pageWrapper}>
+        <h1 style={pageTitle}>Election verification dashboard</h1>
+        <p style={{ paddingLeft: theme.spacing.xl, color: theme.colors.text.secondary }}>Loading…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={pageWrapper}>
+      <h1 style={pageTitle}>Election verification dashboard</h1>
+
+      {/* Election / Referendum selector */}
       <section style={{ paddingLeft: theme.spacing.xl, paddingRight: theme.spacing.xl, paddingBottom: theme.spacing.lg }}>
-        <label htmlFor="election-select" style={{ display: "block", marginBottom: theme.spacing.sm, color: theme.colors.text.secondary, fontSize: theme.fontSizes.sm }}>
-          Select election to verify
+        <label
+          htmlFor="election-select"
+          style={{ display: "block", marginBottom: theme.spacing.sm, color: theme.colors.text.secondary, fontSize: theme.fontSizes.sm }}
+        >
+          Select election or referendum to verify
         </label>
         <select
           id="election-select"
-          value={selectedElectionId}
-          onChange={(e) => setSelectedElectionId(e.target.value)}
+          value={selectedItemId}
+          onChange={(e) => setSelectedItemId(e.target.value)}
           style={getSelectStyle(theme)}
-          disabled={electionsLoading || !!electionsLoadError}
+          disabled={itemsLoading || !!itemsLoadError}
         >
           <option value="">
-            {electionsLoading
-              ? "Loading elections…"
-              : electionsLoadError
-                ? "— Error loading elections —"
-                : elections.length === 0
-                  ? "— No elections —"
-                  : "— Select an election —"}
+            {itemsLoading
+              ? "Loading…"
+              : itemsLoadError
+                ? "— Error loading —"
+                : selectableItems.length === 0
+                  ? "— No elections or referendums —"
+                  : "— Select —"}
           </option>
-          {elections.map((e) => (
-            <option key={e.id} value={e.id}>
-              {formatElectionOptionLabel(e)}
+          {selectableItems.map((item) => (
+            <option key={item.id} value={item.id}>
+              {formatOptionLabel(item)}
             </option>
           ))}
         </select>
-        {electionsLoadError && (
+        {itemsLoadError && (
           <p style={{ marginTop: theme.spacing.sm, color: theme.colors.status.error, fontSize: theme.fontSizes.sm }}>
-            {electionsLoadError}
+            {itemsLoadError}
           </p>
         )}
       </section>
 
-      {selectedElection && (
+      {selectedItem && (
         <>
           <nav style={getTabsContainerStyle(theme)} aria-label="Dashboard sections">
             {tabs.map((tab) => (
@@ -251,153 +420,458 @@ const OfficialHomePage: React.FC = () => {
           </nav>
 
           <div style={{ padding: theme.spacing.xl }}>
-            {/* Overview: visualisations + constituency data + report error in context */}
+
+            {/* ─── OVERVIEW TAB ─── */}
             {activeTab === "overview" && (
               <section>
-                <h2 style={sectionH2}>Overview</h2>
-                <p style={{ ...cardText, marginBottom: theme.spacing.lg }}>
-                  Summary and visualisations for <strong>{selectedElection.title}</strong>. Go through the constituency data below to verify results; use &quot;Report error&quot; when you see an issue.
-                </p>
+                <h2 style={sectionH2}>Overview — {selectedItem.title}</h2>
 
-                {/* Charts row */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
-                  <VotesPerConstituencyChart data={MOCK_CONSTITUENCY_RESULTS} />
-                  <SeatAllocationChart data={MOCK_SEAT_ALLOCATIONS} />
-                </div>
+                {resultsLoading && (
+                  <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading results…</p>
+                )}
 
-                {/* Constituency data — go through the data; report error in context */}
-                <div style={{ ...card, marginBottom: theme.spacing.lg }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-                    <h3 style={{ ...cardTitle, marginBottom: 0 }}>Constituency data</h3>
+                {resultsError && (
+                  <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}`, marginBottom: theme.spacing.lg }}>
+                    <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>
+                      {resultsError}
+                    </p>
                     <button
                       type="button"
-                      onClick={() => openReportError()}
-                      style={{ ...getTabButtonStyle(theme, false), background: theme.colors.status.error, color: theme.colors.text.inverse }}
+                      onClick={loadResults}
+                      style={{ ...getTabButtonStyle(theme, false), marginTop: theme.spacing.sm, fontSize: theme.fontSizes.sm }}
                     >
-                      Report error
+                      Retry
                     </button>
                   </div>
-                  <p style={{ ...cardText, marginBottom: theme.spacing.md }}>
-                    Verify vote count matches voters who voted. Report an error from here or from a specific row when you spot a discrepancy.
-                  </p>
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={getTableStyle(theme)}>
-                      <thead>
-                        <tr>
-                          <th style={getTableHeaderStyle(theme)}>Constituency</th>
-                          <th style={getTableHeaderStyle(theme)}>Votes cast</th>
-                          <th style={getTableHeaderStyle(theme)}>Voters who voted</th>
-                          <th style={getTableHeaderStyle(theme)}>Status</th>
-                          <th style={getTableHeaderStyle(theme)}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {MOCK_CONSTITUENCY_RESULTS.map((row) => (
-                          <tr key={row.id}>
-                            <td style={getTableCellStyle(theme)}>{row.name}</td>
-                            <td style={getTableCellStyle(theme)}>{row.votesCast.toLocaleString()}</td>
-                            <td style={getTableCellStyle(theme)}>{row.votersWhoVoted.toLocaleString()}</td>
-                            <td style={getTableCellStyle(theme)}>
-                              <span style={getStatusBadgeStyle(theme, row.matchStatus)}>{row.matchStatus}</span>
-                            </td>
-                            <td style={getTableCellStyle(theme)}>
-                              <button
-                                type="button"
-                                onClick={() => openReportError(row.name)}
-                                style={{ ...getTabButtonStyle(theme, false), padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}
-                              >
-                                Report error
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                )}
+
+                {/* ── Election results overview ── */}
+                {!resultsLoading && !resultsError && electionResult && selectedItem.kind === "election" && (
+                  <>
+                    {/* Summary cards row */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: theme.spacing.lg, marginBottom: theme.spacing.xl }}>
+                      <div style={summaryCardStyle}>
+                        <p style={summaryValueStyle}>{electionResult.total_votes.toLocaleString()}</p>
+                        <p style={summaryLabelStyle}>Total votes cast</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={summaryValueStyle}>{electionResult.total_seats}</p>
+                        <p style={summaryLabelStyle}>Total seats</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={summaryValueStyle}>{electionResult.majority_threshold}</p>
+                        <p style={summaryLabelStyle}>Majority threshold</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={summaryValueStyle}>{electionResult.constituencies.length}</p>
+                        <p style={summaryLabelStyle}>Constituencies reporting</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={{
+                          ...summaryValueStyle,
+                          color: electionResult.winning_party_id ? theme.colors.status.success : theme.colors.text.secondary,
+                        }}>
+                          {electionResult.winning_party_id
+                            ? (partyMap[electionResult.winning_party_id]?.party_name ?? electionResult.winning_party_id.slice(0, 8))
+                            : "No majority"}
+                        </p>
+                        <p style={summaryLabelStyle}>Winning party</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={summaryValueStyle}>
+                          <span style={getStatusBadgeStyle(theme, electionResult.status === "CLOSED" ? "resolved" : electionResult.status === "OPEN" ? "open" : "mismatch")}>
+                            {electionResult.status}
+                          </span>
+                        </p>
+                        <p style={summaryLabelStyle}>Election status</p>
+                      </div>
+                    </div>
+
+                    {/* Charts row */}
+                    {constituencyChartData.length > 0 && (
+                      <div style={{ display: "grid", gridTemplateColumns: seatAllocationData.length > 0 ? "1fr 1fr" : "1fr", gap: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
+                        <VotesPerConstituencyChart data={constituencyChartData} />
+                        {seatAllocationData.length > 0 && (
+                          <SeatAllocationChart data={seatAllocationData} />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Seat allocation detail table */}
+                    {seatAllocationData.length > 0 && (
+                      <div style={{ ...card, marginBottom: theme.spacing.lg }}>
+                        <h3 style={{ ...cardTitle, marginBottom: theme.spacing.md }}>Seat allocation by party</h3>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={getTableStyle(theme)}>
+                            <thead>
+                              <tr>
+                                <th style={getTableHeaderStyle(theme)}>Party</th>
+                                <th style={getTableHeaderStyle(theme)}>Seats won</th>
+                                <th style={getTableHeaderStyle(theme)}>% of seats</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {seatAllocationData.map((row) => (
+                                <tr key={row.party}>
+                                  <td style={getTableCellStyle(theme)}>
+                                    <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", background: row.fill, marginRight: theme.spacing.sm, verticalAlign: "middle" }} />
+                                    {row.party}
+                                  </td>
+                                  <td style={getTableCellStyle(theme)}>{row.seats}</td>
+                                  <td style={getTableCellStyle(theme)}>
+                                    {electionResult.total_seats > 0 ? ((row.seats / electionResult.total_seats) * 100).toFixed(1) + "%" : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Constituency results table */}
+                    <div style={{ ...card, marginBottom: theme.spacing.lg }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+                        <h3 style={{ ...cardTitle, marginBottom: 0 }}>Constituency results</h3>
+                        <button
+                          type="button"
+                          onClick={() => openReportError()}
+                          style={{ ...getTabButtonStyle(theme, false), background: theme.colors.status.error, color: theme.colors.text.inverse }}
+                        >
+                          Report error
+                        </button>
+                      </div>
+                      {electionResult.constituencies.length === 0 ? (
+                        <p style={{ ...cardText, fontStyle: "italic" }}>No constituency results available yet.</p>
+                      ) : (
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={getTableStyle(theme)}>
+                            <thead>
+                              <tr>
+                                <th style={getTableHeaderStyle(theme)}>Constituency</th>
+                                <th style={getTableHeaderStyle(theme)}>Winner</th>
+                                <th style={getTableHeaderStyle(theme)}>Winning party</th>
+                                <th style={getTableHeaderStyle(theme)}>Total votes</th>
+                                <th style={getTableHeaderStyle(theme)}>Candidates</th>
+                                <th style={getTableHeaderStyle(theme)}>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {electionResult.constituencies.map((c) => {
+                                const cName = constituencyMap[c.constituency_id]?.name ?? c.constituency_id.slice(0, 8);
+                                const winnerPartyName = c.winner_party_id
+                                  ? (partyMap[c.winner_party_id]?.party_name ?? c.winner_party_id.slice(0, 8))
+                                  : "—";
+                                return (
+                                  <tr key={c.constituency_id}>
+                                    <td style={getTableCellStyle(theme)}>{cName}</td>
+                                    <td style={getTableCellStyle(theme)}>{c.winner_name || "—"}</td>
+                                    <td style={getTableCellStyle(theme)}>{winnerPartyName}</td>
+                                    <td style={getTableCellStyle(theme)}>{c.total_votes.toLocaleString()}</td>
+                                    <td style={getTableCellStyle(theme)}>{c.tallies.length}</td>
+                                    <td style={getTableCellStyle(theme)}>
+                                      <button
+                                        type="button"
+                                        onClick={() => openReportError(cName)}
+                                        style={{ ...getTabButtonStyle(theme, false), padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}
+                                      >
+                                        Report error
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* ── Referendum results overview ── */}
+                {!resultsLoading && !resultsError && referendumResult && selectedItem.kind === "referendum" && (
+                  <>
+                    {/* Summary cards */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: theme.spacing.lg, marginBottom: theme.spacing.xl }}>
+                      <div style={summaryCardStyle}>
+                        <p style={summaryValueStyle}>{referendumResult.total_votes.toLocaleString()}</p>
+                        <p style={summaryLabelStyle}>Total votes cast</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={{ ...summaryValueStyle, color: theme.colors.status.success }}>{referendumResult.yes_votes.toLocaleString()}</p>
+                        <p style={summaryLabelStyle}>Yes votes</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={{ ...summaryValueStyle, color: theme.colors.status.error }}>{referendumResult.no_votes.toLocaleString()}</p>
+                        <p style={summaryLabelStyle}>No votes</p>
+                      </div>
+                      <div style={summaryCardStyle}>
+                        <p style={{
+                          ...summaryValueStyle,
+                          color: referendumResult.outcome === "YES" ? theme.colors.status.success
+                            : referendumResult.outcome === "NO" ? theme.colors.status.error
+                            : theme.colors.text.secondary,
+                        }}>
+                          {referendumResult.outcome || "Pending"}
+                        </p>
+                        <p style={summaryLabelStyle}>Outcome</p>
+                      </div>
+                      {referendumResult.total_votes > 0 && (
+                        <>
+                          <div style={summaryCardStyle}>
+                            <p style={summaryValueStyle}>
+                              {((referendumResult.yes_votes / referendumResult.total_votes) * 100).toFixed(1)}%
+                            </p>
+                            <p style={summaryLabelStyle}>Yes percentage</p>
+                          </div>
+                          <div style={summaryCardStyle}>
+                            <p style={summaryValueStyle}>
+                              {((referendumResult.no_votes / referendumResult.total_votes) * 100).toFixed(1)}%
+                            </p>
+                            <p style={summaryLabelStyle}>No percentage</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Referendum bar chart */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
+                      <SeatAllocationChart
+                        data={[
+                          { party: "Yes", seats: referendumResult.yes_votes, fill: theme.colors.status.success },
+                          { party: "No", seats: referendumResult.no_votes, fill: theme.colors.status.error },
+                        ]}
+                        title="Vote breakdown"
+                      />
+                    </div>
+
+                    <div style={{ ...card, marginBottom: theme.spacing.lg }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: theme.spacing.sm }}>
+                        <h3 style={{ ...cardTitle, marginBottom: 0 }}>Referendum summary</h3>
+                        <button
+                          type="button"
+                          onClick={() => openReportError()}
+                          style={{ ...getTabButtonStyle(theme, false), background: theme.colors.status.error, color: theme.colors.text.inverse }}
+                        >
+                          Report error
+                        </button>
+                      </div>
+                      <div style={{ overflowX: "auto", marginTop: theme.spacing.md }}>
+                        <table style={getTableStyle(theme)}>
+                          <thead>
+                            <tr>
+                              <th style={getTableHeaderStyle(theme)}>Metric</th>
+                              <th style={getTableHeaderStyle(theme)}>Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td style={getTableCellStyle(theme)}>Total votes</td>
+                              <td style={getTableCellStyle(theme)}>{referendumResult.total_votes.toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                              <td style={getTableCellStyle(theme)}>Yes votes</td>
+                              <td style={getTableCellStyle(theme)}>{referendumResult.yes_votes.toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                              <td style={getTableCellStyle(theme)}>No votes</td>
+                              <td style={getTableCellStyle(theme)}>{referendumResult.no_votes.toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                              <td style={getTableCellStyle(theme)}>Outcome</td>
+                              <td style={getTableCellStyle(theme)}>
+                                <span style={getStatusBadgeStyle(theme, referendumResult.outcome === "YES" ? "ok" : referendumResult.outcome === "NO" ? "mismatch" : "pending")}>
+                                  {referendumResult.outcome || "Pending"}
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Voting not yet closed */}
+                {!resultsLoading && !resultsError && !votingClosed && (
+                  <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl, borderLeft: `4px solid ${theme.colors.status.warning}` }}>
+                    <p style={{ ...cardText, margin: 0, fontWeight: theme.fontWeights.medium }}>
+                      Voting has not yet closed for this {selectedItem.kind}.
+                    </p>
+                    <p style={{ ...cardText, margin: `${theme.spacing.sm} 0 0 0`, color: theme.colors.text.secondary }}>
+                      Results will become available to officials once the voting period ends and the status changes to Closed.
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {/* Voting closed but no results data */}
+                {!resultsLoading && !resultsError && votingClosed && !electionResult && !referendumResult && (
+                  <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl }}>
+                    <p style={{ ...cardText, margin: 0, color: theme.colors.text.secondary }}>
+                      No results available yet for this {selectedItem.kind}. Tallying may still be in progress.
+                    </p>
+                  </div>
+                )}
               </section>
             )}
 
-            {/* Audit logs — admin only */}
-            {activeTab === "audit logs" && MOCK_USER_IS_ADMIN && (
+            {/* ─── AUDIT LOGS TAB (admin only) ─── */}
+            {activeTab === "audit logs" && isAdmin && (
               <section>
                 <h2 style={sectionH2}>Audit logs</h2>
                 <p style={{ ...cardText, marginBottom: theme.spacing.lg }}>
                   Chronological log of verification actions, system events, and official activity for this election. (Admin only.)
                 </p>
-                <div style={{ ...card, overflowX: "auto" }}>
-                  <table style={getTableStyle(theme)}>
-                    <thead>
-                      <tr>
-                        <th style={getTableHeaderStyle(theme)}>Timestamp</th>
-                        <th style={getTableHeaderStyle(theme)}>Action</th>
-                        <th style={getTableHeaderStyle(theme)}>User</th>
-                        <th style={getTableHeaderStyle(theme)}>Details</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {MOCK_AUDIT_LOGS.map((entry) => (
-                        <tr key={entry.id}>
-                          <td style={getTableCellStyle(theme)}>{entry.timestamp}</td>
-                          <td style={getTableCellStyle(theme)}>{entry.action}</td>
-                          <td style={getTableCellStyle(theme)}>{entry.userId}</td>
-                          <td style={getTableCellStyle(theme)}>{entry.details}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+
+                {selectedItem.kind === "referendum" && (
+                  <p style={{ ...cardText, fontStyle: "italic", color: theme.colors.text.secondary }}>
+                    Audit logs are available for elections only.
+                  </p>
+                )}
+
+                {selectedItem.kind === "election" && auditLoading && (
+                  <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading audit logs…</p>
+                )}
+
+                {selectedItem.kind === "election" && auditError && (
+                  <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}` }}>
+                    <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>{auditError}</p>
+                  </div>
+                )}
+
+                {selectedItem.kind === "election" && !auditLoading && !auditError && (
+                  <div style={{ ...card, overflowX: "auto" }}>
+                    {auditLogs.length === 0 ? (
+                      <p style={{ ...cardText, fontStyle: "italic" }}>No audit log entries found for this election.</p>
+                    ) : (
+                      <table style={getTableStyle(theme)}>
+                        <thead>
+                          <tr>
+                            <th style={getTableHeaderStyle(theme)}>Timestamp</th>
+                            <th style={getTableHeaderStyle(theme)}>Event type</th>
+                            <th style={getTableHeaderStyle(theme)}>Action</th>
+                            <th style={getTableHeaderStyle(theme)}>Summary</th>
+                            <th style={getTableHeaderStyle(theme)}>Actor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {auditLogs.map((entry) => (
+                            <tr key={entry.id}>
+                              <td style={getTableCellStyle(theme)}>{formatDateTime(entry.created_at)}</td>
+                              <td style={getTableCellStyle(theme)}>{entry.event_type}</td>
+                              <td style={getTableCellStyle(theme)}>{entry.action}</td>
+                              <td style={getTableCellStyle(theme)}>{entry.summary}</td>
+                              <td style={getTableCellStyle(theme)}>
+                                {entry.actor_type ? `${entry.actor_type}` : "—"}
+                                {entry.actor_id ? ` (${entry.actor_id.slice(0, 8)}…)` : ""}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
               </section>
             )}
 
-            {/* Investigations — all past and current */}
+            {/* ─── INVESTIGATIONS TAB ─── */}
             {activeTab === "investigations" && (
               <section>
                 <h2 style={sectionH2}>Investigations</h2>
                 <p style={{ ...cardText, marginBottom: theme.spacing.lg }}>
-                  All investigations for this election — past and current. Use this area to assist in investigations and track resolution status.
+                  All investigations for this {selectedItem.kind} — past and current.
                 </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.md }}>
-                  {MOCK_INVESTIGATIONS.map((inv) => (
-                    <div key={inv.id} style={card}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: theme.spacing.sm }}>
-                        <div>
-                          <h3 style={{ ...cardTitle, marginBottom: theme.spacing.xs }}>{inv.title}</h3>
-                          <p style={{ ...cardText, marginBottom: 0, fontSize: theme.fontSizes.sm }}>
-                            {inv.id} · Reported {inv.reportedAt}
-                          </p>
-                        </div>
-                        <span style={getStatusBadgeStyle(theme, inv.status)}>{inv.status.replace("_", " ")}</span>
+
+                {selectedItem.kind === "referendum" && (
+                  <p style={{ ...cardText, fontStyle: "italic", color: theme.colors.text.secondary }}>
+                    Investigations are available for elections only.
+                  </p>
+                )}
+
+                {selectedItem.kind === "election" && investigationsLoading && (
+                  <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading investigations…</p>
+                )}
+
+                {selectedItem.kind === "election" && investigationsError && (
+                  <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}`, marginBottom: theme.spacing.md }}>
+                    <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>{investigationsError}</p>
+                  </div>
+                )}
+
+                {selectedItem.kind === "election" && !investigationsLoading && !investigationsError && (
+                  <>
+                    {investigations.length === 0 ? (
+                      <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl }}>
+                        <p style={{ ...cardText, margin: 0, color: theme.colors.text.secondary }}>
+                          No investigations found for this election.
+                        </p>
                       </div>
-                      <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0, fontStyle: "italic" }}>
-                        Investigation workflow and actions to be implemented.
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.md }}>
+                        {investigations.map((inv) => (
+                          <div key={inv.id} style={card}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: theme.spacing.sm }}>
+                              <div>
+                                <h3 style={{ ...cardTitle, marginBottom: theme.spacing.xs }}>{inv.title}</h3>
+                                <p style={{ ...cardText, marginBottom: 0, fontSize: theme.fontSizes.sm }}>
+                                  {inv.id.slice(0, 8)}… · Severity: {inv.severity} · Raised {formatDateTime(inv.raised_at)}
+                                </p>
+                              </div>
+                              <span style={getStatusBadgeStyle(theme, investStatusToBadge(inv.status))}>
+                                {inv.status.replace(/_/g, " ")}
+                              </span>
+                            </div>
+                            {inv.description && (
+                              <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0 }}>
+                                {inv.description}
+                              </p>
+                            )}
+                            {inv.notes && (
+                              <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0, fontStyle: "italic", color: theme.colors.text.secondary }}>
+                                Notes: {inv.notes}
+                              </p>
+                            )}
+                            {inv.assigned_to && (
+                              <p style={{ ...cardText, marginTop: theme.spacing.xs, marginBottom: 0, fontSize: theme.fontSizes.sm, color: theme.colors.text.secondary }}>
+                                Assigned to: {inv.assigned_to.slice(0, 8)}…
+                              </p>
+                            )}
+                            {inv.resolved_at && (
+                              <p style={{ ...cardText, marginTop: theme.spacing.xs, marginBottom: 0, fontSize: theme.fontSizes.sm, color: theme.colors.status.success }}>
+                                Resolved: {formatDateTime(inv.resolved_at)}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </section>
             )}
 
-            {/* Manage officials — admin only */}
-            {activeTab === "manage officials" && MOCK_USER_IS_ADMIN && (
-              <>
-                <ManageOfficials />
-              </>
+            {/* ─── MANAGE OFFICIALS TAB (admin only) ─── */}
+            {activeTab === "manage officials" && isAdmin && (
+              <ManageOfficials />
             )}
           </div>
         </>
       )}
 
-      {!selectedElection && (
+      {!selectedItem && !itemsLoading && (
         <p style={{ paddingLeft: theme.spacing.xl, color: theme.colors.text.secondary }}>
-          Select an election above to view the verification dashboard and investigations.
+          Select an election or referendum above to view the verification dashboard.
         </p>
       )}
 
       <ReportErrorModal
         open={reportErrorModalOpen}
         onClose={() => setReportErrorModalOpen(false)}
+        onSubmitted={handleReportSubmitted}
         context={reportErrorContext}
+        electionId={selectedItem?.kind === "election" ? selectedItem.id : undefined}
       />
     </div>
   );
