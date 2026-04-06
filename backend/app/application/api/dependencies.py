@@ -379,6 +379,7 @@ def get_result_service(
     return ResultService(
         tally_result_repo=TallyResultRepository(),
         election_repo=ElectionRepository(Election),
+        vote_repo=VoteRepository(),
         session=session,
     )
 

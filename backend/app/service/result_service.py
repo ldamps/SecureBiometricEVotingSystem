@@ -2,7 +2,6 @@
 # Supports UK electoral systems: FPTP, AMS, STV, AV.
 
 from collections import defaultdict
-from copy import deepcopy
 from uuid import UUID
 
 import structlog
@@ -18,9 +17,9 @@ from app.models.dto.tally_result import TallyResultDTO
 from app.models.schemas.result import ElectionResultResponse, ReferendumResultResponse
 from app.models.sqlalchemy.candidate import Candidate
 from app.models.sqlalchemy.election import AllocationMethod
-from app.models.sqlalchemy.vote import Vote
 from app.repository.election_repo import ElectionRepository
 from app.repository.tally_result_repo import TallyResultRepository
+from app.repository.vote_repo import VoteRepository
 
 logger = structlog.get_logger()
 
@@ -30,16 +29,27 @@ class ResultService:
 
     Dispatches to the correct counting algorithm based on the
     election's allocation_method.
+
+    Closed election/referendum results are immutable, so they are
+    cached in-memory after the first computation to avoid redundant
+    database queries and CPU work on subsequent requests.
     """
+
+    # Module-level caches shared across requests (process lifetime).
+    # Safe because closed-election results never change.
+    _election_result_cache: dict[UUID, ElectionResultResponse] = {}
+    _referendum_result_cache: dict[UUID, ReferendumResultResponse] = {}
 
     def __init__(
         self,
         tally_result_repo: TallyResultRepository,
         election_repo: ElectionRepository,
+        vote_repo: VoteRepository,
         session: AsyncSession,
     ):
         self.tally_result_repo = tally_result_repo
         self.election_repo = election_repo
+        self.vote_repo = vote_repo
         self.session = session
 
     # ------------------------------------------------------------------
@@ -48,20 +58,33 @@ class ResultService:
 
     async def get_election_results(self, election_id: UUID) -> ElectionResultResponse:
         """Aggregate tallies into a full election result using the appropriate electoral system."""
+        cached = self._election_result_cache.get(election_id)
+        if cached is not None:
+            return cached
+
         election = await self.election_repo.get_election_by_id(self.session, election_id)
         method = election.allocation_method
 
         if method == AllocationMethod.AMS.value:
-            return await self._results_ams(election)
+            result = await self._results_ams(election)
         elif method == AllocationMethod.STV.value:
-            return await self._results_stv(election)
+            result = await self._results_stv(election)
         elif method == AllocationMethod.ALTERNATIVE_VOTE.value:
-            return await self._results_av(election)
+            result = await self._results_av(election)
         else:
-            return await self._results_fptp(election)
+            result = await self._results_fptp(election)
+
+        if election.status == "CLOSED":
+            self._election_result_cache[election_id] = result
+
+        return result
 
     async def get_referendum_results(self, referendum_id: UUID) -> ReferendumResultResponse:
         """Aggregate YES/NO tallies into a referendum result."""
+        cached = self._referendum_result_cache.get(referendum_id)
+        if cached is not None:
+            return cached
+
         tallies = await self.tally_result_repo.get_tallies_by_referendum(
             self.session, referendum_id,
         )
@@ -89,7 +112,9 @@ class ResultService:
             total_votes=total,
             outcome=outcome,
         )
-        return result.to_schema()
+        response = result.to_schema()
+        self._referendum_result_cache[referendum_id] = response
+        return response
 
     # ------------------------------------------------------------------
     # Helpers
@@ -281,56 +306,58 @@ class ResultService:
     # STV — Single Transferable Vote (NI Assembly, Scottish/NI local councils)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _votes_to_ballots(votes: list) -> list[list[UUID]]:
+        """Convert ranked vote rows into ordered ballot lists.
+
+        Groups votes by base blind_token_hash (stripping the :rankN suffix)
+        and sorts each group by preference_rank to produce one ordered list
+        of candidate UUIDs per ballot.
+        """
+        ballot_buffer: dict[str, list[tuple[int, UUID]]] = defaultdict(list)
+        for v in votes:
+            base_token = v.blind_token_hash.split(":rank")[0]
+            ballot_buffer[base_token].append((v.preference_rank, v.candidate_id))
+
+        return [
+            [cand_id for _, cand_id in sorted(prefs, key=lambda x: x[0])]
+            for prefs in ballot_buffer.values()
+        ]
+
     async def _results_stv(self, election) -> ElectionResultResponse:
         """STV: multi-seat constituencies with ranked preferences.
 
         Seats per constituency are filled by eliminating lowest candidates
         and transferring votes until all seats are allocated.
         The quota is calculated using the Droop quota: (votes / (seats + 1)) + 1.
+
+        Votes are loaded per-constituency to keep memory bounded at scale.
         """
         election_id = election.id
-        # For STV we need the raw ranked votes, not just tallies
-        result = await self.session.execute(
-            select(Vote).where(Vote.election_id == election_id).order_by(
-                Vote.blind_token_hash, Vote.preference_rank
-            )
+
+        constituency_ids = await self.vote_repo.get_constituency_ids_for_election(
+            self.session, election_id,
         )
-        votes = list(result.scalars().all())
-
-        # Group votes by constituency, then by ballot (blind_token_hash prefix)
-        ballots_by_constituency: dict[UUID, list[list[UUID]]] = defaultdict(list)
-        ballot_buffer: dict[str, list[tuple[int, UUID]]] = defaultdict(list)
-
-        for v in votes:
-            if not v.constituency_id or not v.candidate_id or v.preference_rank is None:
-                continue
-            # Group by base token (strip :rankN suffix)
-            base_token = v.blind_token_hash.split(":rank")[0]
-            key = f"{v.constituency_id}:{base_token}"
-            ballot_buffer[key].append((v.preference_rank, v.candidate_id))
-
-        for key, prefs in ballot_buffer.items():
-            cid_str = key.split(":")[0]
-            cid = UUID(cid_str)
-            ordered = [cand_id for _, cand_id in sorted(prefs, key=lambda x: x[0])]
-            ballots_by_constituency[cid].append(ordered)
-
-        # Load candidate -> party map
-        all_candidate_ids = {
-            cand_id for ballots in ballots_by_constituency.values()
-            for ballot in ballots for cand_id in ballot
-        }
-        candidate_party_map = await self._load_candidate_party_map(all_candidate_ids)
 
         # STV counting per constituency
         # Default seats per constituency (configurable per election in future)
         seats_per_constituency = 5
-        constituency_results = []
+        # Accumulate partial results so we can batch-load the candidate->party map once
+        partial_results: list[tuple[UUID, int, list[TallyResultDTO], list[UUID]]] = []
         seat_allocation: dict[str, int] = defaultdict(int)
         total_votes = 0
+        all_candidate_ids: set[UUID] = set()
 
-        for cid, ballots in ballots_by_constituency.items():
+        for cid in constituency_ids:
+            votes = await self.vote_repo.get_ranked_votes_by_constituency(
+                self.session, election_id, cid,
+            )
+            ballots = self._votes_to_ballots(votes)
             total_votes += len(ballots)
+
+            for ballot in ballots:
+                all_candidate_ids.update(ballot)
+
             winners = self._stv_count(ballots, seats_per_constituency)
 
             # Build tally DTOs for display (first-preference counts)
@@ -351,6 +378,14 @@ class ResultService:
                 )
             ]
 
+            partial_results.append((cid, len(ballots), tally_dtos, winners))
+
+        # Load candidate -> party map once after collecting all candidate IDs
+        candidate_party_map = await self._load_candidate_party_map(all_candidate_ids)
+
+        # Build final constituency results with party info
+        constituency_results = []
+        for cid, num_ballots, tally_dtos, winners in partial_results:
             winner_candidate = winners[0] if winners else None
             winner_party_id = (
                 candidate_party_map.get(winner_candidate) if winner_candidate else None
@@ -360,7 +395,7 @@ class ResultService:
                 constituency_id=cid,
                 winner_candidate_id=winner_candidate,
                 winner_party_id=winner_party_id,
-                total_votes=len(ballots),
+                total_votes=num_ballots,
                 tallies=tally_dtos,
             )
             constituency_results.append(cr)
@@ -453,44 +488,31 @@ class ResultService:
 
         Votes are counted in rounds. If no candidate has >50%, the lowest
         candidate is eliminated and their votes transferred to next preferences.
+
+        Votes are loaded per-constituency to keep memory bounded at scale.
         """
         election_id = election.id
-        result = await self.session.execute(
-            select(Vote).where(Vote.election_id == election_id).order_by(
-                Vote.blind_token_hash, Vote.preference_rank
-            )
+
+        constituency_ids = await self.vote_repo.get_constituency_ids_for_election(
+            self.session, election_id,
         )
-        votes = list(result.scalars().all())
 
-        # Group votes by constituency, then by ballot
-        ballots_by_constituency: dict[UUID, list[list[UUID]]] = defaultdict(list)
-        ballot_buffer: dict[str, list[tuple[int, UUID]]] = defaultdict(list)
-
-        for v in votes:
-            if not v.constituency_id or not v.candidate_id or v.preference_rank is None:
-                continue
-            base_token = v.blind_token_hash.split(":rank")[0]
-            key = f"{v.constituency_id}:{base_token}"
-            ballot_buffer[key].append((v.preference_rank, v.candidate_id))
-
-        for key, prefs in ballot_buffer.items():
-            cid_str = key.split(":")[0]
-            cid = UUID(cid_str)
-            ordered = [cand_id for _, cand_id in sorted(prefs, key=lambda x: x[0])]
-            ballots_by_constituency[cid].append(ordered)
-
-        all_candidate_ids = {
-            cand_id for ballots in ballots_by_constituency.values()
-            for ballot in ballots for cand_id in ballot
-        }
-        candidate_party_map = await self._load_candidate_party_map(all_candidate_ids)
-
-        constituency_results = []
+        # Accumulate partial results so we can batch-load the candidate->party map once
+        partial_results: list[tuple[UUID, int, list[TallyResultDTO], UUID | None]] = []
         seat_allocation: dict[str, int] = defaultdict(int)
         total_votes = 0
+        all_candidate_ids: set[UUID] = set()
 
-        for cid, ballots in ballots_by_constituency.items():
+        for cid in constituency_ids:
+            votes = await self.vote_repo.get_ranked_votes_by_constituency(
+                self.session, election_id, cid,
+            )
+            ballots = self._votes_to_ballots(votes)
             total_votes += len(ballots)
+
+            for ballot in ballots:
+                all_candidate_ids.update(ballot)
+
             winner = self._av_count(ballots)
 
             first_pref_counts: dict[UUID, int] = defaultdict(int)
@@ -510,6 +532,14 @@ class ResultService:
                 )
             ]
 
+            partial_results.append((cid, len(ballots), tally_dtos, winner))
+
+        # Load candidate -> party map once after collecting all candidate IDs
+        candidate_party_map = await self._load_candidate_party_map(all_candidate_ids)
+
+        # Build final constituency results with party info
+        constituency_results = []
+        for cid, num_ballots, tally_dtos, winner in partial_results:
             winner_party_id = (
                 candidate_party_map.get(winner) if winner else None
             )
@@ -518,7 +548,7 @@ class ResultService:
                 constituency_id=cid,
                 winner_candidate_id=winner,
                 winner_party_id=winner_party_id,
-                total_votes=len(ballots),
+                total_votes=num_ballots,
                 tallies=tally_dtos,
             )
             constituency_results.append(cr)
@@ -526,7 +556,7 @@ class ResultService:
             if winner_party_id:
                 seat_allocation[str(winner_party_id)] += 1
 
-        total_seats = len(ballots_by_constituency)
+        total_seats = len(constituency_ids)
         majority_threshold = total_seats // 2 + 1
 
         winning_party_id = None

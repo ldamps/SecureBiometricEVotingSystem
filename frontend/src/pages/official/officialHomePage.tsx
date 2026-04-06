@@ -281,6 +281,13 @@ const OfficialHomePage: React.FC = () => {
 
   useEffect(() => { loadInvestigations(); }, [loadInvestigations]);
 
+  // ── Constituency table pagination ──
+  const CONSTITUENCIES_PER_PAGE = 20;
+  const [constituencyPage, setConstituencyPage] = useState(0);
+
+  // Reset to first page when a different election is selected
+  useEffect(() => { setConstituencyPage(0); }, [selectedItemId]);
+
   // ── Report error modal ──
   const [reportErrorModalOpen, setReportErrorModalOpen] = useState(false);
   const [reportErrorContext, setReportErrorContext] = useState<string | null>(null);
@@ -308,17 +315,30 @@ const OfficialHomePage: React.FC = () => {
   }, [activeTab, setSearchParams]);
 
   // ── Derived data for charts ──
-  const constituencyChartData = (electionResult?.constituencies ?? []).map((c) => ({
+  const MAX_CHART_CONSTITUENCIES = 20;
+  const allConstituencyChartData = (electionResult?.constituencies ?? []).map((c) => ({
     id: c.constituency_id,
     name: constituencyMap[c.constituency_id]?.name ?? c.constituency_id.slice(0, 8),
     votesCast: c.total_votes,
   }));
+  const constituencyChartData = allConstituencyChartData.length > MAX_CHART_CONSTITUENCIES
+    ? [...allConstituencyChartData].sort((a, b) => b.votesCast - a.votesCast).slice(0, MAX_CHART_CONSTITUENCIES)
+    : allConstituencyChartData;
+  const chartTruncated = allConstituencyChartData.length > MAX_CHART_CONSTITUENCIES;
 
   const seatAllocationData = Object.entries(electionResult?.seat_allocation ?? {}).map(([partyId, seats], i) => ({
     party: partyMap[partyId]?.party_name ?? partyMap[partyId]?.abbreviation ?? partyId.slice(0, 8),
     seats,
     fill: theme.colors.chart[i % theme.colors.chart.length],
   }));
+
+  // ── Paginated constituency list ──
+  const allConstituencies = electionResult?.constituencies ?? [];
+  const totalConstituencyPages = Math.max(1, Math.ceil(allConstituencies.length / CONSTITUENCIES_PER_PAGE));
+  const paginatedConstituencies = allConstituencies.slice(
+    constituencyPage * CONSTITUENCIES_PER_PAGE,
+    (constituencyPage + 1) * CONSTITUENCIES_PER_PAGE,
+  );
 
   // ── Styles ──
   const pageWrapper = getPageContentWrapperStyle(theme);
@@ -490,7 +510,10 @@ const OfficialHomePage: React.FC = () => {
                     {/* Charts row */}
                     {constituencyChartData.length > 0 && (
                       <div style={{ display: "grid", gridTemplateColumns: seatAllocationData.length > 0 ? "1fr 1fr" : "1fr", gap: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
-                        <VotesPerConstituencyChart data={constituencyChartData} />
+                        <VotesPerConstituencyChart
+                          data={constituencyChartData}
+                          title={chartTruncated ? `Top ${MAX_CHART_CONSTITUENCIES} constituencies by votes` : "Votes per constituency"}
+                        />
                         {seatAllocationData.length > 0 && (
                           <SeatAllocationChart data={seatAllocationData} />
                         )}
@@ -529,10 +552,17 @@ const OfficialHomePage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Constituency results table */}
+                    {/* Constituency results table (paginated) */}
                     <div style={{ ...card, marginBottom: theme.spacing.lg }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-                        <h3 style={{ ...cardTitle, marginBottom: 0 }}>Constituency results</h3>
+                        <h3 style={{ ...cardTitle, marginBottom: 0 }}>
+                          Constituency results
+                          {allConstituencies.length > CONSTITUENCIES_PER_PAGE && (
+                            <span style={{ fontSize: theme.fontSizes.sm, fontWeight: theme.fontWeights.normal, color: theme.colors.text.secondary, marginLeft: theme.spacing.sm }}>
+                              ({constituencyPage * CONSTITUENCIES_PER_PAGE + 1}–{Math.min((constituencyPage + 1) * CONSTITUENCIES_PER_PAGE, allConstituencies.length)} of {allConstituencies.length})
+                            </span>
+                          )}
+                        </h3>
                         <button
                           type="button"
                           onClick={() => openReportError()}
@@ -541,49 +571,74 @@ const OfficialHomePage: React.FC = () => {
                           Report error
                         </button>
                       </div>
-                      {electionResult.constituencies.length === 0 ? (
+                      {allConstituencies.length === 0 ? (
                         <p style={{ ...cardText, fontStyle: "italic" }}>No constituency results available yet.</p>
                       ) : (
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={getTableStyle(theme)}>
-                            <thead>
-                              <tr>
-                                <th style={getTableHeaderStyle(theme)}>Constituency</th>
-                                <th style={getTableHeaderStyle(theme)}>Winner</th>
-                                <th style={getTableHeaderStyle(theme)}>Winning party</th>
-                                <th style={getTableHeaderStyle(theme)}>Total votes</th>
-                                <th style={getTableHeaderStyle(theme)}>Candidates</th>
-                                <th style={getTableHeaderStyle(theme)}>Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {electionResult.constituencies.map((c) => {
-                                const cName = constituencyMap[c.constituency_id]?.name ?? c.constituency_id.slice(0, 8);
-                                const winnerPartyName = c.winner_party_id
-                                  ? (partyMap[c.winner_party_id]?.party_name ?? c.winner_party_id.slice(0, 8))
-                                  : "—";
-                                return (
-                                  <tr key={c.constituency_id}>
-                                    <td style={getTableCellStyle(theme)}>{cName}</td>
-                                    <td style={getTableCellStyle(theme)}>{c.winner_name || "—"}</td>
-                                    <td style={getTableCellStyle(theme)}>{winnerPartyName}</td>
-                                    <td style={getTableCellStyle(theme)}>{c.total_votes.toLocaleString()}</td>
-                                    <td style={getTableCellStyle(theme)}>{c.tallies.length}</td>
-                                    <td style={getTableCellStyle(theme)}>
-                                      <button
-                                        type="button"
-                                        onClick={() => openReportError(cName)}
-                                        style={{ ...getTabButtonStyle(theme, false), padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}
-                                      >
-                                        Report error
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                        <>
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={getTableStyle(theme)}>
+                              <thead>
+                                <tr>
+                                  <th style={getTableHeaderStyle(theme)}>Constituency</th>
+                                  <th style={getTableHeaderStyle(theme)}>Winner</th>
+                                  <th style={getTableHeaderStyle(theme)}>Winning party</th>
+                                  <th style={getTableHeaderStyle(theme)}>Total votes</th>
+                                  <th style={getTableHeaderStyle(theme)}>Candidates</th>
+                                  <th style={getTableHeaderStyle(theme)}>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {paginatedConstituencies.map((c) => {
+                                  const cName = constituencyMap[c.constituency_id]?.name ?? c.constituency_id.slice(0, 8);
+                                  const winnerPartyName = c.winner_party_id
+                                    ? (partyMap[c.winner_party_id]?.party_name ?? c.winner_party_id.slice(0, 8))
+                                    : "—";
+                                  return (
+                                    <tr key={c.constituency_id}>
+                                      <td style={getTableCellStyle(theme)}>{cName}</td>
+                                      <td style={getTableCellStyle(theme)}>{c.winner_name || "—"}</td>
+                                      <td style={getTableCellStyle(theme)}>{winnerPartyName}</td>
+                                      <td style={getTableCellStyle(theme)}>{c.total_votes.toLocaleString()}</td>
+                                      <td style={getTableCellStyle(theme)}>{c.tallies.length}</td>
+                                      <td style={getTableCellStyle(theme)}>
+                                        <button
+                                          type="button"
+                                          onClick={() => openReportError(cName)}
+                                          style={{ ...getTabButtonStyle(theme, false), padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}
+                                        >
+                                          Report error
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          {totalConstituencyPages > 1 && (
+                            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: theme.spacing.md, marginTop: theme.spacing.md }}>
+                              <button
+                                type="button"
+                                disabled={constituencyPage === 0}
+                                onClick={() => setConstituencyPage((p) => Math.max(0, p - 1))}
+                                style={{ ...getTabButtonStyle(theme, false), opacity: constituencyPage === 0 ? 0.4 : 1 }}
+                              >
+                                Previous
+                              </button>
+                              <span style={{ fontSize: theme.fontSizes.sm, color: theme.colors.text.secondary }}>
+                                Page {constituencyPage + 1} of {totalConstituencyPages}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={constituencyPage >= totalConstituencyPages - 1}
+                                onClick={() => setConstituencyPage((p) => Math.min(totalConstituencyPages - 1, p + 1))}
+                                style={{ ...getTabButtonStyle(theme, false), opacity: constituencyPage >= totalConstituencyPages - 1 ? 0.4 : 1 }}
+                              >
+                                Next
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </>
