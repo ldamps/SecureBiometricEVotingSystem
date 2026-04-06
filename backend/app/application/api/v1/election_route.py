@@ -4,7 +4,7 @@ from typing import List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Body, Depends, Path, Query, status
 
 from app.application.api.dependencies import (
     get_ballot_token_service,
@@ -16,6 +16,7 @@ from app.application.api.dependencies import (
     get_voter_ledger_service,
     require_role,
 )
+from app.application.core.exceptions import AuthorizationError
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.models.dto.auth import TokenPayload
@@ -291,10 +292,7 @@ async def get_election_results(
     """
     election = await election_service.get_election_by_id(election_id)
     if election.status != "CLOSED":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Results are only available after voting has closed.",
-        )
+        raise AuthorizationError("Results are only available after voting has closed.")
     return await service.get_election_results(election_id)
 
 
@@ -317,10 +315,7 @@ async def get_election_tallies(
     """
     election = await election_service.get_election_by_id(election_id)
     if election.status != "CLOSED":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tallies are only available after voting has closed.",
-        )
+        raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_election(election_id)
 
 
@@ -344,8 +339,5 @@ async def get_election_constituency_tallies(
     """
     election = await election_service.get_election_by_id(election_id)
     if election.status != "CLOSED":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tallies are only available after voting has closed.",
-        )
+        raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_constituency(election_id, constituency_id)

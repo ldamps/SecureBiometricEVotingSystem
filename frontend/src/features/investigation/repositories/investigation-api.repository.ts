@@ -24,6 +24,7 @@ interface BackendInvestigationItem {
     assigned_to?: string | null;
     notes?: string | null;
     resolved_by?: string | null;
+    resolution_summary?: string | null;
     raised_at?: string | null;
     resolved_at?: string | null;
 }
@@ -57,6 +58,7 @@ function mapInvestigation(b: BackendInvestigationItem): Investigation {
         assigned_to: b.assigned_to ?? "",
         notes: b.notes ?? "",
         resolved_by: b.resolved_by ?? "",
+        resolution_summary: b.resolution_summary ?? "",
         raised_at: b.raised_at ?? "",
         resolved_at: b.resolved_at ?? "",
     };

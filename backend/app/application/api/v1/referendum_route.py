@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Body, Depends, Path, status
 
 from app.application.api.dependencies import (
     get_ballot_token_service,
@@ -15,6 +15,7 @@ from app.application.api.dependencies import (
     get_voter_ledger_service,
     require_role,
 )
+from app.application.core.exceptions import AuthorizationError
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.models.dto.auth import TokenPayload
@@ -222,10 +223,7 @@ async def get_referendum_results(
     """
     referendum = await referendum_service.get_referendum_by_id(referendum_id)
     if referendum.status != "CLOSED":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Results are only available after voting has closed.",
-        )
+        raise AuthorizationError("Results are only available after voting has closed.")
     return await service.get_referendum_results(referendum_id)
 
 
@@ -248,8 +246,5 @@ async def get_referendum_tallies(
     """
     referendum = await referendum_service.get_referendum_by_id(referendum_id)
     if referendum.status != "CLOSED":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tallies are only available after voting has closed.",
-        )
+        raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_referendum(referendum_id)

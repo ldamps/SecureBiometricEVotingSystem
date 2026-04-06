@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Body, Depends, File, Form, Path, UploadFile, status, HTTPException
+from fastapi import APIRouter, Body, Depends, File, Form, Path, UploadFile, status
 
 from app.application.api.dependencies import (
     get_address_service,
@@ -13,6 +13,7 @@ from app.application.api.dependencies import (
     get_voter_service,
     get_address_verification_dependencies,
 )
+from app.application.core.exceptions import ValidationError
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.models.dto.address import CreateAddressPlainDTO, UpdateAddressPlainDTO
@@ -148,19 +149,15 @@ async def verify_proof_of_address(
     # Validate file type
     allowed_types = {"application/pdf", "image/jpeg", "image/png"}
     if file.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {file.content_type}. Allowed: PDF, JPG, PNG.",
+        raise ValidationError(
+            f"Unsupported file type: {file.content_type}. Allowed: PDF, JPG, PNG."
         )
 
     # Read file into memory (max 10 MB)
     max_size = 10 * 1024 * 1024
     contents = await file.read()
     if len(contents) > max_size:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File too large. Maximum size is 10 MB.",
-        )
+        raise ValidationError("File too large. Maximum size is 10 MB.")
 
     # Retrieve the stored address and decrypt it (validates voter ownership)
     address_item = await address_service.get_address_by_id(voter_id, address_id)
@@ -181,9 +178,8 @@ async def verify_proof_of_address(
     stored_postcode = address_item.postcode or ""
 
     if not stored_line1 and not stored_postcode:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The stored address has no verifiable fields (address_line1, postcode).",
+        raise ValidationError(
+            "The stored address has no verifiable fields (address_line1, postcode)."
         )
 
     logger.info(

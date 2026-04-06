@@ -32,6 +32,7 @@ class InvestigationDTO(InvestigationBaseDTO):
     assigned_to: Optional[UUID] = None
     notes: Optional[str] = None
     resolved_by: Optional[UUID] = None
+    resolution_summary: Optional[str] = None
     raised_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
 
@@ -49,6 +50,7 @@ class InvestigationDTO(InvestigationBaseDTO):
             assigned_to=str(self.assigned_to) if self.assigned_to else None,
             notes=self.notes,
             resolved_by=str(self.resolved_by) if self.resolved_by else None,
+            resolution_summary=self.resolution_summary,
             raised_at=self.raised_at,
             resolved_at=self.resolved_at,
         )
@@ -64,6 +66,7 @@ class UpdateInvestigationPlainDTO(InvestigationBaseDTO):
     assigned_to: Optional[UUID] = None
     notes: Optional[str] = None
     resolved_by: Optional[UUID] = None
+    resolution_summary: Optional[str] = None
 
     @classmethod
     def create_dto(cls, data: UpdateInvestigationRequest, investigation_id: UUID) -> "UpdateInvestigationPlainDTO":

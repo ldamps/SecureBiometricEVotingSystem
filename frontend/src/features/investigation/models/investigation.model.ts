@@ -13,6 +13,7 @@ export interface Investigation {
     assigned_to: string;
     notes: string;
     resolved_by: string;
+    resolution_summary: string;
     raised_at: string;
     resolved_at: string;
 }
@@ -46,4 +47,5 @@ export interface UpdateInvestigationRequest {
     assigned_to?: string;
     notes?: string;
     resolved_by?: string;
+    resolution_summary?: string;
 }

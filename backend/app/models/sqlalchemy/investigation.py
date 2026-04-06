@@ -54,6 +54,7 @@ class Investigation(Base, UUIDPrimaryKeyMixin):
         index=True,
     )
     raised_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    resolution_summary: Mapped[EncryptedDBField | None] = mapped_column(EncryptedColumn, nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     # Relationships ----------

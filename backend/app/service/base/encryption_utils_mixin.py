@@ -306,6 +306,7 @@ def investigation_orm_to_dto_unencrypted_row(inv: Investigation) -> Investigatio
         assigned_to=inv.assigned_to,
         notes=inv.notes,
         resolved_by=inv.resolved_by,
+        resolution_summary=inv.resolution_summary,
         raised_at=inv.raised_at,
         resolved_at=inv.resolved_at,
     )

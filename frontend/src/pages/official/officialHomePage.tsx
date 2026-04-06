@@ -38,6 +38,8 @@ import { OfficialRole } from "../../features/officials/model/official.model";
 import type { ElectionAuditReport, ReferendumAuditReport } from "../../features/officials/model/audit-report.model";
 import { generateElectionAuditPdf, generateReferendumAuditPdf } from "../../features/officials/components/auditReportGenerator";
 import { Investigation } from "../../features/investigation/models/investigation.model";
+import { Official } from "../../features/officials/model/official.model";
+import UpdateInvestigationModal from "../../features/investigation/components/updateInvestigationModal";
 import { getAccessTokenSubject } from "../../services/api-client.service";
 
 const electionApiRepository = new ElectionApiRepository();
@@ -292,6 +294,23 @@ const OfficialHomePage: React.FC = () => {
 
   // Reset to first page when a different election is selected
   useEffect(() => { setConstituencyPage(0); }, [selectedItemId]);
+
+  // ── Officials list (for investigation assignment) ──
+  const [officialsList, setOfficialsList] = useState<Official[]>([]);
+  useEffect(() => {
+    officialApiRepository.listOfficials()
+      .then(setOfficialsList)
+      .catch(() => setOfficialsList([]));
+  }, []);
+
+  // ── Update investigation modal ──
+  const [updateInvModalOpen, setUpdateInvModalOpen] = useState(false);
+  const [selectedInvestigation, setSelectedInvestigation] = useState<Investigation | null>(null);
+
+  const openUpdateInvestigation = (inv: Investigation) => {
+    setSelectedInvestigation(inv);
+    setUpdateInvModalOpen(true);
+  };
 
   // ── Report error modal ──
   const [reportErrorModalOpen, setReportErrorModalOpen] = useState(false);
@@ -852,41 +871,66 @@ const OfficialHomePage: React.FC = () => {
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.md }}>
-                        {investigations.map((inv) => (
-                          <div key={inv.id} style={card}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: theme.spacing.sm }}>
-                              <div>
-                                <h3 style={{ ...cardTitle, marginBottom: theme.spacing.xs }}>{inv.title}</h3>
-                                <p style={{ ...cardText, marginBottom: 0, fontSize: theme.fontSizes.sm }}>
-                                  {inv.id.slice(0, 8)}… · Severity: {inv.severity} · Raised {formatDateTime(inv.raised_at)}
-                                </p>
+                        {investigations.map((inv) => {
+                          const assignee = inv.assigned_to
+                            ? officialsList.find((o) => o.id === inv.assigned_to)
+                            : null;
+                          return (
+                            <div key={inv.id} style={card}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: theme.spacing.sm }}>
+                                <div>
+                                  <h3 style={{ ...cardTitle, marginBottom: theme.spacing.xs }}>{inv.title}</h3>
+                                  <p style={{ ...cardText, marginBottom: 0, fontSize: theme.fontSizes.sm }}>
+                                    Severity: {inv.severity} · Raised {formatDateTime(inv.raised_at)}
+                                    {inv.category && ` · ${inv.category.replace(/_/g, " ")}`}
+                                  </p>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: theme.spacing.sm }}>
+                                  <span style={getStatusBadgeStyle(theme, investStatusToBadge(inv.status))}>
+                                    {inv.status.replace(/_/g, " ")}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => openUpdateInvestigation(inv)}
+                                    style={{ ...getTabButtonStyle(theme, false), padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}
+                                  >
+                                    Manage
+                                  </button>
+                                </div>
                               </div>
-                              <span style={getStatusBadgeStyle(theme, investStatusToBadge(inv.status))}>
-                                {inv.status.replace(/_/g, " ")}
-                              </span>
+                              {inv.description && (
+                                <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0 }}>
+                                  {inv.description}
+                                </p>
+                              )}
+                              {inv.notes && (
+                                <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0, fontStyle: "italic", color: theme.colors.text.secondary }}>
+                                  Notes: {inv.notes}
+                                </p>
+                              )}
+                              {assignee && (
+                                <p style={{ ...cardText, marginTop: theme.spacing.xs, marginBottom: 0, fontSize: theme.fontSizes.sm, color: theme.colors.text.secondary }}>
+                                  Assigned to: {assignee.first_name} {assignee.last_name}
+                                </p>
+                              )}
+                              {inv.resolution_summary && (
+                                <div style={{ marginTop: theme.spacing.sm, padding: theme.spacing.sm, background: theme.colors.surfaceAlt, borderRadius: theme.borderRadius.md }}>
+                                  <p style={{ ...cardText, marginBottom: 0, fontSize: theme.fontSizes.sm, fontWeight: theme.fontWeights.medium }}>
+                                    Resolution summary
+                                  </p>
+                                  <p style={{ ...cardText, marginTop: theme.spacing.xs, marginBottom: 0, fontSize: theme.fontSizes.sm }}>
+                                    {inv.resolution_summary}
+                                  </p>
+                                </div>
+                              )}
+                              {inv.resolved_at && (
+                                <p style={{ ...cardText, marginTop: theme.spacing.xs, marginBottom: 0, fontSize: theme.fontSizes.sm, color: theme.colors.status.success }}>
+                                  Resolved: {formatDateTime(inv.resolved_at)}
+                                </p>
+                              )}
                             </div>
-                            {inv.description && (
-                              <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0 }}>
-                                {inv.description}
-                              </p>
-                            )}
-                            {inv.notes && (
-                              <p style={{ ...cardText, marginTop: theme.spacing.sm, marginBottom: 0, fontStyle: "italic", color: theme.colors.text.secondary }}>
-                                Notes: {inv.notes}
-                              </p>
-                            )}
-                            {inv.assigned_to && (
-                              <p style={{ ...cardText, marginTop: theme.spacing.xs, marginBottom: 0, fontSize: theme.fontSizes.sm, color: theme.colors.text.secondary }}>
-                                Assigned to: {inv.assigned_to.slice(0, 8)}…
-                              </p>
-                            )}
-                            {inv.resolved_at && (
-                              <p style={{ ...cardText, marginTop: theme.spacing.xs, marginBottom: 0, fontSize: theme.fontSizes.sm, color: theme.colors.status.success }}>
-                                Resolved: {formatDateTime(inv.resolved_at)}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </>
@@ -914,6 +958,14 @@ const OfficialHomePage: React.FC = () => {
         onSubmitted={handleReportSubmitted}
         context={reportErrorContext}
         electionId={selectedItem?.kind === "election" ? selectedItem.id : undefined}
+      />
+
+      <UpdateInvestigationModal
+        open={updateInvModalOpen}
+        onClose={() => setUpdateInvModalOpen(false)}
+        onUpdated={loadInvestigations}
+        investigation={selectedInvestigation}
+        officials={officialsList}
       />
     </div>
   );
