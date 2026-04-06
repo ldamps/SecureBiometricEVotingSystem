@@ -1,11 +1,12 @@
 # referendum_dto.py - Referendum DTOs for the e-voting system.
 
-from dataclasses import asdict, dataclass
-from datetime import datetime
-from typing import ClassVar, Optional
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from typing import ClassVar, List, Optional
 from uuid import UUID
 
 from app.application.constants import Resource
+from app.application.core.voting_window import initial_status_from_voting_schedule
 from app.models.schemas.referendum import ReferendumItem, CreateReferendumRequest
 from app.models.sqlalchemy.referendum import Referendum
 
@@ -30,6 +31,7 @@ class ReferendumDTO(ReferendumBaseDTO):
     voting_opens: Optional[datetime] = None
     voting_closes: Optional[datetime] = None
     is_active: bool = True
+    constituency_ids: List[str] = field(default_factory=list)
 
     def to_schema(self) -> ReferendumItem:
         return ReferendumItem(
@@ -42,6 +44,7 @@ class ReferendumDTO(ReferendumBaseDTO):
             voting_opens=self.voting_opens,
             voting_closes=self.voting_closes,
             is_active=self.is_active,
+            constituency_ids=self.constituency_ids,
         )
 
 
@@ -54,17 +57,23 @@ class CreateReferendumPlainDTO(ReferendumBaseDTO):
     description: Optional[str] = None
     scope: str = ""
     status: str = "OPEN"
+    constituency_ids: List[str] = field(default_factory=list)
     voting_opens: Optional[datetime] = None
     voting_closes: Optional[datetime] = None
 
     @classmethod
     def create_dto(cls, data: CreateReferendumRequest) -> "CreateReferendumPlainDTO":
+        now = datetime.now(timezone.utc)
+        status = initial_status_from_voting_schedule(
+            now, data.voting_opens, data.voting_closes
+        )
         return cls(
             title=data.title,
             question=data.question,
             description=data.description,
             scope=data.scope,
-            status=data.status or "OPEN",
+            status=status,
+            constituency_ids=data.constituency_ids,
             voting_opens=data.voting_opens,
             voting_closes=data.voting_closes,
         )

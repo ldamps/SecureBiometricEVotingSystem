@@ -75,9 +75,10 @@ class VoterDTO(VoterBaseDTO):
             email=self.email,
             voter_reference=self.voter_reference,
             constituency_id=self.constituency_id,
-            nationality_category=self.nationality_category,
-            immigration_status=self.immigration_status,
+            nationality_category=self.nationality_category if isinstance(self.nationality_category, str) else "",
+            immigration_status=self.immigration_status if isinstance(self.immigration_status, str) else None,
             immigration_status_expiry=self.immigration_status_expiry,
+            voter_status=self.voter_status,
             registration_status=self.registration_status,
             failed_auth_attempts=self.failed_auth_attempts,
             locked_until=self.locked_until,
@@ -115,13 +116,14 @@ class RegisterVoterPlainDTO(VoterBaseDTO):
 
     @classmethod
     def create_dto(cls, data: VoterRegistrationRequest) -> "RegisterVoterPlainDTO":
-        d = data.model_dump(exclude={"passports"})
+        d = data.model_dump(exclude={"passports", "kyc_session_id"})
         return cls(**d)
 
 
 @dataclass
 class RegisterVoterEncryptedDTO(VoterBaseDTO):
     """Encrypted fields for persisting a new voter row."""
+    kyc_session_id: Optional[str] = None
     voter_status: str = ""
     constituency_id: Optional[UUID] = None
     registration_status: str = ""
@@ -162,11 +164,7 @@ class UpdateVoterPlainDTO(VoterBaseDTO):
     nationality_category: Optional[str] = None
     immigration_status: Optional[str] = None
     immigration_status_expiry: Optional[datetime] = None
-    constituency_id: Optional[UUID] = None
     renew_by: Optional[datetime] = None
-    registration_status: Optional[str] = None
-    failed_auth_attempts: Optional[int] = None
-    locked_until: Optional[datetime] = None
 
     @classmethod
     def create_dto(cls, data: VoterUpdateRequest, voter_id: UUID) -> "UpdateVoterPlainDTO":
@@ -191,8 +189,4 @@ class UpdateVoterEncryptedDTO(VoterBaseDTO):
     nationality_category: Optional[str] = None
     immigration_status: Optional[str] = None
     immigration_status_expiry: Optional[datetime] = None
-    constituency_id: Optional[UUID] = None
     renew_by: Optional[datetime] = None
-    registration_status: Optional[str] = None
-    failed_auth_attempts: Optional[int] = None
-    locked_until: Optional[datetime] = None

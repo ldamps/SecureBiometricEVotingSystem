@@ -68,6 +68,21 @@ class AuditLogRepository:
             logger.exception("Failed to get audit logs by election", election_id=election_id)
             raise
 
+    async def get_audit_logs_by_referendum(
+        self, session: AsyncSession, referendum_id: UUID,
+    ) -> list[AuditLog]:
+        """Get all audit log entries scoped to a referendum."""
+        try:
+            result = await session.execute(
+                select(self._model)
+                .where(self._model.referendum_id == referendum_id)
+                .order_by(self._model.created_at.desc())
+            )
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception("Failed to get audit logs by referendum", referendum_id=referendum_id)
+            raise
+
     async def get_audit_logs_by_actor(
         self, session: AsyncSession, actor_id: UUID,
     ) -> list[AuditLog]:

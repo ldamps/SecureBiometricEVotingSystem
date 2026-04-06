@@ -23,6 +23,7 @@ function isMobileOrTablet(): boolean {
 
 /** Interval (ms) at which the laptop polls for enrollment completion. */
 const POLL_INTERVAL = 3000;
+const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function BiometricRegistration({
     next,
@@ -69,8 +70,15 @@ function BiometricRegistration({
      */
     const startPolling = useCallback(() => {
         if (pollRef.current) clearInterval(pollRef.current);
+        const pollStarted = Date.now();
 
         pollRef.current = setInterval(async () => {
+            if (Date.now() - pollStarted > POLL_TIMEOUT_MS) {
+                if (pollRef.current) clearInterval(pollRef.current);
+                setError("Enrollment timed out. Please try again.");
+                setEnrollmentStatus(BiometricEnrollmentStatus.ERROR);
+                return;
+            }
             try {
                 const credentials = await biometricApi.listCredentials(state.voterId);
                 const active = credentials.find((c) => c.is_active);
@@ -103,14 +111,13 @@ function BiometricRegistration({
 
     const handleStartEnrollment = () => {
         setError(null);
-        // Use a web URL so any device with a browser can open it
         const enrollUrl = `${window.location.origin}/biometric/enroll?voter_id=${encodeURIComponent(state.voterId)}`;
         setQrPayload(enrollUrl);
 
         if (isMobile) {
-            // On mobile/tablet — navigate directly to the enrollment page
-            window.location.href = enrollUrl;
-            return;
+            // On mobile/tablet — open enrollment in a new tab so the wizard
+            // state is preserved in this tab.  Polling detects completion.
+            window.open(enrollUrl, "_blank");
         }
 
         setEnrollmentStatus(BiometricEnrollmentStatus.WAITING_FOR_DEVICE);
@@ -123,11 +130,16 @@ function BiometricRegistration({
         setQrPayload(null);
     };
 
+    const kycVerified = state.kycStatus === "verified";
+
     const statusMessages: Record<BiometricEnrollmentStatus, string> = {
         [BiometricEnrollmentStatus.NOT_STARTED]:
             "To secure your vote, we need to link your mobile device. " +
             "Your face and ear biometrics will be stored only on your phone \u2014 " +
-            "they are never sent to our servers.",
+            "they are never sent to our servers." +
+            (kycVerified
+                ? " Your biometric selfie will be cross-referenced with the photo ID you provided during identity verification to confirm they match."
+                : ""),
         [BiometricEnrollmentStatus.WAITING_FOR_DEVICE]:
             "Scan the QR code below with your mobile voting app. " +
             "The app will guide you through capturing your face and ear biometrics. " +

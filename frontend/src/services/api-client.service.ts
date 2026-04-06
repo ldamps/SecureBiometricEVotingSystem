@@ -24,7 +24,10 @@ const RETRY_BACKOFF_MS = 500;
 // Token helpers
 // ---------------------------------------------------------------------------
 
-let accessToken: string | null = null;
+let accessToken: string | null =
+  typeof window !== "undefined"
+    ? window.localStorage.getItem("accessToken")
+    : null;
 
 /** Called by the auth layer after login / token refresh. */
 export function setAccessToken(token: string | null): void {
@@ -33,6 +36,54 @@ export function setAccessToken(token: string | null): void {
 
 export function getAccessToken(): string | null {
   return accessToken;
+}
+
+/**
+ * Read `sub` from the access token payload without verifying the signature.
+ * Used client-side only to discover the signed-in official's id (matches backend TokenPayload.sub).
+ */
+export function getAccessTokenSubject(): string | null {
+  const token = accessToken;
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const segment = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = (4 - (segment.length % 4)) % 4;
+    const base64 = segment + "=".repeat(pad);
+    const json = atob(base64);
+    const payload = JSON.parse(json) as { sub?: string };
+    return typeof payload.sub === "string" && payload.sub.length > 0
+      ? payload.sub
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Access token present and not past stored expiry (if any). */
+export function hasValidOfficialSession(): boolean {
+  if (!accessToken) return false;
+  if (typeof window === "undefined") return true;
+
+  const exp = window.localStorage.getItem("accessTokenExpiresAt");
+  if (exp === null) return true;
+
+  const expMs = Number(exp);
+  if (Number.isNaN(expMs)) return true;
+
+  return Date.now() < expMs;
+}
+
+export function clearAuthSession(): void {
+  accessToken = null;
+
+  if (typeof window === "undefined") return;
+
+  window.localStorage.removeItem("accessToken");
+  window.localStorage.removeItem("refreshToken");
+  window.localStorage.removeItem("tokenType");
+  window.localStorage.removeItem("accessTokenExpiresAt");
 }
 
 /** Read the XSRF-TOKEN cookie set by the backend. */
@@ -49,7 +100,7 @@ async function request<T>(
   endpoint: string,
   config: RequestConfig = {},
 ): Promise<T> {
-  const { method = "GET", headers = {}, params, body } = config;
+  const { method = "GET", headers = {}, params, body, omitAuth = false } = config;
 
   // Build URL with query params
   let url = `${API_BASE_URL}${endpoint}`;
@@ -70,8 +121,8 @@ async function request<T>(
     ...headers,
   };
 
-  // Inject auth token
-  if (accessToken) {
+  // Inject auth token (skip for anonymous public reads)
+  if (accessToken && !omitAuth) {
     reqHeaders["Authorization"] = `Bearer ${accessToken}`;
   }
 
@@ -181,13 +232,20 @@ async function requestWithRetry<T>(
 // Public API client
 // ---------------------------------------------------------------------------
 
+/** Options for {@link ApiClient.get} (single object avoids confusing params vs auth flags). */
+export type ApiGetOptions = {
+  params?: RequestConfig["params"];
+  omitAuth?: boolean;
+};
+
 export class ApiClient {
   /** GET request with automatic retry on transient failures. */
-  static async get<T>(
-    endpoint: string,
-    params?: RequestConfig["params"],
-  ): Promise<T> {
-    return requestWithRetry<T>(endpoint, { method: "GET", params });
+  static async get<T>(endpoint: string, options?: ApiGetOptions): Promise<T> {
+    return requestWithRetry<T>(endpoint, {
+      method: "GET",
+      params: options?.params,
+      omitAuth: options?.omitAuth,
+    });
   }
 
   /** POST request. */
@@ -215,6 +273,11 @@ export class ApiClient {
     config?: Omit<RequestConfig, "method" | "body">,
   ): Promise<T> {
     return request<T>(endpoint, { ...config, method: "PUT", body });
+  }
+
+  /** POST request with FormData body (file uploads). */
+  static async postForm<T>(endpoint: string, formData: FormData): Promise<T> {
+    return request<T>(endpoint, { method: "POST", body: formData });
   }
 
   /** DELETE request. */

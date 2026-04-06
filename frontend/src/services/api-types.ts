@@ -32,6 +32,8 @@ export interface ApiResponse<T> {
     headers?: Record<string, string>
     params?: Record<string, string | number | boolean | undefined>
     body?: unknown
+    /** When true, do not send Authorization (for public voter-facing reads). */
+    omitAuth?: boolean
   }
   
   export interface ApiListResponse<T> {

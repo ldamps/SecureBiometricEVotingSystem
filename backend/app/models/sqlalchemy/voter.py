@@ -30,6 +30,7 @@ class VoterStatus(str, enum.Enum):
     PENDING = "PENDING"
     SUSPENDED = "SUSPENDED"
     ACTIVE = "ACTIVE"
+    UNDER_AGE = "UNDER_AGE"
 
 
 class NationalityCategory(str, enum.Enum):
@@ -99,6 +100,11 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(64), nullable=True, unique=True, index=True
     )
 
+    # KYC linkage — Stripe VerificationSession ID, unique to prevent reuse
+    kyc_session_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, unique=True, index=True
+    )
+
     # Non-encrypted fields
 
     voter_status: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -116,11 +122,11 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # Nationality & immigration status
 
-    nationality_category: Mapped[str] = mapped_column(
-        String(50), nullable=False, index=True
+    nationality_category: Mapped[EncryptedDBField] = mapped_column(
+        EncryptedColumn, nullable=False
     )
-    immigration_status: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
+    immigration_status: Mapped[EncryptedDBField | None] = mapped_column(
+        EncryptedColumn, nullable=True
     )
     immigration_status_expiry: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
@@ -167,12 +173,8 @@ class Voter(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "registration_status IN ('pending', 'approved', 'rejected')",
             name="ck_voter_registration_status_valid",
         ),
-        CheckConstraint(
-            "nationality_category IN ("
-            "'BRITISH_CITIZEN', 'IRISH_CITIZEN', 'COMMONWEALTH_SETTLED', "
-            "'COMMONWEALTH_LEAVE_TO_REMAIN', 'EU_RETAINED_RIGHTS', 'OTHER')",
-            name="ck_voter_nationality_category_valid",
-        ),
+        # nationality_category is now EncryptedColumn (JSONB); validation
+        # is enforced at the application layer, not via CHECK constraint.
         # Uniqueness is enforced on search tokens (hex HMAC), not on the
         # encrypted JSONB columns.
         UniqueConstraint(

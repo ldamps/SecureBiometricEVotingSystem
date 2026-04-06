@@ -15,6 +15,7 @@ from app.application.api.dependencies import (
     get_voter_ledger_service,
     require_role,
 )
+from app.application.core.exceptions import AuthorizationError
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.models.dto.auth import TokenPayload
@@ -46,7 +47,7 @@ router = APIRouter(
 )
 
 
-# Get all referendums (any official)
+# Get all referendums (public – voters browse before authenticating)
 @router.get(
     "/",
     responses=referendum_responses,
@@ -55,13 +56,27 @@ router = APIRouter(
 )
 async def get_all_referendums(
     service: ReferendumService = Depends(get_referendum_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[ReferendumItem]:
     """Get all referendums."""
     return await service.get_all_referendums()
 
 
-# Get referendum by ID (any official)
+# Get referendums for a specific constituency (voter-facing).
+@router.get(
+    "/constituency/{constituency_id}",
+    responses=referendum_responses,
+    response_model=List[ReferendumItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_referendums_for_constituency(
+    constituency_id: UUID = Path(..., description="The constituency to filter referendums by."),
+    service: ReferendumService = Depends(get_referendum_service),
+) -> List[ReferendumItem]:
+    """Get referendums for a constituency (constituency-specific + national)."""
+    return await service.get_all_referendums(constituency_id=constituency_id)
+
+
+# Get referendum by ID (public – voters browse before authenticating)
 @router.get(
     "/{referendum_id}",
     responses=referendum_responses,
@@ -71,7 +86,6 @@ async def get_all_referendums(
 async def get_referendum_by_id(
     referendum_id: UUID = Path(..., description="The unique identifier for the referendum."),
     service: ReferendumService = Depends(get_referendum_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> ReferendumItem:
     """Get referendum details by ID."""
     return await service.get_referendum_by_id(referendum_id)
@@ -89,7 +103,7 @@ async def create_referendum(
     service: ReferendumService = Depends(get_referendum_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
-    """Create a new referendum with a yes/no question for voters."""
+    """Create a new referendum (status is derived from voting window times)."""
     dto = CreateReferendumPlainDTO.create_dto(body)
     return await service.create_referendum(dto)
 
@@ -190,7 +204,7 @@ async def get_referendum_ballot_tokens(
 # ── Results & tallies ──
 
 
-# Get aggregated referendum results (any official)
+# Get aggregated referendum results (any official, only after voting closes)
 @router.get(
     "/{referendum_id}/results",
     responses=referendum_responses,
@@ -200,13 +214,20 @@ async def get_referendum_ballot_tokens(
 async def get_referendum_results(
     referendum_id: UUID = Path(..., description="The unique identifier for the referendum."),
     service: ResultService = Depends(get_result_service),
+    referendum_service: ReferendumService = Depends(get_referendum_service),
     current_user: TokenPayload = Depends(get_current_user),
 ) -> ReferendumResultResponse:
-    """Get aggregated YES/NO results for a referendum."""
+    """Get aggregated YES/NO results for a referendum.
+
+    Results are only available once the referendum status is CLOSED.
+    """
+    referendum = await referendum_service.get_referendum_by_id(referendum_id)
+    if referendum.status != "CLOSED":
+        raise AuthorizationError("Results are only available after voting has closed.")
     return await service.get_referendum_results(referendum_id)
 
 
-# Get tallies for a referendum (admin-only)
+# Get tallies for a referendum (admin-only, only after voting closes)
 @router.get(
     "/{referendum_id}/tallies",
     responses=referendum_responses,
@@ -216,7 +237,14 @@ async def get_referendum_results(
 async def get_referendum_tallies(
     referendum_id: UUID = Path(..., description="The unique identifier for the referendum."),
     service: TallyService = Depends(get_tally_service),
+    referendum_service: ReferendumService = Depends(get_referendum_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[TallyResultItem]:
-    """Get YES/NO tallies for a referendum."""
+    """Get YES/NO tallies for a referendum.
+
+    Tallies are only available once the referendum status is CLOSED.
+    """
+    referendum = await referendum_service.get_referendum_by_id(referendum_id)
+    if referendum.status != "CLOSED":
+        raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_referendum(referendum_id)

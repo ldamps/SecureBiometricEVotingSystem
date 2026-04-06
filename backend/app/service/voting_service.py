@@ -9,7 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.core.exceptions import BusinessLogicError, NotFoundError, ValidationError
+from app.application.core.voting_window import is_within_scheduled_voting_window
+from app.service.voting_schedule_status_sync import (
+    sync_election_status_with_voting_schedule,
+    sync_referendum_status_with_voting_schedule,
+)
 from app.models.dto.vote import CreateVotePlainDTO, CreateVoteEncryptedDTO
+from app.models.sqlalchemy.election import AllocationMethod, ELECTION_TYPE_ALLOCATION_MAP, ElectionType
 from app.models.dto.referendum_vote import CreateReferendumVoteEncryptedDTO
 from app.models.schemas.vote import (
     CastVoteRequest,
@@ -17,8 +23,10 @@ from app.models.schemas.vote import (
     CastReferendumVoteRequest,
     CastReferendumVoteResponse,
 )
-from app.models.sqlalchemy.election import Election, ElectionStatus
+from app.models.sqlalchemy.election import Election, ElectionScope, ElectionStatus
+from app.models.sqlalchemy.referendum import ReferendumStatus
 from app.models.sqlalchemy.voter_ledger import VoterLedger
+from app.repository.address_repo import AddressRepository
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.tally_result_repo import TallyResultRepository
 from app.repository.candidate_repo import CandidateRepository
@@ -61,6 +69,7 @@ class VotingService(EncryptionUtilsMixin):
         referendum_repo: ReferendumRepository,
         candidate_repo: CandidateRepository,
         voter_repo: VoterRepository,
+        address_repo: AddressRepository,
         session: AsyncSession,
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
@@ -76,6 +85,7 @@ class VotingService(EncryptionUtilsMixin):
         self.referendum_repo = referendum_repo
         self.candidate_repo = candidate_repo
         self.voter_repo = voter_repo
+        self.address_repo = address_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
@@ -85,40 +95,68 @@ class VotingService(EncryptionUtilsMixin):
     async def cast_vote(self, request: CastVoteRequest) -> CastVoteResponse:
         """Cast a vote in an election.
 
+        Supports UK electoral systems:
+        - FPTP: single candidate_id per constituency.
+        - AMS: constituency candidate_id AND/OR regional party_id.
+        - STV / AV: ranked_preferences list of (candidate_id, preference_rank).
+
         Flow:
-        1. Validate the election exists and is OPEN.
-        2. Check Voter_Ledger — reject if voter already voted in this election.
-        3. Validate the blind ballot token (exists, unused, matches election).
-        4. Create the anonymous Vote record (no voter_id).
-        5. Mark the ballot token as used.
-        6. Create a Voter_Ledger entry (voter_id + election_id).
-        7. Increment the tally for the chosen candidate.
-        8. Optionally queue an email confirmation.
-        9. Return a receipt code.
+        1. Validate the election exists and is OPEN; derive allocation method.
+        2. Validate the ballot payload against the allocation method.
+        3. Check Voter_Ledger — reject if voter already voted.
+        4. Validate the blind ballot token.
+        5. Create anonymous Vote record(s).
+        6. Mark the ballot token as used.
+        7. Create a Voter_Ledger entry.
+        8. Increment tallies.
+        9. Optionally queue an email confirmation.
+        10. Return a receipt code.
         """
         voter_id = UUID(request.voter_id)
         election_id = UUID(request.election_id)
-        constituency_id = UUID(request.constituency_id)
-        candidate_id = UUID(request.candidate_id)
+        constituency_id = UUID(request.constituency_id) if request.constituency_id else None
+        candidate_id = UUID(request.candidate_id) if request.candidate_id else None
+        party_id = UUID(request.party_id) if request.party_id else None
         blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
-        # 1. Validate the election exists and is OPEN
+        # 1. Validate the election exists, is OPEN, and within scheduled voting window
         election = await self.election_repo.get_election_by_id(self.session, election_id)
+        election = await sync_election_status_with_voting_schedule(
+            self.session, self.election_repo, election
+        )
         if election.status != ElectionStatus.OPEN.value:
+            if election.status == ElectionStatus.CANCELLED.value:
+                raise ValidationError("This election has been cancelled.")
             raise ValidationError("Election is not open for voting.")
+        if not is_within_scheduled_voting_window(
+            now, election.voting_opens, election.voting_closes
+        ):
+            raise ValidationError("Voting is not open at this time for this election.")
+
+        allocation_method = election.allocation_method
 
         # 1b. Validate the voter exists
         await self.voter_repo.get_voter_by_id(self.session, voter_id)
 
-        # 2. Check Voter_Ledger — has this voter already voted?
+        # 1c. Overseas voters can only participate in general elections
+        if election.election_type != ElectionType.GENERAL.value:
+            if await self.address_repo.has_overseas_address(self.session, voter_id):
+                raise ValidationError(
+                    "Overseas voters can only participate in general elections."
+                )
+
+        # 2. Validate ballot payload against the allocation method
+        self._validate_ballot_payload(allocation_method, request)
+
+        # 3. Check Voter_Ledger — has this voter already voted?
         existing_ledger = await self._get_voter_ledger_entry(voter_id, election_id)
         if existing_ledger:
             raise ValidationError(
                 "You have already voted in this election. Each voter may only vote once."
             )
 
-        # 3. Validate the blind ballot token (lookup via HMAC search token)
+        # 4. Validate the blind ballot token (lookup via HMAC search token)
         search_token = await self._compute_ballot_search_token(blind_token_hash)
         ballot_token = await self.ballot_token_repo.get_by_blind_token_hash(
             self.session, search_token
@@ -129,54 +167,120 @@ class VotingService(EncryptionUtilsMixin):
             raise ValidationError("This ballot token has already been used.")
         if ballot_token.election_id != election_id:
             raise ValidationError("Ballot token does not belong to this election.")
-        if ballot_token.constituency_id != constituency_id:
+        if constituency_id and ballot_token.constituency_id != constituency_id:
             raise ValidationError("Ballot token does not belong to this constituency.")
 
-        # 3b. Validate the candidate exists
-        await self.candidate_repo.get_candidate_by_id(self.session, candidate_id)
+        # 4b. Validate candidate/party exist
+        if candidate_id:
+            await self.candidate_repo.get_candidate_by_id(self.session, candidate_id)
 
-        # 4. Create the anonymous vote record (NO voter_id — preserves anonymity)
+        # 5. Create anonymous vote record(s)
         receipt_code = secrets.token_urlsafe(32)
+        vote = None
 
-        vote_dto = CreateVotePlainDTO(
-            election_id=election_id,
-            constituency_id=constituency_id,
-            candidate_id=candidate_id,
-            blind_token_hash=str(blind_token_hash),
-            receipt_code=receipt_code,
-            email_sent=request.send_email_confirmation,
-            cast_at=now,
-        )
+        if allocation_method in (
+            AllocationMethod.STV.value,
+            AllocationMethod.ALTERNATIVE_VOTE.value,
+        ):
+            # Ranked ballot: one Vote row per preference
+            for pref in request.ranked_preferences:
+                pref_candidate_id = UUID(pref.candidate_id)
+                await self.candidate_repo.get_candidate_by_id(self.session, pref_candidate_id)
+                vote_enc_dto = CreateVoteEncryptedDTO(
+                    election_id=election_id,
+                    constituency_id=constituency_id,
+                    candidate_id=pref_candidate_id,
+                    preference_rank=pref.preference_rank,
+                    blind_token_hash=f"{blind_token_hash}:rank{pref.preference_rank}",
+                    receipt_code=f"{receipt_code}:rank{pref.preference_rank}" if pref.preference_rank > 1 else receipt_code,
+                    email_sent=request.send_email_confirmation if pref.preference_rank == 1 else False,
+                    cast_at=now,
+                )
+                vote_model = vote_enc_dto.to_model()
+                v = await self.vote_repo.create_vote(self.session, vote_model)
+                if pref.preference_rank == 1:
+                    vote = v
+        elif allocation_method == AllocationMethod.AMS.value:
+            # AMS: up to two vote rows — constituency (candidate) + regional (party)
+            if candidate_id:
+                vote_enc_dto = CreateVoteEncryptedDTO(
+                    election_id=election_id,
+                    constituency_id=constituency_id,
+                    candidate_id=candidate_id,
+                    blind_token_hash=str(blind_token_hash),
+                    receipt_code=receipt_code,
+                    email_sent=request.send_email_confirmation,
+                    cast_at=now,
+                )
+                vote_model = vote_enc_dto.to_model()
+                vote = await self.vote_repo.create_vote(self.session, vote_model)
+            if party_id:
+                list_vote_enc_dto = CreateVoteEncryptedDTO(
+                    election_id=election_id,
+                    constituency_id=constituency_id,
+                    party_id=party_id,
+                    blind_token_hash=f"{blind_token_hash}:list" if candidate_id else str(blind_token_hash),
+                    receipt_code=f"{receipt_code}:list" if candidate_id else receipt_code,
+                    email_sent=False,
+                    cast_at=now,
+                )
+                list_vote_model = list_vote_enc_dto.to_model()
+                list_vote = await self.vote_repo.create_vote(self.session, list_vote_model)
+                if not vote:
+                    vote = list_vote
+        else:
+            # FPTP: single candidate per constituency
+            vote_enc_dto = CreateVoteEncryptedDTO(
+                election_id=election_id,
+                constituency_id=constituency_id,
+                candidate_id=candidate_id,
+                blind_token_hash=str(blind_token_hash),
+                receipt_code=receipt_code,
+                email_sent=request.send_email_confirmation,
+                cast_at=now,
+            )
+            vote_model = vote_enc_dto.to_model()
+            vote = await self.vote_repo.create_vote(self.session, vote_model)
 
-        vote_enc_dto = CreateVoteEncryptedDTO(
-            election_id=vote_dto.election_id,
-            constituency_id=vote_dto.constituency_id,
-            candidate_id=vote_dto.candidate_id,
-            blind_token_hash=vote_dto.blind_token_hash,
-            receipt_code=vote_dto.receipt_code,
-            email_sent=vote_dto.email_sent,
-            cast_at=vote_dto.cast_at,
-        )
-        vote_model = vote_enc_dto.to_model()
-        vote = await self.vote_repo.create_vote(self.session, vote_model)
-
-        # 5. Mark the ballot token as used
+        # 6. Mark the ballot token as used
         await self.ballot_token_repo.mark_as_used(
             self.session, ballot_token.id, used_at=now
         )
 
-        # 6. Create a Voter_Ledger entry (records participation, NOT the vote choice)
+        # 7. Create a Voter_Ledger entry (records participation, NOT the vote choice)
         await self._create_voter_ledger_entry(voter_id, election_id, now)
 
-        # 7. Increment the tally for the chosen candidate
-        await self.tally_result_repo.increment_vote_count(
-            self.session,
-            election_id=election_id,
-            constituency_id=constituency_id,
-            candidate_id=candidate_id,
-        )
+        # 8. Increment tallies
+        if allocation_method in (
+            AllocationMethod.STV.value,
+            AllocationMethod.ALTERNATIVE_VOTE.value,
+        ):
+            # For STV/AV only first-preference counts go into the tally initially;
+            # subsequent rounds are computed at result time.
+            first_pref = request.ranked_preferences[0]
+            await self.tally_result_repo.increment_vote_count(
+                self.session,
+                election_id=election_id,
+                constituency_id=constituency_id,
+                candidate_id=UUID(first_pref.candidate_id),
+            )
+        elif allocation_method == AllocationMethod.AMS.value:
+            if candidate_id:
+                await self.tally_result_repo.increment_vote_count(
+                    self.session,
+                    election_id=election_id,
+                    constituency_id=constituency_id,
+                    candidate_id=candidate_id,
+                )
+        else:
+            await self.tally_result_repo.increment_vote_count(
+                self.session,
+                election_id=election_id,
+                constituency_id=constituency_id,
+                candidate_id=candidate_id,
+            )
 
-        # 8. Optionally send email confirmation (non-blocking)
+        # 9. Optionally send email confirmation (non-blocking)
         if request.send_email_confirmation:
             try:
                 await self._send_vote_confirmation_email(voter_id, election.title, "election")
@@ -187,7 +291,7 @@ class VotingService(EncryptionUtilsMixin):
                     election_id=str(election_id),
                 )
 
-        # 8b. Audit: vote cast (no voter_id to preserve anonymity)
+        # 9b. Audit: vote cast (no voter_id to preserve anonymity)
         await self._audit_log_repo.create_audit_log(
             self.session,
             AuditLog(
@@ -204,15 +308,15 @@ class VotingService(EncryptionUtilsMixin):
         logger.info(
             "Vote cast successfully",
             election_id=str(election_id),
-            constituency_id=str(constituency_id),
+            constituency_id=str(constituency_id) if constituency_id else "N/A",
         )
 
-        # 9. Return receipt
+        # 10. Return receipt
         return CastVoteResponse(
             id=str(vote.id),
             receipt_code=receipt_code,
             election_id=str(election_id),
-            constituency_id=str(constituency_id),
+            constituency_id=str(constituency_id) if constituency_id else None,
             cast_at=now,
             message="Your vote has been cast successfully. You cannot change your vote.",
         )
@@ -239,15 +343,31 @@ class VotingService(EncryptionUtilsMixin):
         blind_token_hash = request.blind_token_hash
         now = datetime.now(timezone.utc)
 
-        # 1. Validate the referendum exists and is OPEN
+        # 1. Validate the referendum exists, is OPEN, and within scheduled voting window
         referendum = await self.referendum_repo.get_referendum_by_id(
             self.session, referendum_id
         )
-        if referendum.status != "OPEN":
+        referendum = await sync_referendum_status_with_voting_schedule(
+            self.session, self.referendum_repo, referendum
+        )
+        if referendum.status != ReferendumStatus.OPEN.value:
+            if referendum.status == ReferendumStatus.CANCELLED.value:
+                raise ValidationError("This referendum has been cancelled.")
             raise ValidationError("Referendum is not open for voting.")
+        if not is_within_scheduled_voting_window(
+            now, referendum.voting_opens, referendum.voting_closes
+        ):
+            raise ValidationError("Voting is not open at this time for this referendum.")
 
         # 1b. Validate the voter exists
         await self.voter_repo.get_voter_by_id(self.session, voter_id)
+
+        # 1c. Overseas voters can only participate in UK-wide referendums
+        if referendum.scope != ElectionScope.NATIONAL.value:
+            if await self.address_repo.has_overseas_address(self.session, voter_id):
+                raise ValidationError(
+                    "Overseas voters can only participate in UK-wide referendums."
+                )
 
         # 2. Check Voter_Ledger — has this voter already voted?
         existing_ledger = await self._get_referendum_voter_ledger_entry(
@@ -341,6 +461,36 @@ class VotingService(EncryptionUtilsMixin):
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_ballot_payload(
+        allocation_method: str, request: CastVoteRequest
+    ) -> None:
+        """Ensure the request fields match the election's electoral system."""
+        if allocation_method == AllocationMethod.FPTP.value:
+            if not request.candidate_id:
+                raise ValidationError("FPTP elections require a candidate_id.")
+            if not request.constituency_id:
+                raise ValidationError("FPTP elections require a constituency_id.")
+        elif allocation_method == AllocationMethod.AMS.value:
+            if not request.candidate_id and not request.party_id:
+                raise ValidationError(
+                    "AMS elections require a candidate_id (constituency vote) "
+                    "and/or a party_id (regional list vote)."
+                )
+        elif allocation_method in (
+            AllocationMethod.STV.value,
+            AllocationMethod.ALTERNATIVE_VOTE.value,
+        ):
+            if not request.ranked_preferences:
+                raise ValidationError(
+                    f"{allocation_method} elections require ranked_preferences."
+                )
+            ranks = [p.preference_rank for p in request.ranked_preferences]
+            if sorted(ranks) != list(range(1, len(ranks) + 1)):
+                raise ValidationError(
+                    "Ranked preferences must be consecutive starting from 1."
+                )
 
     async def _get_voter_ledger_entry(
         self, voter_id: UUID, election_id: UUID

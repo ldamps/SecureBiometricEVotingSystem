@@ -105,6 +105,7 @@ class AuthService:
         )
 
         tokens = self._create_token_pair(official.id, official.username, official.role)
+        tokens.must_reset_password = official.must_reset_password
 
         # Audit: successful login
         await self._audit_log_repo.create_audit_log(

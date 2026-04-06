@@ -60,6 +60,7 @@ interface BackendVoterItem {
     nationality_category: NationalityCategory;
     immigration_status?: ImmigrationStatus | null;
     immigration_status_expiry?: string | null;
+    voter_status?: string | null;
     registration_status: string;
     failed_auth_attempts: number;
     locked_until?: string | null;
@@ -71,7 +72,8 @@ interface BackendVoterItem {
 interface BackendVoterLedger {
     id: string;
     voter_id: string;
-    election_id: string;
+    election_id?: string | null;
+    referendum_id?: string | null;
     voted_at?: string | null;
 }
 
@@ -126,6 +128,7 @@ function mapVoterCore(b: BackendVoterItem): Voter {
         nationality_category: b.nationality_category,
         immigration_status: b.immigration_status ?? undefined,
         immigration_status_expiry: b.immigration_status_expiry ?? undefined,
+        voter_status: b.voter_status ?? "PENDING",
         registration_status: b.registration_status,
         failed_auth_attempts: b.failed_auth_attempts,
         locked_until: b.locked_until ?? undefined,
@@ -145,25 +148,37 @@ function mapLedger(row: BackendVoterLedger): VoterLedgerItem {
     return {
         id: row.id,
         voter_id: row.voter_id,
-        election_id: row.election_id,
+        election_id: row.election_id ?? undefined,
+        referendum_id: row.referendum_id ?? undefined,
         voted_at: row.voted_at ?? undefined,
     };
 }
 
+/** Convert dd/mm/yyyy to ISO datetime string for the backend. Works for any date field. */
+function dateToISO(dob: string): string {
+    const parts = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (parts) {
+        const [, dd, mm, yyyy] = parts;
+        return `${yyyy}-${mm}-${dd}T00:00:00Z`;
+    }
+    return dob; // already ISO or unknown format — pass through
+}
+
 function registrationBody(req: VoterCreateRequest): Record<string, unknown> {
     return {
+        kyc_session_id: req.kyc_session_id,
         first_name: req.first_name,
         surname: req.surname,
         previous_first_name: req.previous_first_name,
         previous_surname: req.previous_surname,
-        date_of_birth: req.date_of_birth,
+        date_of_birth: dateToISO(req.date_of_birth),
         email: req.email,
         national_insurance_number: req.national_insurance_number,
         passports: req.passports.map((p) =>
             definedPayload({
                 passport_number: p.passport_number,
                 issuing_country: p.issuing_country,
-                expiry_date: p.expiry_date,
+                expiry_date: p.expiry_date ? dateToISO(p.expiry_date) : undefined,
                 is_primary: p.is_primary,
             }),
         ),
@@ -171,7 +186,6 @@ function registrationBody(req: VoterCreateRequest): Record<string, unknown> {
         immigration_status: req.immigration_status,
         immigration_status_expiry: req.immigration_status_expiry,
         renew_by: req.renew_by,
-        registration_status: req.registration_status,
     };
 }
 
@@ -186,11 +200,7 @@ function updateVoterBody(req: VoterUpdateRequest): Record<string, unknown> {
         nationality_category: req.nationality_category,
         immigration_status: req.immigration_status,
         immigration_status_expiry: req.immigration_status_expiry,
-        constituency_id: req.constituency_id,
         renew_by: req.renew_by,
-        registration_status: req.registration_status,
-        failed_auth_attempts: req.failed_auth_attempts,
-        locked_until: req.locked_until,
     });
 }
 
@@ -203,7 +213,6 @@ function createAddressBody(req: CreateAddressRequest): Record<string, unknown> {
         postcode: req.postcode,
         county: req.county,
         country: req.country,
-        address_status: req.address_status,
         renew_by: req.renew_by,
     });
 }
@@ -226,7 +235,7 @@ function createPassportBody(req: CreatePassportRequest): Record<string, unknown>
     return definedPayload({
         passport_number: req.passport_number,
         issuing_country: req.issuing_country,
-        expiry_date: req.expiry_date,
+        expiry_date: req.expiry_date ? dateToISO(req.expiry_date) : undefined,
         is_primary: req.is_primary,
     });
 }
@@ -235,7 +244,7 @@ function updatePassportBody(req: UpdatePassportRequest): Record<string, unknown>
     return definedPayload({
         passport_number: req.passport_number,
         issuing_country: req.issuing_country,
-        expiry_date: req.expiry_date,
+        expiry_date: req.expiry_date ? dateToISO(req.expiry_date) : undefined,
         is_primary: req.is_primary,
     });
 }
@@ -383,6 +392,24 @@ export class VoterApiRepository {
             `${ROOT}/${voterId}/ledger`,
         );
         return rows.map(mapLedger);
+    }
+
+    async verifyAddress(
+        voterId: string,
+        addressId: string,
+        file: File,
+    ): Promise<{
+        status: string;
+        message: string;
+        matched_fields: number;
+        total_fields: number;
+        details: Record<string, boolean>;
+        address_status: string;
+    }> {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("address_id", addressId);
+        return ApiClient.postForm(`${ROOT}/${voterId}/verify-address`, formData);
     }
 
     async createLedgerEntry(

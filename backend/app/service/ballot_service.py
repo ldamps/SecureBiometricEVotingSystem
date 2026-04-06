@@ -25,6 +25,7 @@ from app.models.schemas.ballot_token import (
 )
 from app.models.sqlalchemy.ballot_token import BallotToken
 from app.models.sqlalchemy.election import Election, ElectionStatus
+from app.models.sqlalchemy.referendum import ReferendumStatus
 from app.repository.ballot_token_repo import BallotTokenRepository
 from app.repository.election_repo import ElectionRepository
 from app.repository.referendum_repo import ReferendumRepository
@@ -99,8 +100,10 @@ class BallotTokenService(EncryptionUtilsMixin):
 
         # Validate election exists
         election = await self.election_repo.get_election_by_id(self.session, election_id)
-        if election.status == ElectionStatus.CLOSED.value:
-            raise ValidationError("Cannot issue tokens for a closed election.")
+        if election.status != ElectionStatus.OPEN.value:
+            raise ValidationError(
+                "Ballot tokens can only be issued while the election status is OPEN."
+            )
 
         now = datetime.now(timezone.utc)
 
@@ -154,8 +157,10 @@ class BallotTokenService(EncryptionUtilsMixin):
         referendum = await self.referendum_repo.get_referendum_by_id(
             self.session, referendum_id
         )
-        if referendum.status == "CLOSED":
-            raise ValidationError("Cannot issue tokens for a closed referendum.")
+        if referendum.status != ReferendumStatus.OPEN.value:
+            raise ValidationError(
+                "Ballot tokens can only be issued while the referendum status is OPEN."
+            )
 
         now = datetime.now(timezone.utc)
 
@@ -194,6 +199,67 @@ class BallotTokenService(EncryptionUtilsMixin):
             tokens_issued=count,
             blind_token_hashes=plain_hashes,
         )
+
+    # ------------------------------------------------------------------ #
+    #  Voter-facing: issue a single token for the voter                    #
+    # ------------------------------------------------------------------ #
+
+    async def issue_voter_election_token(
+        self, election_id: UUID, constituency_id: UUID,
+    ) -> str:
+        """Issue a single ballot token for a voter casting an election vote.
+
+        Returns the plain token hash the voter must include in their cast-vote request.
+        """
+        election = await self.election_repo.get_election_by_id(self.session, election_id)
+        if election.status != ElectionStatus.OPEN.value:
+            raise ValidationError("Election is not open for voting.")
+
+        now = datetime.now(timezone.utc)
+        await self._keys_manager.init_org_keys(self.session, org_id=None)
+        args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
+
+        token_value = str(uuid.uuid4())
+        plain_dto = CreateBallotTokenPlainDTO(
+            election_id=election_id,
+            constituency_id=constituency_id,
+            blind_token_hash=token_value,
+            issued_at=now,
+        )
+        enc_dto = await self._mapper.encrypt_dto(
+            plain_dto, CreateBallotTokenEncryptedDTO, args, self.session
+        )
+        await self.ballot_token_repo.create_bulk(self.session, [enc_dto.to_model()])
+        return token_value
+
+    async def issue_voter_referendum_token(
+        self, referendum_id: UUID,
+    ) -> str:
+        """Issue a single ballot token for a voter casting a referendum vote.
+
+        Returns the plain token hash the voter must include in their cast-vote request.
+        """
+        referendum = await self.referendum_repo.get_referendum_by_id(
+            self.session, referendum_id
+        )
+        if referendum.status != ReferendumStatus.OPEN.value:
+            raise ValidationError("Referendum is not open for voting.")
+
+        now = datetime.now(timezone.utc)
+        await self._keys_manager.init_org_keys(self.session, org_id=None)
+        args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
+
+        token_value = str(uuid.uuid4())
+        plain_dto = CreateBallotTokenPlainDTO(
+            referendum_id=referendum_id,
+            blind_token_hash=token_value,
+            issued_at=now,
+        )
+        enc_dto = await self._mapper.encrypt_dto(
+            plain_dto, CreateBallotTokenEncryptedDTO, args, self.session
+        )
+        await self.ballot_token_repo.create_bulk(self.session, [enc_dto.to_model()])
+        return token_value
 
     # ------------------------------------------------------------------ #
     #  Query tokens                                                        #

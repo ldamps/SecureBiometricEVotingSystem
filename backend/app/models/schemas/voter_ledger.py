@@ -8,7 +8,8 @@ class VoterLedgerItem(ResponseSchema):
     """Voter ledger response model."""
     id: str = Field(..., description="The unique identifier for the voter ledger entry.")
     voter_id: str = Field(..., description="The unique identifier for the voter.")
-    election_id: str = Field(..., description="The unique identifier for the election.")
+    election_id: Optional[str] = Field(None, description="The unique identifier for the election.")
+    referendum_id: Optional[str] = Field(None, description="The unique identifier for the referendum.")
     voted_at: Optional[datetime] = Field(None, description="The date and time the voter voted.")
 
 class CreateVoterLedgerRequest(RequestSchema):

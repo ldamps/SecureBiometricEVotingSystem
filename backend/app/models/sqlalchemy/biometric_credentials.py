@@ -64,6 +64,13 @@ class DeviceCredential(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # Android SafetyNet / iOS DeviceCheck) — stored as base64 text.
     attestation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # AES-GCM encrypted ECDSA private key bundle (JSON string).
+    # The private key is encrypted with a key derived from the voter's
+    # quantised face+ear biometric features.  The server cannot decrypt
+    # this — only a matching biometric can recover the signing key.
+    # Stored server-side so the voter can verify from any device/browser.
+    encrypted_key_bundle: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Human-readable label the voter chose ("My iPhone", "Work phone", …)
     device_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

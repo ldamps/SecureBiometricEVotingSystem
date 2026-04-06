@@ -29,7 +29,7 @@ class AuditLogDTO(AuditLogBaseDTO):
     resource_type: Optional[str] = None
     resource_id: Optional[UUID] = None
     election_id: Optional[UUID] = None
-    ip_address: Optional[str] = None
+    referendum_id: Optional[UUID] = None
     event_metadata: Optional[dict] = None
     created_at: Optional[datetime] = None
 
@@ -44,7 +44,7 @@ class AuditLogDTO(AuditLogBaseDTO):
             resource_type=self.resource_type,
             resource_id=str(self.resource_id) if self.resource_id else None,
             election_id=str(self.election_id) if self.election_id else None,
-            ip_address=self.ip_address,
+            referendum_id=str(self.referendum_id) if self.referendum_id else None,
             event_metadata=self.event_metadata,
             created_at=self.created_at,
         )
@@ -62,5 +62,5 @@ class CreateAuditLogDTO:
     resource_type: Optional[str] = None
     resource_id: Optional[UUID] = None
     election_id: Optional[UUID] = None
-    ip_address: Optional[str] = None
+    referendum_id: Optional[UUID] = None
     event_metadata: Optional[dict] = None
