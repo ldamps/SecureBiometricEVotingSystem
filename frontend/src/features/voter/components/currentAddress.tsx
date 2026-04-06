@@ -38,6 +38,12 @@ function CurrentAddress({
     const [addressVerified, setAddressVerified] = useState(state.addressVerified || false);
     const isUkAddress = (state.country || "").toLowerCase().includes("united kingdom") || (state.country || "").toLowerCase().includes("uk");
 
+    /** Update an address field and clear the saved addressId so the address is re-created on next submit. */
+    const setAddressField = (key: string, value: string) => {
+        setAddressVerified(false);
+        setState({ ...state, [key]: value, addressId: "", addressVerified: false });
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) setState({ ...state, proofOfAddressFile: file, proofOfAddressFileName: file.name });
@@ -75,7 +81,7 @@ function CurrentAddress({
                             id={field.key}
                             name={field.key}
                             value={state[field.key] || ""}
-                            onChange={(e) => setState({ ...state, [field.key]: e.target.value })}
+                            onChange={(e) => setAddressField(field.key, e.target.value)}
                             style={getStepFormInputStyle(theme)}
                         >
                             <option value="">Select a county</option>
@@ -88,7 +94,7 @@ function CurrentAddress({
                             id={field.key}
                             name={field.key}
                             value={state[field.key] || ""}
-                            onChange={(e) => setState({ ...state, [field.key]: e.target.value })}
+                            onChange={(e) => setAddressField(field.key, e.target.value)}
                             style={getStepFormInputStyle(theme)}
                         >
                             <option value="">Select a country</option>
@@ -103,7 +109,7 @@ function CurrentAddress({
                             name={field.key}
                             placeholder={field.placeholder}
                             value={state[field.key] || ""}
-                            onChange={(e) => setState({ ...state, [field.key]: e.target.value })}
+                            onChange={(e) => setAddressField(field.key, e.target.value)}
                             style={getStepFormInputStyle(theme)}
                         />
                     )}

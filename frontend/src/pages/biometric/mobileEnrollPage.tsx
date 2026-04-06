@@ -176,6 +176,9 @@ function MobileEnrollPage() {
               <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.85rem", color: "#666" }}>
                 Your signing key is encrypted with your biometric features and cannot be used without your face and ear.
               </p>
+              <p style={{ margin: `${theme.spacing.sm} 0 0 0`, fontSize: "0.85rem", color: "#666" }}>
+                You can now close this tab and return to the registration page.
+              </p>
             </div>
           )}
         </div>

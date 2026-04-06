@@ -29,7 +29,7 @@ const VoteCastingPage = () => {
         referendumChoice: "",
     });
 
-    // ---- 10-minute voting timer (starts at step 3, after biometric) ----
+    // ---- 10-minute voting timer (starts at step 4, when the ballot is shown) ----
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [timerExpired, setTimerExpired] = useState(false);
@@ -50,9 +50,9 @@ const VoteCastingPage = () => {
         }, 1000);
     }, []);
 
-    // Start timer when entering step 3
+    // Start timer when entering step 4 (ballot marking)
     useEffect(() => {
-        if (step === 3 && timeLeft === null) {
+        if (step === 4 && timeLeft === null) {
             startTimer();
         }
     }, [step, timeLeft, startTimer]);
@@ -126,8 +126,8 @@ const VoteCastingPage = () => {
                 justifyContent: "flex-start",
             }}
         >
-            {/* Timer banner — shown from step 3 onwards */}
-            {timeLeft !== null && step >= 3 && !voteSubmitted && (
+            {/* Timer banner — shown from step 4 onwards (ballot marking + confirmation) */}
+            {timeLeft !== null && step >= 4 && !voteSubmitted && (
                 <div style={{
                     width: "100%",
                     maxWidth: step === 1 ? "min(100%, 52rem)" : "480px",

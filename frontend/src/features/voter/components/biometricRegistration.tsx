@@ -111,14 +111,13 @@ function BiometricRegistration({
 
     const handleStartEnrollment = () => {
         setError(null);
-        // Use a web URL so any device with a browser can open it
         const enrollUrl = `${window.location.origin}/biometric/enroll?voter_id=${encodeURIComponent(state.voterId)}`;
         setQrPayload(enrollUrl);
 
         if (isMobile) {
-            // On mobile/tablet — navigate directly to the enrollment page
-            window.location.href = enrollUrl;
-            return;
+            // On mobile/tablet — open enrollment in a new tab so the wizard
+            // state is preserved in this tab.  Polling detects completion.
+            window.open(enrollUrl, "_blank");
         }
 
         setEnrollmentStatus(BiometricEnrollmentStatus.WAITING_FOR_DEVICE);
