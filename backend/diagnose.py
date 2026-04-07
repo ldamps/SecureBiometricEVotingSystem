@@ -52,11 +52,11 @@ async def main():
             ))
             tables = [r[0] for r in result.fetchall()]
             print(f"  Tables ({len(tables)}): {', '.join(tables)}")
-            if "voters" not in tables:
-                print("  FAIL: 'voters' table does not exist!")
+            if "voter" not in tables:
+                print("  FAIL: 'voter' table does not exist!")
                 return
             else:
-                print("  OK: 'voters' table exists")
+                print("  OK: 'voter' table exists")
     except Exception:
         print("  FAIL: checking tables")
         traceback.print_exc()
