@@ -33,8 +33,26 @@ jobs:
             git pull origin main
 
             # ── Write backend .env ────────────────────────────────────────
-            cat > backend/.env <<'ENVEOF'
+            cat > backend/.env <<ENVEOF
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            ENCRYPTION_PROVIDER=${{ secrets.ENCRYPTION_PROVIDER }}
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            ENCRYPTION_HMAC_SECRET=${{ secrets.ENCRYPTION_HMAC_SECRET }}
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
+            KMS_KEY_ID=${{ secrets.KMS_KEY_ID }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_ALGORITHM=${{ secrets.JWT_ALGORITHM }}
+            JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.JWT_ACCESS_TOKEN_EXPIRE_MINUTES }}
+            JWT_REFRESH_TOKEN_EXPIRE_MINUTES=${{ secrets.JWT_REFRESH_TOKEN_EXPIRE_MINUTES }}
+            MAX_LOGIN_ATTEMPTS=${{ secrets.MAX_LOGIN_ATTEMPTS }}
+            LOCKOUT_DURATION_MINUTES=${{ secrets.LOCKOUT_DURATION_MINUTES }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' backend/.env
 

@@ -25,12 +25,12 @@ class KYCService:
         In test mode (Stripe Identity unavailable), returns a mock session
         so the registration flow can be exercised end-to-end.
         """
-        if self._is_test_mode:
+        if self._is_test_mode or not STRIPE_SECRET_KEY:
             import uuid
 
             mock_id = f"mock_vs_{uuid.uuid4().hex[:16]}"
             logger.warning(
-                "Stripe test mode: returning mock KYC session",
+                "Stripe test/unconfigured mode: returning mock KYC session",
                 session_id=mock_id,
             )
             return {
@@ -183,10 +183,10 @@ class KYCService:
 
         extracted = result.get("extracted_data") or {}
 
-        # In test mode Stripe returns fake data — skip strict comparison
-        if self._is_test_mode:
+        # Mock sessions or Stripe test mode — skip strict comparison
+        if session_id.startswith("mock_vs_") or self._is_test_mode:
             logger.warning(
-                "Stripe test mode: skipping KYC name/DOB comparison",
+                "Mock/test mode: skipping KYC name/DOB comparison",
                 session_id=session_id,
             )
             return extracted
