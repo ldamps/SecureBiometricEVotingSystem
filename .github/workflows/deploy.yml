@@ -65,9 +65,9 @@ jobs:
             export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
             export CORS_ALLOWED_ORIGINS="https://${{ secrets.EC2_HOST }},https://${{ secrets.EC2_HOST }}:443,http://${{ secrets.EC2_HOST }},http://${{ secrets.EC2_HOST }}:80,https://localhost,http://localhost,https://frontend,http://frontend"
 
-            # ── Build new images (purge BuildKit cache to avoid stale layers)
-            echo "==> Pruning build cache..."
-            docker builder prune -af
+            # ── Force fresh build (remove old images so nothing is cached)
+            echo "==> Removing old images to force fresh build..."
+            docker compose down --rmi local
             echo "==> Building new images..."
             docker compose build --no-cache
 
