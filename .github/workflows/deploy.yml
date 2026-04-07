@@ -44,7 +44,7 @@ jobs:
 
             # ── Build new images while old containers serve traffic ────────
             echo "==> Building new images..."
-            docker compose build
+            docker compose build --no-cache
 
             # ── Rolling restart ───────────────────────────────────────────
             echo "==> Starting updated containers..."
