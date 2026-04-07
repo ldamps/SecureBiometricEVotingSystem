@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, PrimaryButton } from "../../../styles/ui";
+import { getVoterPageContentWrapperStyle, getCardStyle, getStepTitleStyle, getStepLabelStyle, getSuccessAlertStyle, PrimaryButton } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import ProgressBar from "./progressBar";
 
@@ -108,12 +108,11 @@ function KYCVerification({
                 return (
                     <div style={{
                         ...getCardStyle(theme),
+                        ...getSuccessAlertStyle(theme),
                         marginBottom: "1rem",
-                        backgroundColor: "#f0fff4",
-                        border: `1px solid ${theme.colors.status?.success || "#38a169"}`,
                     }}>
                         <p style={{
-                            color: theme.colors.status?.success || "#38a169",
+                            color: theme.colors.text.primary,
                             fontWeight: 600,
                             fontSize: theme.fontSizes?.base || "1rem",
                         }}>
