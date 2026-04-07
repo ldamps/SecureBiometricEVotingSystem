@@ -136,6 +136,32 @@ class VoterRepository:
             logger.exception("Failed to update voter constituency", voter_id=voter_id)
             raise
 
+    async def get_voter_by_ni_search_token(
+        self,
+        session: AsyncSession,
+        token: str,
+    ) -> Optional[Voter]:
+        """Look up a voter by their NI number search token (HMAC blind index)."""
+        result = await session.execute(
+            select(self._model).where(
+                self._model.national_insurance_number_search_token == token
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_voter_by_email_search_token(
+        self,
+        session: AsyncSession,
+        token: str,
+    ) -> Optional[Voter]:
+        """Look up a voter by their email search token (HMAC blind index)."""
+        result = await session.execute(
+            select(self._model).where(
+                self._model.email_search_token == token
+            )
+        )
+        return result.scalar_one_or_none()
+
     # CRUD METHODS ----------
     async def register_voter(self, session: AsyncSession, voter: Voter) -> Voter:
         """
