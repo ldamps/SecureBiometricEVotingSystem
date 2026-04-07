@@ -14,7 +14,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import { getCardStyle, getPageTitleStyle, PrimaryButton } from "../../styles/ui";
+import { getCardStyle, getPageTitleStyle, getSuccessAlertStyle, PrimaryButton } from "../../styles/ui";
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
@@ -194,15 +194,12 @@ function MobileVerifyPage() {
             <div
               style={{
                 marginTop: theme.spacing.md,
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius?.md || "8px",
-                backgroundColor: "#f0fff4",
-                border: `1px solid ${theme.colors.status.success}`,
+                ...getSuccessAlertStyle(theme),
                 textAlign: "center",
               }}
             >
-              <strong>Identity verified</strong>
-              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>
+              <strong style={{ color: theme.colors.text.primary }}>Identity verified</strong>
+              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem", color: theme.colors.text.primary }}>
                 Your face and ear confirmed your identity. No biometric data was sent to the server.
               </p>
             </div>
