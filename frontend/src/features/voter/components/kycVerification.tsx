@@ -46,6 +46,12 @@ function KYCVerification({
             setSessionId(sid);
             setState({ ...state, kycSessionId: sid });
 
+            // Mock session (test mode) — skip Stripe modal, go straight to polling
+            if (sid.startsWith("mock_vs_")) {
+                await pollStatus(sid);
+                return;
+            }
+
             const stripe = await loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || "");
             if (!stripe) {
                 throw new Error("Failed to load Stripe");

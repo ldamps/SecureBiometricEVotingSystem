@@ -153,14 +153,17 @@ function RegistrationDetails({
             const sid = data.session_id;
             setState({ ...state, kycSessionId: sid });
 
-            const stripe = await loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || "");
-            if (!stripe) throw new Error("Failed to load Stripe");
+            // Mock session (test mode) — skip Stripe modal
+            if (!sid.startsWith("mock_vs_")) {
+                const stripe = await loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || "");
+                if (!stripe) throw new Error("Failed to load Stripe");
 
-            const result = await stripe.verifyIdentity(data.client_secret);
-            if (result.error) {
-                setKycError(result.error.message || "Verification failed");
-                setKycLoading(false);
-                return;
+                const result = await stripe.verifyIdentity(data.client_secret);
+                if (result.error) {
+                    setKycError(result.error.message || "Verification failed");
+                    setKycLoading(false);
+                    return;
+                }
             }
 
             // Poll for result, then fetch verified data on success
