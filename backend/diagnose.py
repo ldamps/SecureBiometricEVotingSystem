@@ -2,9 +2,7 @@
 exactly what is broken in the voter registration flow."""
 
 import asyncio
-import json
 import os
-import sys
 import traceback
 
 
@@ -24,7 +22,8 @@ async def main():
         val = os.getenv(key, "")
         if not val:
             print(f"  MISSING: {key}")
-        elif key in ("AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "ENCRYPTION_KEY", "JWT_SECRET", "STRIPE_SECRET_KEY", "ENCRYPTION_HMAC_SECRET"):
+        elif key in ("AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "ENCRYPTION_KEY",
+                      "JWT_SECRET", "STRIPE_SECRET_KEY", "ENCRYPTION_HMAC_SECRET"):
             print(f"  OK:      {key} = {val[:8]}...")
         else:
             print(f"  OK:      {key} = {val}")
@@ -32,10 +31,11 @@ async def main():
     # ── 2. Database connection ────────────────────────────────────
     print("\n[2] Database connection")
     try:
+        from app.db import init_async_db
+        session_factory = init_async_db()
         from sqlalchemy import text
-        from app.application.database import async_engine
-        async with async_engine.connect() as conn:
-            row = await conn.execute(text("SELECT 1"))
+        async with session_factory() as session:
+            row = await session.execute(text("SELECT 1"))
             print("  OK: database connection works")
     except Exception:
         print("  FAIL: database connection")
@@ -45,8 +45,8 @@ async def main():
     # ── 3. Tables exist ───────────────────────────────────────────
     print("\n[3] Database tables")
     try:
-        async with async_engine.connect() as conn:
-            result = await conn.execute(text(
+        async with session_factory() as session:
+            result = await session.execute(text(
                 "SELECT table_name FROM information_schema.tables "
                 "WHERE table_schema = 'public' ORDER BY table_name"
             ))
@@ -54,6 +54,7 @@ async def main():
             print(f"  Tables ({len(tables)}): {', '.join(tables)}")
             if "voters" not in tables:
                 print("  FAIL: 'voters' table does not exist!")
+                return
             else:
                 print("  OK: 'voters' table exists")
     except Exception:
@@ -73,10 +74,9 @@ async def main():
                 KeyId=os.getenv("KMS_KEY_ID", ""),
                 Plaintext=b"diagnostic-test",
             )
-            print(f"  OK: KMS encrypt works (key={os.getenv('KMS_KEY_ID', '')[:30]}...)")
-            # Try decrypt
+            print("  OK: KMS encrypt works")
             resp2 = client.decrypt(CiphertextBlob=resp["CiphertextBlob"])
-            print(f"  OK: KMS decrypt works")
+            print("  OK: KMS decrypt works")
         else:
             from cryptography.fernet import Fernet
             key = os.getenv("ENCRYPTION_KEY", "")
@@ -88,8 +88,8 @@ async def main():
         print("  FAIL: encryption")
         traceback.print_exc()
 
-    # ── 5. Full registration dry-run ──────────────────────────────
-    print("\n[5] Full registration dry-run")
+    # ── 5. Schema validation ──────────────────────────────────────
+    print("\n[5] Schema validation")
     try:
         from app.models.schemas.voter import VoterRegistrationRequest
         body = VoterRegistrationRequest(
@@ -104,49 +104,49 @@ async def main():
             renew_by="2027-04-07T00:00:00Z",
         )
         print("  OK: schema validation passed")
+    except Exception:
+        print("  FAIL: schema validation")
+        traceback.print_exc()
+        return
 
+    # ── 6. Full registration (service layer) ──────────────────────
+    print("\n[6] Full registration via service")
+    try:
         from app.models.dto.voter import RegisterVoterPlainDTO
-        dto = RegisterVoterPlainDTO.create_dto(body)
-        print(f"  OK: DTO created (first_name={dto.first_name})")
-
-        from app.service.base.encryption_utils_mixin import prepare_voter_registration_plain_fields
-        plain_fields = prepare_voter_registration_plain_fields(dto)
-        print(f"  OK: plain fields prepared (voter_ref={plain_fields.get('voter_reference', 'N/A')})")
-
-        # Test encryption mapper
-        from app.application.database import async_session_factory
+        from app.service.voter_service import VoterService
         from app.service.keys_manager_service import KeysManagerService
         from app.service.encryption_mapper_service import EncryptionMapperService
-        from app.models.dto.voter import RegisterVoterEncryptedDTO
+        from app.service.email_service import EmailService
+        from app.repository.voter_repo import VoterRepository
+        from app.repository.voter_passport_repo import VoterPassportRepository
+        from app.repository.audit_log_repo import AuditLogRepository
 
-        async with async_session_factory() as session:
-            keys_mgr = KeysManagerService()
-            mapper = EncryptionMapperService()
+        dto = RegisterVoterPlainDTO.create_dto(body)
 
-            await keys_mgr.init_org_keys(session, org_id=None)
-            print("  OK: org keys initialised")
-
-            args = await keys_mgr.build_encryption_args(session, org_id=None)
-            print("  OK: encryption args built")
-
-            plain = RegisterVoterPlainDTO(**plain_fields)
-            enc_row = await mapper.encrypt_dto(plain, RegisterVoterEncryptedDTO, args, session)
-            print("  OK: DTO encrypted successfully")
-
-            voter = enc_row.to_model()
-            voter.kyc_session_id = "mock_vs_diag123"
-            print(f"  OK: voter model created (ref token exists: {bool(voter.voter_reference_search_token)})")
-
-            # Don't actually insert — just confirm everything up to the DB write works
-            await session.rollback()
-
-        print("\n  === ALL CHECKS PASSED ===")
-        print("  The registration flow works up to the DB insert.")
-        print("  If you still get 500s, the issue is in the DB write (constraints/duplicates).")
+        async with session_factory() as session:
+            async with session.begin():
+                service = VoterService(
+                    voter_repo=VoterRepository(),
+                    session=session,
+                    keys_manager=KeysManagerService(),
+                    mapper=EncryptionMapperService(),
+                    email_service=None,
+                )
+                result = await service.register_voter(
+                    dto,
+                    passport_entries=None,
+                    kyc_session_id="mock_vs_diag123",
+                )
+                print(f"  OK: voter registered! id={result.id}")
+                # Roll back so we don't pollute the DB
+                await session.rollback()
+                print("  (rolled back — no data written)")
 
     except Exception:
-        print("  FAIL: registration dry-run")
+        print("  FAIL: registration service")
         traceback.print_exc()
+
+    print("\n" + "=" * 60)
 
 
 if __name__ == "__main__":
