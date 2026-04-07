@@ -146,8 +146,15 @@ class EncryptedColumn(TypeDecorator):
         if value is None:
             return None
         if isinstance(value, list):
-            return [EncryptedDBField.from_dict(v) if isinstance(v, dict) else v for v in value]
+            return [
+                EncryptedDBField.from_dict(v)
+                if isinstance(v, dict) and "ciphertext" in v
+                else v
+                for v in value
+            ]
         if isinstance(value, dict):
+            if "ciphertext" not in value:
+                return value
             return EncryptedDBField.from_dict(value)
         return value
 

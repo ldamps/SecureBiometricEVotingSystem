@@ -13,6 +13,7 @@ import {
     getPageTitleStyle,
     PrimaryButton,
     SecondaryButton,
+    getSuccessAlertStyle,
 } from "../../../styles/ui";
 import { useTheme } from "../../../styles/ThemeContext";
 import { BiometricVerificationStatus } from "../model/biometric.model";
@@ -33,12 +34,13 @@ function isMobileOrTablet(): boolean {
 }
 
 const POLL_INTERVAL = 2000;
+const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function BiometricVerification({
     next,
     state,
     setState,
-    progressStep = 3,
+    progressStep = 2,
     showProgressBar = true,
     usePageLayout = false,
 }: {
@@ -111,8 +113,16 @@ function BiometricVerification({
             const credentialsBefore = await biometricApi.listCredentials(state.voterId);
             const activeBefore = credentialsBefore.find((c) => c.is_active);
             const lastUsedBefore = activeBefore?.last_used_at;
+            const pollStarted = Date.now();
 
             pollRef.current = setInterval(async () => {
+                // Timeout — stop polling after 5 minutes
+                if (Date.now() - pollStarted > POLL_TIMEOUT_MS) {
+                    if (pollRef.current) clearInterval(pollRef.current);
+                    setError("Verification timed out. Please try again.");
+                    setStatus(BiometricVerificationStatus.FAILED);
+                    return;
+                }
                 try {
                     const credentials = await biometricApi.listCredentials(state.voterId);
                     const active = credentials.find((c) => c.is_active);
@@ -142,13 +152,14 @@ function BiometricVerification({
     const statusMessages: Record<BiometricVerificationStatus, string> = {
         [BiometricVerificationStatus.IDLE]:
             "Before casting your vote, we need to verify your identity using " +
-            "the biometrics stored on your mobile device. Your biometric data " +
-            "never leaves your phone.",
+            "the face and ear biometrics stored on your mobile device. " +
+            "Please have your enrolled phone ready \u2014 you will need to scan " +
+            "a QR code with it. Your biometric data never leaves your phone.",
         [BiometricVerificationStatus.CHALLENGE_ISSUED]:
             "Preparing verification challenge\u2026",
         [BiometricVerificationStatus.AWAITING_DEVICE]:
-            "Scan the QR code below with your mobile voting app. " +
-            "The app will ask you to verify your face and ear. " +
+            "Open the camera on the phone you enrolled with and scan the QR code below. " +
+            "Your phone will ask you to verify your face and ear. " +
             "This page will update automatically once verification is complete.",
         [BiometricVerificationStatus.VERIFYING]:
             "Verifying your identity\u2026",
@@ -233,10 +244,7 @@ function BiometricVerification({
                 {status === BiometricVerificationStatus.VERIFIED && (
                     <div style={{
                         marginTop: theme.spacing.md,
-                        padding: theme.spacing.md,
-                        borderRadius: theme.borderRadius?.md || "8px",
-                        backgroundColor: "#f0fff4",
-                        border: `1px solid ${theme.colors.status.success}`,
+                        ...getSuccessAlertStyle(theme),
                     }}>
                         <strong>Identity verified</strong>
                         <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>
@@ -274,6 +282,18 @@ function BiometricVerification({
 
                 {status === BiometricVerificationStatus.VERIFIED && (
                     <PrimaryButton onClick={next}>Next</PrimaryButton>
+                )}
+
+                {/* Dev-only: skip biometric verification when testing locally.
+                    Guarded by both NODE_ENV and an explicit env flag to prevent
+                    accidental exposure in production. */}
+                {process.env.NODE_ENV === "development" && process.env.REACT_APP_ALLOW_BIOMETRIC_SKIP === "true" && status !== BiometricVerificationStatus.VERIFIED && (
+                    <SecondaryButton onClick={() => {
+                        setState({ ...state, biometricVerified: true });
+                        setStatus(BiometricVerificationStatus.VERIFIED);
+                    }}>
+                        Skip (dev only)
+                    </SecondaryButton>
                 )}
             </div>
         </>

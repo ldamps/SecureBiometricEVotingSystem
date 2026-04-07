@@ -100,6 +100,15 @@ class InvestigationService:
                 update_data["notes"] = dto.notes
             if dto.resolved_by is not None:
                 update_data["resolved_by"] = dto.resolved_by
+            if dto.resolution_summary is not None:
+                update_data["resolution_summary"] = dto.resolution_summary
+
+            # Require a resolution summary when resolving/closing
+            if dto.status in ("RESOLVED", "CLOSED") and not dto.resolution_summary:
+                raise ValidationError(
+                    "A resolution summary is required when resolving or closing "
+                    "an investigation. Describe the findings and any actions taken."
+                )
 
             # Auto-set resolved_at when resolving/closing
             if dto.status in ("RESOLVED", "CLOSED"):

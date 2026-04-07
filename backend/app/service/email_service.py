@@ -33,6 +33,23 @@ class EmailService:
             )
         )
 
+    def send_official_welcome(
+        self, to_email: str, first_name: str, username: str, temporary_password: str,
+    ) -> None:
+        """Send a welcome email to a newly created election official with their login details."""
+        self.send_email(
+            SendEmailDTO(
+                to_email=to_email,
+                subject="Your election official account has been created",
+                template_name="official_welcome.html",
+                template_vars={
+                    "first_name": first_name or username,
+                    "username": username,
+                    "temporary_password": temporary_password,
+                },
+            )
+        )
+
     def send_vote_confirmation(
         self, to_email: str, vote_name: str, vote_type: str = "election"
     ) -> None:

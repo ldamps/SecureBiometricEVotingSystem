@@ -2,6 +2,16 @@ import React, { useState } from "react";
 import { useTheme } from "../../styles/ThemeContext";
 import { getCardStyle } from "../../styles/ui";
 import { useNavigate } from "react-router-dom";
+import { ApiClient, setAccessToken } from "../../services/api-client.service";
+import { ApiException } from "../../services/api-types";
+
+interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  must_reset_password: boolean;
+}
 
 const OfficialLandingPage: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
@@ -10,11 +20,51 @@ const OfficialLandingPage: React.FC = () => {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    console.log("Login clicked"); // TODO: Implement login logic
-    navigate("/official/home");
-  }
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage(null);
+
+    const cleanedUsername = username.trim();
+    if (!cleanedUsername || !password) {
+      setErrorMessage("Please enter both username and password.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await ApiClient.post<LoginResponse>("/auth/login", {
+        username: cleanedUsername,
+        password,
+      });
+
+      setAccessToken(response.access_token);
+      localStorage.setItem("accessToken", response.access_token);
+      localStorage.setItem("refreshToken", response.refresh_token);
+      localStorage.setItem("tokenType", response.token_type);
+      localStorage.setItem(
+        "accessTokenExpiresAt",
+        String(Date.now() + response.expires_in * 1000),
+      );
+
+      if (response.must_reset_password) {
+        navigate("/official/onboarding");
+      } else {
+        navigate("/official/home");
+      }
+    } catch (error) {
+      if (error instanceof ApiException) {
+        setErrorMessage(error.message || "Invalid username or password.");
+      } else {
+        setErrorMessage("Unable to login right now. Please try again.");
+      }
+      console.error("Login failed", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div
@@ -89,7 +139,7 @@ const OfficialLandingPage: React.FC = () => {
           Election Official Login
         </h1>
 
-        <form>
+        <form onSubmit={handleLogin}>
           <div style={{ marginBottom: spacing.lg }}>
             <label
               htmlFor="username"
@@ -156,6 +206,7 @@ const OfficialLandingPage: React.FC = () => {
 
           <button
             type="submit"
+            disabled={isLoading}
             style={{
               width: "100%",
               padding: `${spacing.md} ${spacing.lg}`,
@@ -165,12 +216,27 @@ const OfficialLandingPage: React.FC = () => {
               backgroundColor: colors.button,
               border: "none",
               borderRadius: borderRadius.md,
-              cursor: "pointer",
+              cursor: isLoading ? "not-allowed" : "pointer",
+              opacity: isLoading ? 0.75 : 1,
             }}
-            onClick={handleLogin}
           >
-            Login
+            {isLoading ? "Logging in..." : "Login"}
           </button>
+
+          {errorMessage && (
+            <p
+              role="alert"
+              style={{
+                marginTop: spacing.md,
+                marginBottom: 0,
+                color: colors.status.error,
+                fontSize: fontSizes.sm,
+                textAlign: "center",
+              }}
+            >
+              {errorMessage}
+            </p>
+          )}
         </form>
         <br />
         <p

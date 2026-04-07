@@ -38,7 +38,11 @@ from app.service.encryption_mapper_service import EncryptionMapperService
 from app.service.keys_manager_service import KeysManagerService
 from app.service.email_service import EmailService
 from app.repository.audit_log_repo import AuditLogRepository
+from app.repository.biometric_credentials_repo import BiometricCredentialsRepository
 from app.models.sqlalchemy.audit_log import AuditLog
+from app.models.sqlalchemy.voter import VoterStatus
+from app.models.sqlalchemy.address import AddressStatus
+from app.service.kyc_service import KYCService
 
 logger = structlog.get_logger()
 
@@ -57,6 +61,8 @@ class VoterService(EncryptionUtilsMixin):
         passport_repo: Optional[VoterPassportRepository] = None,
         email_service: Optional[EmailService] = None,
         audit_log_repo: Optional[AuditLogRepository] = None,
+        kyc_service: Optional[KYCService] = None,
+        biometric_credentials_repo: Optional[BiometricCredentialsRepository] = None,
     ):
         self.voter_repo = voter_repo
         self.address_repo = address_repo or AddressRepository()
@@ -67,13 +73,47 @@ class VoterService(EncryptionUtilsMixin):
         self.voter = voter
         self._email_service = email_service
         self._audit_log_repo = audit_log_repo or AuditLogRepository()
+        self._kyc_service = kyc_service or KYCService()
+        self._biometric_credentials_repo = biometric_credentials_repo or BiometricCredentialsRepository()
 
     async def register_voter(
         self,
         dto: RegisterVoterPlainDTO,
         passport_entries: List[PassportEntry] | None = None,
+        kyc_session_id: str | None = None,
     ) -> VoterItem:
-        """Create a new voter with encrypted JSONB fields, search tokens, and passport entries."""
+        """Create a new voter with encrypted JSONB fields, search tokens, and passport entries.
+
+        Requires a verified KYC session. The voter is created in PENDING status;
+        they must complete address verification and biometric enrollment to become ACTIVE.
+        """
+        if not kyc_session_id:
+            raise ValidationError("A verified KYC session ID is required to register.")
+
+        # Validate KYC — session must be verified and data must match
+        dob_str = None
+        if dto.date_of_birth:
+            from datetime import datetime as dt
+            try:
+                parsed = dt.fromisoformat(str(dto.date_of_birth).replace("Z", "+00:00"))
+                dob_str = parsed.strftime("%d/%m/%Y")
+            except (ValueError, TypeError):
+                pass
+
+        try:
+            await self._kyc_service.validate_kyc_for_registration(
+                session_id=kyc_session_id,
+                first_name=dto.first_name,
+                surname=dto.surname,
+                date_of_birth=dob_str,
+            )
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
+        # Enforce PENDING status — voter must complete all steps before activation
+        dto.registration_status = "pending"
+        dto.voter_status = VoterStatus.PENDING.value
+
         try:
             await self._keys_manager.init_org_keys(self.session, org_id=None)
             args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
@@ -85,6 +125,7 @@ class VoterService(EncryptionUtilsMixin):
                 plain, RegisterVoterEncryptedDTO, args, self.session
             )
             voter = enc_row.to_model()
+            voter.kyc_session_id = kyc_session_id
             voter = await self.voter_repo.register_voter(self.session, voter)
 
             # Create passport entries if provided
@@ -140,6 +181,10 @@ class VoterService(EncryptionUtilsMixin):
             return voter_item
         except IntegrityError as exc:
             error_msg = str(exc.orig) if exc.orig else str(exc)
+            if "kyc_session_id" in error_msg:
+                raise ValidationError(
+                    "This KYC verification session has already been used for a registration."
+                ) from exc
             if "national_insurance_number_search_token" in error_msg:
                 raise ValidationError(
                     "A voter with this national insurance number is already registered."
@@ -151,6 +196,8 @@ class VoterService(EncryptionUtilsMixin):
             raise ValidationError(
                 "A voter with these details is already registered."
             ) from exc
+        except (ValidationError,):
+            raise
         except Exception:
             logger.exception("Failed to register voter", dto=dto)
             raise
@@ -206,27 +253,86 @@ class VoterService(EncryptionUtilsMixin):
 
     async def check_voter_exists(self, voter_id: UUID) -> bool:
         """Check if a voter exists."""
-        pass
+        try:
+            await self.voter_repo.get_voter_by_id(self.session, voter_id)
+            return True
+        except Exception:
+            return False
 
     async def check_voter_locked(self, voter_id: UUID) -> bool:
         """Check if a voter is locked."""
-        pass
+        locked_until = await self.voter_repo.check_voter_locked(self.session, voter_id)
+        if locked_until is None:
+            return False
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc) < locked_until
 
     async def check_voter_renewal_needed(self, voter_id: UUID) -> bool:
         """Check if a voter's account needs to be renewed."""
-        pass
+        renew_by = await self.voter_repo.check_voter_renewal_needed(self.session, voter_id)
+        if renew_by is None:
+            return False
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc) >= renew_by
 
-    async def get_user_addresses(self, voter_id: UUID):
-        """Get a voter's addresses."""
-        pass
+    async def activate_voter_if_ready(self, voter_id: UUID) -> bool:
+        """Check if all registration steps are complete and activate the voter.
 
-    async def get_user_device_credentials(self, voter_id: UUID):
-        """Get a voter's enrolled device credentials."""
-        pass
+        Activation requires:
+        1. Voter is currently in PENDING status
+        2. At least one address with ACTIVE status
+        3. At least one active biometric device credential
 
-    async def get_user_voter_ledger(self, voter_id: UUID):
-        """Get a voter's voter ledger."""
-        pass
+        Returns True if the voter was activated, False otherwise.
+        """
+        # Only activate PENDING voters
+        voter = await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        if voter.voter_status != VoterStatus.PENDING.value:
+            return False
+
+        # Check for an ACTIVE address
+        addresses = await self.address_repo.get_all_addresses_by_voter_id(
+            self.session, voter_id
+        )
+        has_active_address = any(
+            a.address_status == AddressStatus.ACTIVE for a in addresses
+        )
+        if not has_active_address:
+            logger.info("Voter not ready: no active address", voter_id=str(voter_id))
+            return False
+
+        # Check for an active biometric credential
+        credentials = await self._biometric_credentials_repo.list_by_voter(
+            self.session, voter_id
+        )
+        has_active_credential = any(c.is_active for c in credentials)
+        if not has_active_credential:
+            logger.info("Voter not ready: no active biometric credential", voter_id=str(voter_id))
+            return False
+
+        # All steps complete — activate
+        await self.voter_repo.update_voter_status(
+            self.session,
+            voter_id,
+            voter_status=VoterStatus.ACTIVE.value,
+            registration_status="approved",
+        )
+
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="VOTER_ACTIVATED",
+                action="UPDATE",
+                summary=f"Voter {voter_id} activated after completing all registration steps",
+                resource_type="voter",
+                resource_id=voter_id,
+                actor_type="SYSTEM",
+                actor_id=voter_id,
+            ),
+        )
+
+        logger.info("Voter activated", voter_id=str(voter_id))
+        return True
 
     async def verify_voter_identity(
         self,
@@ -243,16 +349,26 @@ class VoterService(EncryptionUtilsMixin):
             await self._keys_manager.init_org_keys(self.session, org_id=None)
             args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
 
-            # Build postcode search token from the submitted postcode
-            normalised_postcode = request.postcode.strip().upper()
-            postcode_token = await self._mapper.create_search_token(
-                normalised_postcode, args, self.session
-            )
+            # Find candidate addresses — by postcode token if provided, otherwise all active
+            # Only consider ACTIVE addresses (PAST/PENDING must not be used for verification)
+            normalised_postcode = (request.postcode or "").strip().upper()
+            if normalised_postcode:
+                postcode_token = await self._mapper.create_search_token(
+                    normalised_postcode, args, self.session
+                )
+                candidate_addresses = await self.address_repo.get_addresses_by_postcode_token(
+                    self.session, postcode_token
+                )
+            else:
+                candidate_addresses = await self.address_repo.get_all_addresses(
+                    self.session
+                )
 
-            # Find addresses matching this postcode
-            candidate_addresses = await self.address_repo.get_addresses_by_postcode_token(
-                self.session, postcode_token
-            )
+            from app.models.sqlalchemy.address import AddressStatus as AddrStatus
+            candidate_addresses = [
+                a for a in candidate_addresses
+                if a.address_status == AddrStatus.ACTIVE
+            ]
 
             if not candidate_addresses:
                 return VerifyIdentityResponse(
@@ -279,12 +395,18 @@ class VoterService(EncryptionUtilsMixin):
                 db_addr1 = (addr_dto.address_line1 or "").strip().lower()
                 db_addr2 = (addr_dto.address_line2 or "").strip().lower()
                 db_city = (addr_dto.town or "").strip().lower()
+                db_postcode = (addr_dto.postcode or "").strip().upper()
 
                 if db_addr1 != submitted_addr1:
                     continue
-                if db_addr2 != submitted_addr2:
+                # Only compare address_line2 when both sides are non-empty
+                if submitted_addr2 and db_addr2 and db_addr2 != submitted_addr2:
                     continue
                 if db_city != submitted_city:
+                    continue
+                # If no postcode was submitted, skip postcode comparison;
+                # if one was submitted, confirm it matches the decrypted value
+                if normalised_postcode and db_postcode != normalised_postcode:
                     continue
 
                 # Address matches — now decrypt the voter and compare name
@@ -316,4 +438,8 @@ class VoterService(EncryptionUtilsMixin):
 
         except Exception:
             logger.exception("Failed to verify voter identity")
-            raise
+            return VerifyIdentityResponse(
+                verified=False,
+                voter_id=None,
+                message="Unable to verify your identity at this time. Please try again later.",
+            )

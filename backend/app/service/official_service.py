@@ -1,5 +1,7 @@
 # official_service.py - Service layer for election official operations.
 
+import secrets
+import string
 from typing import List, Optional
 from uuid import UUID
 
@@ -17,6 +19,7 @@ from app.models.schemas.official import OfficialItem
 from app.models.sqlalchemy.election_official import ElectionOfficial, OfficialRole
 from app.repository.official_repo import OfficialRepository
 from app.service.base.encryption_utils_mixin import official_orm_to_dto_unencrypted_row
+from app.service.email_service import EmailService
 from app.repository.audit_log_repo import AuditLogRepository
 from app.models.sqlalchemy.audit_log import AuditLog
 
@@ -52,18 +55,34 @@ class OfficialService:
         official_repo: OfficialRepository,
         session: AsyncSession,
         audit_log_repo: AuditLogRepository | None = None,
+        email_service: EmailService | None = None,
     ):
         self.official_repo = official_repo
         self.session = session
         self._audit_log_repo = audit_log_repo or AuditLogRepository()
+        self._email_service = email_service
 
     # ── Create ──
+
+    @staticmethod
+    def _generate_temp_password(length: int = 16) -> str:
+        """Generate a secure temporary password."""
+        alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+        while True:
+            pwd = "".join(secrets.choice(alphabet) for _ in range(length))
+            # Ensure at least one of each required category
+            if (any(c.islower() for c in pwd)
+                    and any(c.isupper() for c in pwd)
+                    and any(c.isdigit() for c in pwd)):
+                return pwd
 
     async def create_official(self, dto: CreateOfficialPlainDTO) -> OfficialItem:
         """Create a new election official.
 
+        If no password is provided, a secure temporary password is generated.
         The official is created with ``must_reset_password=True`` so they
         must change their temporary password on first login.
+        A welcome email is sent with their credentials.
         """
         try:
             # Check for duplicate username
@@ -73,7 +92,9 @@ class OfficialService:
             if existing:
                 raise ValidationError(f"Username '{dto.username}' is already taken")
 
-            password_hash = _hash_password(dto.password)
+            # Generate temp password if none provided
+            temp_password = dto.password if dto.password else self._generate_temp_password()
+            password_hash = _hash_password(temp_password)
 
             official = ElectionOfficial(
                 username=dto.username,
@@ -103,6 +124,21 @@ class OfficialService:
                     actor_id=dto.created_by,
                 ),
             )
+
+            # Send welcome email with credentials (non-blocking)
+            if self._email_service and dto.email:
+                try:
+                    self._email_service.send_official_welcome(
+                        to_email=dto.email,
+                        first_name=dto.first_name or dto.username,
+                        username=dto.username,
+                        temporary_password=temp_password,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to send welcome email — official was still created",
+                        username=dto.username,
+                    )
 
             return official_orm_to_dto_unencrypted_row(official).to_schema()
 

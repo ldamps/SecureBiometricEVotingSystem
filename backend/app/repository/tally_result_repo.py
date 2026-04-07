@@ -23,24 +23,34 @@ class TallyResultRepository:
         self,
         session: AsyncSession,
         election_id: UUID,
-        constituency_id: UUID,
-        candidate_id: UUID,
+        constituency_id: UUID | None,
+        candidate_id: UUID | None = None,
+        party_id: UUID | None = None,
     ) -> TallyResult:
-        """Increment vote count for a candidate, creating the tally row if needed."""
-        # Try to find existing tally row
-        result = await session.execute(
-            select(self._model).where(
-                self._model.election_id == election_id,
-                self._model.constituency_id == constituency_id,
-                self._model.candidate_id == candidate_id,
-            )
-        )
+        """Increment vote count for a candidate or party, creating the tally row if needed.
+
+        For FPTP / AMS constituency: candidate_id is set.
+        For AMS regional: party_id is set.
+        """
+        filters = [
+            self._model.election_id == election_id,
+            self._model.constituency_id == constituency_id,
+        ]
+        if candidate_id:
+            filters.append(self._model.candidate_id == candidate_id)
+        else:
+            filters.append(self._model.candidate_id.is_(None))
+        if party_id:
+            filters.append(self._model.party_id == party_id)
+        else:
+            filters.append(self._model.party_id.is_(None))
+
+        result = await session.execute(select(self._model).where(*filters))
         tally = result.scalar_one_or_none()
 
         now = datetime.now()
 
         if tally:
-            # Increment existing row
             stmt = (
                 update(self._model)
                 .where(self._model.id == tally.id)
@@ -55,11 +65,11 @@ class TallyResultRepository:
                 vote_count=tally.vote_count,
             )
         else:
-            # Create new tally row
             tally = TallyResult(
                 election_id=election_id,
                 constituency_id=constituency_id,
                 candidate_id=candidate_id,
+                party_id=party_id,
                 vote_count=1,
                 tallied_at=now,
             )
@@ -70,6 +80,7 @@ class TallyResultRepository:
                 tally_id=tally.id,
                 election_id=election_id,
                 candidate_id=candidate_id,
+                party_id=party_id,
             )
 
         return tally

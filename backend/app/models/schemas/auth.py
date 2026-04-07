@@ -18,6 +18,7 @@ class TokenResponse(ResponseSchema):
     refresh_token: str = Field(..., description="Long-lived JWT refresh token.")
     token_type: str = Field(default="bearer", description="Token type (always 'bearer').")
     expires_in: int = Field(..., description="Access token lifetime in seconds.")
+    must_reset_password: bool = Field(default=False, description="Whether the official must change their password before proceeding.")
 
 
 class RefreshTokenRequest(RequestSchema):

@@ -10,15 +10,28 @@ from app.models.dto.referendum import (
     CreateReferendumEncryptedDTO,
     ReferendumDTO,
 )
+from app.application.core.exceptions import ValidationError
 from app.models.schemas.referendum import ReferendumItem
 from app.models.sqlalchemy.audit_log import AuditLog
+from app.models.sqlalchemy.referendum import ReferendumStatus, referendum_constituency
+from sqlalchemy import insert
 from app.repository.audit_log_repo import AuditLogRepository
+from app.repository.constituency_repo import ConstituencyRepository
 from app.repository.referendum_repo import ReferendumRepository
 from app.service.base.encryption_utils_mixin import EncryptionUtilsMixin
 from app.service.keys_manager_service import KeysManagerService
 from app.service.encryption_mapper_service import EncryptionMapperService
+from app.service.voting_schedule_status_sync import sync_referendum_status_with_voting_schedule
 
 logger = structlog.get_logger()
+
+_VALID_REFERENDUM_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    ReferendumStatus.OPEN.value: {
+        ReferendumStatus.CLOSED.value,
+        ReferendumStatus.CANCELLED.value,
+    },
+    ReferendumStatus.CLOSED.value: {ReferendumStatus.CANCELLED.value},
+}
 
 
 class ReferendumService(EncryptionUtilsMixin):
@@ -31,12 +44,14 @@ class ReferendumService(EncryptionUtilsMixin):
         keys_manager: KeysManagerService,
         encryption_mapper: EncryptionMapperService,
         audit_log_repo: AuditLogRepository | None = None,
+        constituency_repo: ConstituencyRepository | None = None,
     ):
         self.referendum_repo = referendum_repo
         self.session = session
         self._keys_manager = keys_manager
         self._mapper = encryption_mapper
         self._audit_log_repo = audit_log_repo or AuditLogRepository()
+        self._constituency_repo = constituency_repo or ConstituencyRepository()
 
     async def create_referendum(self, dto: CreateReferendumPlainDTO) -> ReferendumItem:
         """Create a new referendum."""
@@ -49,6 +64,26 @@ class ReferendumService(EncryptionUtilsMixin):
             )
             referendum = enc_row.to_model()
             referendum = await self.referendum_repo.create_referendum(self.session, referendum)
+
+            # Link constituencies (many-to-many) via direct insert to avoid lazy load
+            if dto.constituency_ids:
+                await self.session.execute(
+                    insert(referendum_constituency),
+                    [
+                        {"referendum_id": referendum.id, "constituency_id": UUID(cid)}
+                        for cid in dto.constituency_ids
+                    ],
+                )
+                await self.session.flush()
+
+            referendum = await sync_referendum_status_with_voting_schedule(
+                self.session, self.referendum_repo, referendum
+            )
+
+            # Re-fetch with constituencies eagerly loaded
+            referendum = await self.referendum_repo.get_referendum_by_id(
+                self.session, referendum.id
+            )
 
             await self._audit_log_repo.create_audit_log(
                 self.session,
@@ -71,18 +106,33 @@ class ReferendumService(EncryptionUtilsMixin):
         """Get a referendum by its ID."""
         try:
             referendum = await self.referendum_repo.get_referendum_by_id(self.session, referendum_id)
+            referendum = await sync_referendum_status_with_voting_schedule(
+                self.session, self.referendum_repo, referendum
+            )
             return await self.referendum_model_to_schema_item(referendum, self.session)
         except Exception:
             logger.exception("Failed to get referendum by ID", referendum_id=referendum_id)
             raise
 
-    async def get_all_referendums(self) -> List[ReferendumItem]:
-        """Get all referendums."""
+    async def get_all_referendums(self, constituency_id: UUID | None = None) -> List[ReferendumItem]:
+        """Get all referendums, optionally filtered by constituency."""
         try:
-            referendums = await self.referendum_repo.get_all_referendums(self.session)
+            if constituency_id:
+                referendums = await self.referendum_repo.get_referendums_by_constituency(
+                    self.session, constituency_id
+                )
+            else:
+                referendums = await self.referendum_repo.get_all_referendums(self.session)
+            synced = []
+            for r in referendums:
+                synced.append(
+                    await sync_referendum_status_with_voting_schedule(
+                        self.session, self.referendum_repo, r
+                    )
+                )
             return [
                 await self.referendum_model_to_schema_item(r, self.session)
-                for r in referendums
+                for r in synced
             ]
         except Exception:
             logger.exception("Failed to get all referendums")
@@ -91,9 +141,28 @@ class ReferendumService(EncryptionUtilsMixin):
     async def update_referendum(self, referendum_id: UUID, update_data: dict) -> ReferendumItem:
         """Update a referendum's mutable fields."""
         try:
+            data = dict(update_data)
+            if data.get("status") is not None:
+                new_status = data["status"]
+                if isinstance(new_status, ReferendumStatus):
+                    new_status = new_status.value
+                data["status"] = new_status
+                current = await self.referendum_repo.get_referendum_by_id(
+                    self.session, referendum_id
+                )
+                allowed = _VALID_REFERENDUM_STATUS_TRANSITIONS.get(current.status, set())
+                if new_status not in allowed:
+                    raise ValidationError(
+                        f"Invalid referendum status transition: {current.status} -> {new_status}"
+                    )
+
             updated = await self.referendum_repo.update_referendum(
-                self.session, referendum_id, update_data
+                self.session, referendum_id, data
             )
+            if "status" not in data:
+                updated = await sync_referendum_status_with_voting_schedule(
+                    self.session, self.referendum_repo, updated
+                )
 
             await self._audit_log_repo.create_audit_log(
                 self.session,

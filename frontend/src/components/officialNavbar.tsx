@@ -2,11 +2,18 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../styles/ThemeContext";
 import { SecondaryButton } from "../styles/ui";
+import { clearAuthSession } from "../services/api-client.service";
 
 const OfficialNavbar: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
-  const { colors, spacing, fontSizes, fontWeights } = theme;
+  const { colors, spacing, fontWeights } = theme;
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate("/official/landing");
+  };
+
   return (
     <nav
       className="app-nav"
@@ -36,25 +43,58 @@ const OfficialNavbar: React.FC = () => {
         Election Official Portal
       </Link>
 
-      {/* Right side: theme toggle + logout button */}
+      {/* Right side: logout, profile, theme toggle */}
       <div style={{ display: "flex", alignItems: "center", gap: spacing.md }}>
-        <SecondaryButton onClick={() => { navigate("/official/landing"); }}>Logout</SecondaryButton>
+
+        <SecondaryButton onClick={handleLogout}>Logout</SecondaryButton>
+
+        <Link
+          to="/official/profile"
+          style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
+        >
+          <button
+            type="button"
+            aria-label="Profile"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              padding: 0,
+              margin: 0,
+              backgroundColor: "transparent",
+              border: "none",
+              color: colors.navText,
+              cursor: "pointer",
+            }}
+          >
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={colors.navText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+              <path d="M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+              <path d="M6.168 18.849a4 4 0 0 1 3.832 -2.849h2.332a4 4 0 0 1 3.832 2.849" />
+            </svg>
+          </button>
+        </Link>
+
         {/* Light/Dark mode toggle */}
         <button
+          type="button"
           onClick={toggleTheme}
           aria-label="Toggle theme"
           title={mode === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
           style={{
-            padding: "0",
-            backgroundColor: "transparent",
-            border: "none",
-            color: colors.navText,
-            fontSize: fontSizes["4xl"],
-            cursor: "pointer",
-            whiteSpace: "nowrap",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            width: 40,
+            height: 40,
+            padding: 0,
+            margin: 0,
+            backgroundColor: "transparent",
+            border: "none",
+            color: colors.navText,
+            cursor: "pointer",
           }}
         >
           {mode === "light" ? (

@@ -20,6 +20,7 @@ class InvestigationItem(ResponseSchema):
     assigned_to: Optional[str] = Field(None, description="Official assigned to investigate.")
     notes: Optional[str] = Field(None, description="Internal notes on the investigation.")
     resolved_by: Optional[str] = Field(None, description="Official who resolved the investigation.")
+    resolution_summary: Optional[str] = Field(None, description="Human-written summary of findings and actions taken to resolve the issue.")
     raised_at: Optional[datetime] = Field(None, description="When the investigation was opened.")
     resolved_at: Optional[datetime] = Field(None, description="When the investigation was resolved.")
 
@@ -31,3 +32,4 @@ class UpdateInvestigationRequest(RequestSchema):
     assigned_to: Optional[str] = Field(None, description="Official ID to assign the investigation to.")
     notes: Optional[str] = Field(None, max_length=5000, description="Updated internal notes.")
     resolved_by: Optional[str] = Field(None, description="Official ID who resolved the investigation.")
+    resolution_summary: Optional[str] = Field(None, max_length=5000, description="Required when resolving/closing. Summary of findings and actions taken.")

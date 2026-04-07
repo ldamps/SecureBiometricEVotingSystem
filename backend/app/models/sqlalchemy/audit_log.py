@@ -104,15 +104,15 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
         PG_UUID(as_uuid=True), nullable=True, index=True,
     )
 
-    # Optional election scope (for election-scoped queries)
+    # Optional election/referendum scope (for scoped queries)
     election_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), nullable=True, index=True,
     )
+    referendum_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True, index=True,
+    )
 
-    # Request context
-    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
-
-    # Structured metadata (encrypted at rest via EncryptedBytes)
+    # Structured metadata
     event_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Immutable timestamp

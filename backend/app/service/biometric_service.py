@@ -33,8 +33,11 @@ from app.application.core.exceptions import ValidationError
 from app.repository.biometric_credentials_repo import BiometricCredentialsRepository
 from app.repository.biometric_challenge_repo import BiometricChallengeRepository
 from app.repository.voter_repo import VoterRepository
+from app.repository.address_repo import AddressRepository
 from app.repository.audit_log_repo import AuditLogRepository
 from app.models.sqlalchemy.audit_log import AuditLog
+from app.models.sqlalchemy.voter import VoterStatus
+from app.models.sqlalchemy.address import AddressStatus
 
 logger = structlog.get_logger()
 
@@ -51,11 +54,13 @@ class BiometricService:
         challenge_repo: BiometricChallengeRepository,
         voter_repo: VoterRepository,
         session: AsyncSession,
+        address_repo: AddressRepository | None = None,
     ):
         self.credentials_repo = credentials_repo
         self.challenge_repo = challenge_repo
         self.voter_repo = voter_repo
         self.session = session
+        self._address_repo = address_repo or AddressRepository()
         self._audit_log_repo = AuditLogRepository()
 
 
@@ -92,6 +97,7 @@ class BiometricService:
             modalities=request.modalities,
             attestation=request.attestation,
             device_label=request.device_label,
+            encrypted_key_bundle=request.encrypted_key_bundle,
         )
         credential = await self.credentials_repo.create(self.session, credential)
 
@@ -108,6 +114,9 @@ class BiometricService:
                 actor_id=voter_id,
             ),
         )
+
+        # Check if voter can be activated after biometric enrollment
+        await self._activate_voter_if_ready(voter_id)
 
         return EnrollDeviceResponse(
             id=str(credential.id),
@@ -265,6 +274,7 @@ class BiometricService:
                 is_active=row.is_active,
                 last_used_at=row.last_used_at,
                 created_at=row.created_at,
+                encrypted_key_bundle=row.encrypted_key_bundle,
             )
             for row in rows
         ]
@@ -272,6 +282,53 @@ class BiometricService:
     async def revoke_credential(self, credential_id: UUID) -> None:
         """Deactivate a device credential."""
         await self.credentials_repo.deactivate(self.session, credential_id)
+
+    async def _activate_voter_if_ready(self, voter_id: UUID) -> bool:
+        """Activate the voter if they have an ACTIVE address and an active credential.
+
+        Called after biometric enrollment to complete the registration flow.
+        """
+        # Check current voter status — only activate PENDING voters
+        voter = await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        if voter.voter_status != VoterStatus.PENDING.value:
+            return False
+
+        addresses = await self._address_repo.get_all_addresses_by_voter_id(
+            self.session, voter_id
+        )
+        has_active_address = any(
+            a.address_status == AddressStatus.ACTIVE for a in addresses
+        )
+        if not has_active_address:
+            return False
+
+        credentials = await self.credentials_repo.list_by_voter(self.session, voter_id)
+        has_active_credential = any(c.is_active for c in credentials)
+        if not has_active_credential:
+            return False
+
+        await self.voter_repo.update_voter_status(
+            self.session,
+            voter_id,
+            voter_status=VoterStatus.ACTIVE.value,
+            registration_status="approved",
+        )
+
+        await self._audit_log_repo.create_audit_log(
+            self.session,
+            AuditLog(
+                event_type="VOTER_ACTIVATED",
+                action="UPDATE",
+                summary=f"Voter {voter_id} activated after biometric enrollment",
+                resource_type="voter",
+                resource_id=voter_id,
+                actor_type="SYSTEM",
+                actor_id=voter_id,
+            ),
+        )
+
+        logger.info("Voter activated after biometric enrollment", voter_id=str(voter_id))
+        return True
 
     @staticmethod
     def _parse_public_key(pem: str) -> ec.EllipticCurvePublicKey:

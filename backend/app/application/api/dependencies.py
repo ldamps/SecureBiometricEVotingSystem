@@ -58,6 +58,7 @@ from app.service.audit_log_service import AuditLogService
 from app.service.tally_service import TallyService
 from app.service.result_service import ResultService
 from app.repository.audit_log_repo import AuditLogRepository
+from app.service.audit_report_service import AuditReportService
 from app.service.auth_service import AuthService
 from app.models.dto.auth import TokenPayload
 from app.application.core.exceptions import AuthenticationError, AuthorizationError
@@ -247,6 +248,7 @@ def get_voting_service(
         referendum_repo=ReferendumRepository(Referendum),
         candidate_repo=CandidateRepository(),
         voter_repo=VoterRepository(Voter),
+        address_repo=AddressRepository(),
         session=session,
         keys_manager=keys_manager,
         encryption_mapper=mapper,
@@ -262,7 +264,33 @@ def get_biometric_service(
         challenge_repo=BiometricChallengeRepository(),
         voter_repo=VoterRepository(Voter),
         session=session,
+        address_repo=AddressRepository(Address),
     )
+
+
+def get_address_verification_dependencies(
+    session: AsyncSession = Depends(get_db),
+    keys_manager: KeysManagerService = Depends(get_keys_manager_service),
+    email_service: EmailService = Depends(get_email_service),
+) -> tuple:
+    """Return (AddressService, VoterService) for address verification endpoint."""
+    mapper = EncryptionMapperService(EncryptionService(), keys_manager)
+    address_service = AddressService(
+        address_repo=AddressRepository(Address),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+        constituency_repo=ConstituencyRepository(),
+        voter_repo=VoterRepository(Voter),
+    )
+    voter_service = VoterService(
+        voter_repo=VoterRepository(Voter),
+        session=session,
+        keys_manager=keys_manager,
+        encryption_mapper=mapper,
+        email_service=email_service,
+    )
+    return (address_service, voter_service)
 
 def get_ballot_token_service(
     session: AsyncSession = Depends(get_db),
@@ -281,11 +309,13 @@ def get_ballot_token_service(
 
 def get_official_service(
     session: AsyncSession = Depends(get_db),
+    email_service: EmailService = Depends(get_email_service),
 ) -> OfficialService:
     """Get an official service (EncryptedBytes handled at column level)."""
     return OfficialService(
         official_repo=OfficialRepository(),
         session=session,
+        email_service=email_service,
     )
 
 def get_error_report_service(
@@ -328,6 +358,7 @@ def get_referendum_service(
         keys_manager=keys_manager,
         encryption_mapper=mapper,
         audit_log_repo=AuditLogRepository(),
+        constituency_repo=ConstituencyRepository(),
     )
 
 
@@ -351,6 +382,18 @@ def get_result_service(
     return ResultService(
         tally_result_repo=TallyResultRepository(),
         election_repo=ElectionRepository(Election),
+        vote_repo=VoteRepository(),
+        session=session,
+    )
+
+
+def get_audit_report_service(
+    session: AsyncSession = Depends(get_db),
+) -> AuditReportService:
+    """Get an audit report service (generates privacy-safe audit reports)."""
+    return AuditReportService(
+        election_repo=ElectionRepository(Election),
+        referendum_repo=ReferendumRepository(Referendum),
         session=session,
     )
 

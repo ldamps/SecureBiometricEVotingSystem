@@ -46,18 +46,54 @@ const VoterAboutPage: React.FC = () => {
           {/* About the platform */}
           <section style={firstSectionStyle}>
             <p>
-              The Official UK Voting Platform is committed to delivering a secure, acessible and legally compliant E-Voting platform that enables eligible voters across the UK to register, manage their electoral details and cast their vote using their own trusted devices. Our purpose is to modernise participation in demoratic processes while upholding the highest standards of integrity, confidentiality and public trust.
+              The Official UK Voting Platform is a secure, accessible and legally compliant e-voting system that enables eligible voters across the United Kingdom to register, manage their electoral details and cast their vote from their own trusted devices. Our purpose is to modernise participation in democratic processes while upholding the highest standards of integrity, confidentiality and public trust.
               <br />
               <br />
-              Accessibility and security are fundamental to our approach. Every aspect of our platform has been designed to ensure that convenience never compromises legal compliance or electoral integrity.
+              The platform supports a range of UK election types, including General Elections, Local Elections, Mayoral Elections, Scottish Parliament and London Assembly Elections, as well as public referendums. Multiple voting systems are supported, including First Past the Post (FPTP), Additional Member System (AMS), Single Transferable Vote (STV) and the Alternative Vote, ensuring the platform can serve the full spectrum of UK democratic processes.
             </p>
           </section>
 
-          {/* Committtment to Data Protection in the UK */}
+          {/* How We Protect Your Vote */}
           <section style={sectionWithPaddingStyle}>
-            <h2 style={sectionH2Style}>Our committtment to Data Protection in the UK</h2>
+            <h2 style={sectionH2Style}>How We Protect Your Vote</h2>
+
+            {/* Biometric Identity Verification */}
+            <h3 style={h3Style}>{sectionDiamond}Biometric Identity Verification</h3>
             <p style={pAfterHeaderStyle}>
-              The protection of personal data is central to our operations. We process information strictly in accordance with the UK General Protection Regulation (UK GDPR) and the Data Protection Act 2018. Our practices are guided by regulatory expetations set out by the Information Commissioner's Office (ICO).
+              To prevent electoral fraud, the platform uses multi-modal biometric verification combining both facial and ear recognition. Before you can cast a vote, your identity is confirmed through a secure challenge-response process:
+              <ul style={listStyle}>
+                <li>During registration, your device generates a cryptographic key pair that is encrypted using your biometric data</li>
+                <li>Your raw biometric templates are never sent to or stored on our servers</li>
+                <li>When you vote, the server issues a cryptographic challenge that can only be signed by unlocking your private key with a successful biometric match on your device</li>
+                <li>Both facial and ear biometrics must independently pass verification for authentication to succeed</li>
+              </ul>
+              This match-on-device architecture means that your biometric data remains under your control at all times, stored only on the device you registered with.
+            </p>
+
+            {/* Vote Anonymity and Ballot Tokens */}
+            <h3 style={h3Style}>{sectionDiamond}Vote Anonymity and Ballot Tokens</h3>
+            <p style={pAfterHeaderStyle}>
+              Once your identity has been verified, you are issued a one-time ballot token. This token is used to submit your vote, and it is designed so that your vote cannot be linked back to your identity:
+              <ul style={listStyle}>
+                <li>Ballot tokens are cryptographically hashed to prevent tracing</li>
+                <li>Your vote record contains no voter identification — only your ballot selection and the anonymous token</li>
+                <li>A separate voter ledger records that you have participated in the election, preventing double voting without revealing how you voted</li>
+                <li>Each token can only be used once and is marked as used upon vote submission</li>
+              </ul>
+            </p>
+
+            {/* Encryption and Data Security */}
+            <h3 style={h3Style}>{sectionDiamond}Encryption and Data Security</h3>
+            <p style={pAfterHeaderStyle}>
+              All sensitive data held by the platform is protected by encryption both in transit and at rest. Communications between your device and our servers are secured with TLS. Stored data, including personal details and ballot tokens, is encrypted using managed encryption keys with strict access controls. Role-based access ensures that only authorised personnel can access specific data, and all access is logged for audit purposes.
+            </p>
+          </section>
+
+          {/* Commitment to Data Protection in the UK */}
+          <section style={sectionWithPaddingStyle}>
+            <h2 style={sectionH2Style}>Our Commitment to Data Protection in the UK</h2>
+            <p style={pAfterHeaderStyle}>
+              The protection of personal data is central to our operations. We process information strictly in accordance with the UK General Data Protection Regulation (UK GDPR) and the Data Protection Act 2018. Our practices are guided by regulatory expectations set out by the Information Commissioner's Office (ICO).
               <br />
               We adhere to the core principles of UK data protection law:
               <ul style={listStyle}>
@@ -78,16 +114,16 @@ const VoterAboutPage: React.FC = () => {
                 <li><strong>Only essential data is collected and processed</strong></li>
                 <li><strong>Access to data is strictly role-based and access controls are enforced</strong></li>
                 <li><strong>Encryption protects sensitive data in transit and at rest</strong></li>
-                <li><strong>Multi-factor authentication protects against unauthorized access</strong></li>
+                <li><strong>Biometric verification uses a match-on-device model — raw biometric data never leaves your device</strong></li>
                 <li><strong>Continuous monitoring and audit trails are in place</strong></li>
               </ul>
-              Where processing activites present high ricks to individual rights and freedoms, we conduct Data Protection Impact Assessments (DPIAs) in accordance with UK GDPR requirements.
+              Where processing activities present high risks to individual rights and freedoms, we conduct Data Protection Impact Assessments (DPIAs) in accordance with UK GDPR requirements.
             </p>
 
             {/* Transparency and Individual Rights */}
             <h3 style={h3Style}>{sectionDiamond}Transparency and Individual Rights</h3>
             <p style={pAfterHeaderStyle}>
-              The Official UK Voting Platform is committed to oppeness about how personal data is used. Clear privacy notices explain:
+              The Official UK Voting Platform is committed to openness about how personal data is used. Clear privacy notices explain:
               <ul style={listStyle}>
                 <li>What data is collected</li>
                 <li>Why it is collected</li>
@@ -105,7 +141,7 @@ const VoterAboutPage: React.FC = () => {
             <p style={pAfterHeaderStyle}>
               We maintain robust governance frameworks to ensure compliance, including:
               <ul style={listStyle}>
-                <li>Documented reocrds of data processing activities</li>
+                <li>Documented records of data processing activities</li>
                 <li>Internal audit and compliance procedures</li>
               </ul>
               Where required, a designated Data Protection Officer (DPO) is appointed to oversee compliance and provide guidance on data protection matters.
@@ -120,8 +156,8 @@ const VoterAboutPage: React.FC = () => {
               <ul style={listStyle}>
                 <li><a href="/voter/voting-process" style={linkStyle}>The Voting Process</a></li>
                 <li><a href="/voter/register" style={linkStyle}>Register to Vote</a></li>
-                <li><a href="/" style={linkStyle}>Manage Vote Registration</a></li>
-                <li><a href="/" style={linkStyle}>Vote Now</a></li>
+                <li><a href="/voter/manage-registration" style={linkStyle}>Manage Vote Registration</a></li>
+                <li><a href="/voter/voting" style={linkStyle}>Vote Now</a></li>
               </ul>
               <br />
               Further links on UK Electoral Law and Data Protection can be found at the following sources:

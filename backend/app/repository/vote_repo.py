@@ -4,7 +4,7 @@ from typing import Type
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.core.exceptions import NotFoundError
@@ -42,3 +42,41 @@ class VoteRepository:
             select(self._model).where(self._model.blind_token_hash == blind_token_hash)
         )
         return result.scalar_one_or_none()
+
+    async def get_constituency_ids_for_election(
+        self,
+        session: AsyncSession,
+        election_id: UUID,
+    ) -> list[UUID]:
+        """Get distinct constituency IDs that have ranked votes for an election."""
+        result = await session.execute(
+            select(func.distinct(self._model.constituency_id))
+            .where(
+                self._model.election_id == election_id,
+                self._model.constituency_id.isnot(None),
+            )
+        )
+        return [row[0] for row in result.all()]
+
+    async def get_ranked_votes_by_constituency(
+        self,
+        session: AsyncSession,
+        election_id: UUID,
+        constituency_id: UUID,
+    ) -> list[Vote]:
+        """Get ranked votes for a single constituency, ordered for ballot grouping.
+
+        Fetches only one constituency at a time to keep memory bounded
+        (typically ~70K voters per constituency at UK scale).
+        """
+        result = await session.execute(
+            select(self._model)
+            .where(
+                self._model.election_id == election_id,
+                self._model.constituency_id == constituency_id,
+                self._model.candidate_id.isnot(None),
+                self._model.preference_rank.isnot(None),
+            )
+            .order_by(self._model.blind_token_hash, self._model.preference_rank)
+        )
+        return list(result.scalars().all())

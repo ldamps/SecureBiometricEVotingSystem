@@ -21,14 +21,16 @@ class VoterLedgerDTO(VoterLedgerBaseDTO):
     """Plaintext voter ledger DTO — target for decrypt_model and source for to_schema."""
     id: UUID
     voter_id: UUID
-    election_id: UUID
-    voted_at: datetime
+    election_id: Optional[UUID] = None
+    referendum_id: Optional[UUID] = None
+    voted_at: Optional[datetime] = None
 
     def to_schema(self) -> VoterLedgerItem:
         return VoterLedgerItem(
             id=str(self.id),
             voter_id=str(self.voter_id),
-            election_id=str(self.election_id),
+            election_id=str(self.election_id) if self.election_id else None,
+            referendum_id=str(self.referendum_id) if self.referendum_id else None,
             voted_at=self.voted_at,
         )
 

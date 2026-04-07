@@ -16,6 +16,7 @@ from app.application.api.dependencies import (
     get_voter_ledger_service,
     require_role,
 )
+from app.application.core.exceptions import AuthorizationError
 from app.application.api.responses import responses
 from app.application.constants import Resource
 from app.models.dto.auth import TokenPayload
@@ -51,22 +52,8 @@ router = APIRouter(
 )
 
 
-# get election by ID (any official)
-@router.get(
-    "/{election_id}",
-    responses=election_responses,
-    status_code=status.HTTP_200_OK,
-)
-async def get_election_by_id(
-    election_id: UUID = Path(..., description="The unique identifier for the election."),
-    service: ElectionService = Depends(get_election_service),
-    current_user: TokenPayload = Depends(get_current_user),
-) -> ElectionItem:
-    """Get election details by election ID."""
-    return await service.get_election_by_id(election_id)
-
-
-# get all elections (any official)
+# get all elections (public – voters browse before authenticating).
+# Declared before /{election_id} so GET /election/ is not captured by the path param route.
 @router.get(
     "/",
     responses=election_responses,
@@ -75,10 +62,38 @@ async def get_election_by_id(
 )
 async def get_all_elections(
     service: ElectionService = Depends(get_election_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[ElectionItem]:
     """Get all elections."""
     return await service.get_all_elections()
+
+
+# Get elections for a specific constituency (voter-facing).
+@router.get(
+    "/constituency/{constituency_id}",
+    responses=election_responses,
+    response_model=List[ElectionItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_elections_for_constituency(
+    constituency_id: UUID = Path(..., description="The constituency to filter elections by."),
+    service: ElectionService = Depends(get_election_service),
+) -> List[ElectionItem]:
+    """Get elections that have candidates in the given constituency."""
+    return await service.get_all_elections(constituency_id=constituency_id)
+
+
+# get election by ID (public – voters browse before authenticating)
+@router.get(
+    "/{election_id}",
+    responses=election_responses,
+    status_code=status.HTTP_200_OK,
+)
+async def get_election_by_id(
+    election_id: UUID = Path(..., description="The unique identifier for the election."),
+    service: ElectionService = Depends(get_election_service),
+) -> ElectionItem:
+    """Get election details by election ID."""
+    return await service.get_election_by_id(election_id)
 
 
 # create an election (admin-only)
@@ -93,7 +108,7 @@ async def create_election(
     service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
-    """Create a new election."""
+    """Create a new election (status is derived from voting window times)."""
     dto = CreateElectionPlainDTO.create_dto(body)
     return await service.create_election(dto)
 
@@ -135,7 +150,7 @@ async def get_election_voters(
     return await service.get_election_voters(election_id)
 
 
-# Get all candidates for an election (any official)
+# Get all candidates for an election (public – voters need to see candidates)
 @router.get(
     "/{election_id}/candidates",
     responses=candidate_responses,
@@ -145,7 +160,6 @@ async def get_election_voters(
 async def get_candidates_by_election(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     service: CandidateService = Depends(get_candidate_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[CandidateItem]:
     """Get all candidates standing in an election."""
     return await service.get_candidates_by_election(election_id)
@@ -259,7 +273,7 @@ async def get_election_ballot_tokens(
 # ── Results & tallies ──
 
 
-# Get aggregated election results (any official)
+# Get aggregated election results (any official, only after voting closes)
 @router.get(
     "/{election_id}/results",
     responses=election_responses,
@@ -269,13 +283,20 @@ async def get_election_ballot_tokens(
 async def get_election_results(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     service: ResultService = Depends(get_result_service),
+    election_service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(get_current_user),
 ) -> ElectionResultResponse:
-    """Get aggregated results for an election with per-constituency breakdowns and seat allocation."""
+    """Get aggregated results for an election with per-constituency breakdowns and seat allocation.
+
+    Results are only available once the election status is CLOSED.
+    """
+    election = await election_service.get_election_by_id(election_id)
+    if election.status != "CLOSED":
+        raise AuthorizationError("Results are only available after voting has closed.")
     return await service.get_election_results(election_id)
 
 
-# Get tallies for an election (admin-only)
+# Get tallies for an election (admin-only, only after voting closes)
 @router.get(
     "/{election_id}/tallies",
     responses=election_responses,
@@ -285,13 +306,20 @@ async def get_election_results(
 async def get_election_tallies(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     service: TallyService = Depends(get_tally_service),
+    election_service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[TallyResultItem]:
-    """Get all vote tallies for an election, ordered by vote count."""
+    """Get all vote tallies for an election, ordered by vote count.
+
+    Tallies are only available once the election status is CLOSED.
+    """
+    election = await election_service.get_election_by_id(election_id)
+    if election.status != "CLOSED":
+        raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_election(election_id)
 
 
-# Get tallies for an election + constituency (admin-only)
+# Get tallies for an election + constituency (admin-only, only after voting closes)
 @router.get(
     "/{election_id}/constituency/{constituency_id}/tallies",
     responses=election_responses,
@@ -302,7 +330,14 @@ async def get_election_constituency_tallies(
     election_id: UUID = Path(..., description="The unique identifier for the election."),
     constituency_id: UUID = Path(..., description="The constituency ID."),
     service: TallyService = Depends(get_tally_service),
+    election_service: ElectionService = Depends(get_election_service),
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ) -> List[TallyResultItem]:
-    """Get vote tallies for a specific constituency within an election."""
+    """Get vote tallies for a specific constituency within an election.
+
+    Tallies are only available once the election status is CLOSED.
+    """
+    election = await election_service.get_election_by_id(election_id)
+    if election.status != "CLOSED":
+        raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_constituency(election_id, constituency_id)

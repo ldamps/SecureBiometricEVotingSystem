@@ -11,6 +11,7 @@ export interface EnrollDeviceRequest {
     modalities?: string;
     attestation?: string;
     device_label?: string;
+    encrypted_key_bundle?: string;
 }
 
 export interface EnrollDeviceResponse {
@@ -57,6 +58,7 @@ export interface DeviceCredential {
     is_active: boolean;
     last_used_at?: string;
     created_at: string;
+    encrypted_key_bundle?: string;
 }
 
 // --- Enrollment status (used by the registration UI) ---

@@ -1,8 +1,9 @@
 # referendum.py - Referendum schemas for the e-voting system.
 
 from app.models.base.pydantic_base import ResponseSchema, RequestSchema
+from app.models.sqlalchemy.referendum import ReferendumStatus
 from pydantic import Field
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 
@@ -13,19 +14,24 @@ class ReferendumItem(ResponseSchema):
     question: str = Field(..., description="The yes/no question posed to voters.")
     description: Optional[str] = Field(None, description="Additional context for the question.")
     scope: str = Field(..., description="The scope of the referendum (NATIONAL, REGIONAL, LOCAL).")
-    status: str = Field(..., description="The status of the referendum (OPEN, CLOSED).")
+    status: str = Field(..., description="The status of the referendum (OPEN, CLOSED, CANCELLED).")
     voting_opens: Optional[datetime] = Field(None, description="When voting opens.")
     voting_closes: Optional[datetime] = Field(None, description="When voting closes.")
     is_active: bool = Field(..., description="Whether the referendum is currently active.")
+    constituency_ids: List[str] = Field(default_factory=list, description="Constituencies this referendum is for (empty = national/all).")
 
 
 class CreateReferendumRequest(RequestSchema):
-    """Create referendum request model."""
+    """Create referendum request model.
+
+    Initial ``OPEN``/``CLOSED`` status is set from ``voting_opens`` / ``voting_closes``
+    and the current time (``CLOSED`` if neither time is set).
+    """
     title: str = Field(..., description="The title of the referendum.")
     question: str = Field(..., description="The yes/no question posed to voters.")
     description: Optional[str] = Field(None, description="Additional context for the question.")
     scope: str = Field(..., description="The scope of the referendum (NATIONAL, REGIONAL, LOCAL).")
-    status: Optional[str] = Field("OPEN", description="The status of the referendum.")
+    constituency_ids: List[str] = Field(default_factory=list, description="Constituencies this referendum is for (empty = national/all).")
     voting_opens: Optional[datetime] = Field(None, description="When voting opens.")
     voting_closes: Optional[datetime] = Field(None, description="When voting closes.")
 
@@ -34,7 +40,10 @@ class UpdateReferendumRequest(RequestSchema):
     """Update referendum request model."""
     question: Optional[str] = Field(None, description="The yes/no question posed to voters.")
     description: Optional[str] = Field(None, description="Additional context for the question.")
-    status: Optional[str] = Field(None, description="The status of the referendum.")
+    status: Optional[ReferendumStatus] = Field(
+        None,
+        description="Referendum status (e.g. CANCELLED). CANCELLED is terminal for schedule sync.",
+    )
     voting_opens: Optional[datetime] = Field(None, description="When voting opens.")
     voting_closes: Optional[datetime] = Field(None, description="When voting closes.")
     is_active: Optional[bool] = Field(None, description="Whether the referendum is currently active.")

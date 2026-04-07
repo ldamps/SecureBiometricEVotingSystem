@@ -1,0 +1,2602 @@
+[
+  {
+    "name": "Aldershot",
+    "country": "England"
+  },
+  {
+    "name": "Aldridge-Brownhills",
+    "country": "England"
+  },
+  {
+    "name": "Altrincham and Sale West",
+    "country": "England"
+  },
+  {
+    "name": "Amber Valley",
+    "country": "England"
+  },
+  {
+    "name": "Arundel and South Downs",
+    "country": "England"
+  },
+  {
+    "name": "Ashfield",
+    "country": "England"
+  },
+  {
+    "name": "Ashford",
+    "country": "England"
+  },
+  {
+    "name": "Ashton-under-Lyne",
+    "country": "England"
+  },
+  {
+    "name": "Aylesbury",
+    "country": "England"
+  },
+  {
+    "name": "Banbury",
+    "country": "England"
+  },
+  {
+    "name": "Barking",
+    "country": "England"
+  },
+  {
+    "name": "Barnsley North",
+    "country": "England"
+  },
+  {
+    "name": "Barnsley South",
+    "country": "England"
+  },
+  {
+    "name": "Barrow and Furness",
+    "country": "England"
+  },
+  {
+    "name": "Basildon and Billericay",
+    "country": "England"
+  },
+  {
+    "name": "Basingstoke",
+    "country": "England"
+  },
+  {
+    "name": "Bassetlaw",
+    "country": "England"
+  },
+  {
+    "name": "Bath",
+    "country": "England"
+  },
+  {
+    "name": "Battersea",
+    "country": "England"
+  },
+  {
+    "name": "Beaconsfield",
+    "country": "England"
+  },
+  {
+    "name": "Beckenham and Penge",
+    "country": "England"
+  },
+  {
+    "name": "Bedford",
+    "country": "England"
+  },
+  {
+    "name": "Bermondsey and Old Southwark",
+    "country": "England"
+  },
+  {
+    "name": "Bethnal Green and Stepney",
+    "country": "England"
+  },
+  {
+    "name": "Beverley and Holderness",
+    "country": "England"
+  },
+  {
+    "name": "Bexhill and Battle",
+    "country": "England"
+  },
+  {
+    "name": "Bexleyheath and Crayford",
+    "country": "England"
+  },
+  {
+    "name": "Bicester and Woodstock",
+    "country": "England"
+  },
+  {
+    "name": "Birkenhead",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Edgbaston",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Erdington",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Hall Green and Moseley",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Hodge Hill and Solihull North",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Ladywood",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Northfield",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Perry Barr",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Selly Oak",
+    "country": "England"
+  },
+  {
+    "name": "Birmingham Yardley",
+    "country": "England"
+  },
+  {
+    "name": "Bishop Auckland",
+    "country": "England"
+  },
+  {
+    "name": "Blackburn",
+    "country": "England"
+  },
+  {
+    "name": "Blackley and Middleton South",
+    "country": "England"
+  },
+  {
+    "name": "Blackpool North and Fleetwood",
+    "country": "England"
+  },
+  {
+    "name": "Blackpool South",
+    "country": "England"
+  },
+  {
+    "name": "Blaydon and Consett",
+    "country": "England"
+  },
+  {
+    "name": "Blyth and Ashington",
+    "country": "England"
+  },
+  {
+    "name": "Bognor Regis and Littlehampton",
+    "country": "England"
+  },
+  {
+    "name": "Bolsover",
+    "country": "England"
+  },
+  {
+    "name": "Bolton North East",
+    "country": "England"
+  },
+  {
+    "name": "Bolton South and Walkden",
+    "country": "England"
+  },
+  {
+    "name": "Bolton West",
+    "country": "England"
+  },
+  {
+    "name": "Bootle",
+    "country": "England"
+  },
+  {
+    "name": "Boston and Skegness",
+    "country": "England"
+  },
+  {
+    "name": "Bournemouth East",
+    "country": "England"
+  },
+  {
+    "name": "Bournemouth West",
+    "country": "England"
+  },
+  {
+    "name": "Bracknell",
+    "country": "England"
+  },
+  {
+    "name": "Bradford East",
+    "country": "England"
+  },
+  {
+    "name": "Bradford South",
+    "country": "England"
+  },
+  {
+    "name": "Bradford West",
+    "country": "England"
+  },
+  {
+    "name": "Braintree",
+    "country": "England"
+  },
+  {
+    "name": "Brent East",
+    "country": "England"
+  },
+  {
+    "name": "Brent West",
+    "country": "England"
+  },
+  {
+    "name": "Brentford and Isleworth",
+    "country": "England"
+  },
+  {
+    "name": "Brentwood and Ongar",
+    "country": "England"
+  },
+  {
+    "name": "Bridgwater",
+    "country": "England"
+  },
+  {
+    "name": "Bridlington and The Wolds",
+    "country": "England"
+  },
+  {
+    "name": "Brigg and Immingham",
+    "country": "England"
+  },
+  {
+    "name": "Brighton Kemptown and Peacehaven",
+    "country": "England"
+  },
+  {
+    "name": "Brighton Pavilion",
+    "country": "England"
+  },
+  {
+    "name": "Bristol Central",
+    "country": "England"
+  },
+  {
+    "name": "Bristol East",
+    "country": "England"
+  },
+  {
+    "name": "Bristol North East",
+    "country": "England"
+  },
+  {
+    "name": "Bristol North West",
+    "country": "England"
+  },
+  {
+    "name": "Bristol South",
+    "country": "England"
+  },
+  {
+    "name": "Broadland and Fakenham",
+    "country": "England"
+  },
+  {
+    "name": "Bromley and Biggin Hill",
+    "country": "England"
+  },
+  {
+    "name": "Bromsgrove",
+    "country": "England"
+  },
+  {
+    "name": "Broxbourne",
+    "country": "England"
+  },
+  {
+    "name": "Broxtowe",
+    "country": "England"
+  },
+  {
+    "name": "Buckingham and Bletchley",
+    "country": "England"
+  },
+  {
+    "name": "Burnley",
+    "country": "England"
+  },
+  {
+    "name": "Burton and Uttoxeter",
+    "country": "England"
+  },
+  {
+    "name": "Bury North",
+    "country": "England"
+  },
+  {
+    "name": "Bury South",
+    "country": "England"
+  },
+  {
+    "name": "Bury St Edmunds and Stowmarket",
+    "country": "England"
+  },
+  {
+    "name": "Calder Valley",
+    "country": "England"
+  },
+  {
+    "name": "Camborne and Redruth",
+    "country": "England"
+  },
+  {
+    "name": "Cambridge",
+    "country": "England"
+  },
+  {
+    "name": "Cannock Chase",
+    "country": "England"
+  },
+  {
+    "name": "Canterbury",
+    "country": "England"
+  },
+  {
+    "name": "Carlisle",
+    "country": "England"
+  },
+  {
+    "name": "Carshalton and Wallington",
+    "country": "England"
+  },
+  {
+    "name": "Castle Point",
+    "country": "England"
+  },
+  {
+    "name": "Central Devon",
+    "country": "England"
+  },
+  {
+    "name": "Central Suffolk and North Ipswich",
+    "country": "England"
+  },
+  {
+    "name": "Chatham and Aylesford",
+    "country": "England"
+  },
+  {
+    "name": "Cheadle",
+    "country": "England"
+  },
+  {
+    "name": "Chelmsford",
+    "country": "England"
+  },
+  {
+    "name": "Chelsea and Fulham",
+    "country": "England"
+  },
+  {
+    "name": "Cheltenham",
+    "country": "England"
+  },
+  {
+    "name": "Chesham and Amersham",
+    "country": "England"
+  },
+  {
+    "name": "Chester North and Neston",
+    "country": "England"
+  },
+  {
+    "name": "Chester South and Eddisbury",
+    "country": "England"
+  },
+  {
+    "name": "Chesterfield",
+    "country": "England"
+  },
+  {
+    "name": "Chichester",
+    "country": "England"
+  },
+  {
+    "name": "Chingford and Woodford Green",
+    "country": "England"
+  },
+  {
+    "name": "Chippenham",
+    "country": "England"
+  },
+  {
+    "name": "Chipping Barnet",
+    "country": "England"
+  },
+  {
+    "name": "Chorley",
+    "country": "England"
+  },
+  {
+    "name": "Christchurch",
+    "country": "England"
+  },
+  {
+    "name": "Cities of London and Westminster",
+    "country": "England"
+  },
+  {
+    "name": "City of Durham",
+    "country": "England"
+  },
+  {
+    "name": "Clacton",
+    "country": "England"
+  },
+  {
+    "name": "Clapham and Brixton Hill",
+    "country": "England"
+  },
+  {
+    "name": "Colchester",
+    "country": "England"
+  },
+  {
+    "name": "Colne Valley",
+    "country": "England"
+  },
+  {
+    "name": "Congleton",
+    "country": "England"
+  },
+  {
+    "name": "Corby and East Northamptonshire",
+    "country": "England"
+  },
+  {
+    "name": "Coventry East",
+    "country": "England"
+  },
+  {
+    "name": "Coventry North West",
+    "country": "England"
+  },
+  {
+    "name": "Coventry South",
+    "country": "England"
+  },
+  {
+    "name": "Cramlington and Killingworth",
+    "country": "England"
+  },
+  {
+    "name": "Crawley",
+    "country": "England"
+  },
+  {
+    "name": "Crewe and Nantwich",
+    "country": "England"
+  },
+  {
+    "name": "Croydon East",
+    "country": "England"
+  },
+  {
+    "name": "Croydon South",
+    "country": "England"
+  },
+  {
+    "name": "Croydon West",
+    "country": "England"
+  },
+  {
+    "name": "Dagenham and Rainham",
+    "country": "England"
+  },
+  {
+    "name": "Darlington",
+    "country": "England"
+  },
+  {
+    "name": "Dartford",
+    "country": "England"
+  },
+  {
+    "name": "Daventry",
+    "country": "England"
+  },
+  {
+    "name": "Derby North",
+    "country": "England"
+  },
+  {
+    "name": "Derby South",
+    "country": "England"
+  },
+  {
+    "name": "Derbyshire Dales",
+    "country": "England"
+  },
+  {
+    "name": "Dewsbury and Batley",
+    "country": "England"
+  },
+  {
+    "name": "Didcot and Wantage",
+    "country": "England"
+  },
+  {
+    "name": "Doncaster Central",
+    "country": "England"
+  },
+  {
+    "name": "Doncaster East and the Isle of Axholme",
+    "country": "England"
+  },
+  {
+    "name": "Doncaster North",
+    "country": "England"
+  },
+  {
+    "name": "Dorking and Horley",
+    "country": "England"
+  },
+  {
+    "name": "Dover and Deal",
+    "country": "England"
+  },
+  {
+    "name": "Droitwich and Evesham",
+    "country": "England"
+  },
+  {
+    "name": "Dudley",
+    "country": "England"
+  },
+  {
+    "name": "Dulwich and West Norwood",
+    "country": "England"
+  },
+  {
+    "name": "Dunstable and Leighton Buzzard",
+    "country": "England"
+  },
+  {
+    "name": "Ealing Central and Acton",
+    "country": "England"
+  },
+  {
+    "name": "Ealing North",
+    "country": "England"
+  },
+  {
+    "name": "Ealing Southall",
+    "country": "England"
+  },
+  {
+    "name": "Earley and Woodley",
+    "country": "England"
+  },
+  {
+    "name": "Easington",
+    "country": "England"
+  },
+  {
+    "name": "East Grinstead and Uckfield",
+    "country": "England"
+  },
+  {
+    "name": "East Ham",
+    "country": "England"
+  },
+  {
+    "name": "East Hampshire",
+    "country": "England"
+  },
+  {
+    "name": "East Surrey",
+    "country": "England"
+  },
+  {
+    "name": "East Thanet",
+    "country": "England"
+  },
+  {
+    "name": "East Wiltshire",
+    "country": "England"
+  },
+  {
+    "name": "East Worthing and Shoreham",
+    "country": "England"
+  },
+  {
+    "name": "Eastbourne",
+    "country": "England"
+  },
+  {
+    "name": "Eastleigh",
+    "country": "England"
+  },
+  {
+    "name": "Edmonton and Winchmore Hill",
+    "country": "England"
+  },
+  {
+    "name": "Ellesmere Port and Bromborough",
+    "country": "England"
+  },
+  {
+    "name": "Eltham and Chislehurst",
+    "country": "England"
+  },
+  {
+    "name": "Ely and East Cambridgeshire",
+    "country": "England"
+  },
+  {
+    "name": "Enfield North",
+    "country": "England"
+  },
+  {
+    "name": "Epping Forest",
+    "country": "England"
+  },
+  {
+    "name": "Epsom and Ewell",
+    "country": "England"
+  },
+  {
+    "name": "Erewash",
+    "country": "England"
+  },
+  {
+    "name": "Erith and Thamesmead",
+    "country": "England"
+  },
+  {
+    "name": "Esher and Walton",
+    "country": "England"
+  },
+  {
+    "name": "Exeter",
+    "country": "England"
+  },
+  {
+    "name": "Exmouth and Exeter East",
+    "country": "England"
+  },
+  {
+    "name": "Fareham and Waterlooville",
+    "country": "England"
+  },
+  {
+    "name": "Farnham and Bordon",
+    "country": "England"
+  },
+  {
+    "name": "Faversham and Mid Kent",
+    "country": "England"
+  },
+  {
+    "name": "Feltham and Heston",
+    "country": "England"
+  },
+  {
+    "name": "Filton and Bradley Stoke",
+    "country": "England"
+  },
+  {
+    "name": "Finchley and Golders Green",
+    "country": "England"
+  },
+  {
+    "name": "Folkestone and Hythe",
+    "country": "England"
+  },
+  {
+    "name": "Forest of Dean",
+    "country": "England"
+  },
+  {
+    "name": "Frome and East Somerset",
+    "country": "England"
+  },
+  {
+    "name": "Fylde",
+    "country": "England"
+  },
+  {
+    "name": "Gainsborough",
+    "country": "England"
+  },
+  {
+    "name": "Gateshead Central and Whickham",
+    "country": "England"
+  },
+  {
+    "name": "Gedling",
+    "country": "England"
+  },
+  {
+    "name": "Gillingham and Rainham",
+    "country": "England"
+  },
+  {
+    "name": "Glastonbury and Somerton",
+    "country": "England"
+  },
+  {
+    "name": "Gloucester",
+    "country": "England"
+  },
+  {
+    "name": "Godalming and Ash",
+    "country": "England"
+  },
+  {
+    "name": "Goole and Pocklington",
+    "country": "England"
+  },
+  {
+    "name": "Gorton and Denton",
+    "country": "England"
+  },
+  {
+    "name": "Gosport",
+    "country": "England"
+  },
+  {
+    "name": "Grantham and Bourne",
+    "country": "England"
+  },
+  {
+    "name": "Gravesham",
+    "country": "England"
+  },
+  {
+    "name": "Great Grimsby and Cleethorpes",
+    "country": "England"
+  },
+  {
+    "name": "Great Yarmouth",
+    "country": "England"
+  },
+  {
+    "name": "Greenwich and Woolwich",
+    "country": "England"
+  },
+  {
+    "name": "Guildford",
+    "country": "England"
+  },
+  {
+    "name": "Hackney North and Stoke Newington",
+    "country": "England"
+  },
+  {
+    "name": "Hackney South and Shoreditch",
+    "country": "England"
+  },
+  {
+    "name": "Halesowen",
+    "country": "England"
+  },
+  {
+    "name": "Halifax",
+    "country": "England"
+  },
+  {
+    "name": "Hamble Valley",
+    "country": "England"
+  },
+  {
+    "name": "Hammersmith and Chiswick",
+    "country": "England"
+  },
+  {
+    "name": "Hampstead and Highgate",
+    "country": "England"
+  },
+  {
+    "name": "Harborough, Oadby and Wigston",
+    "country": "England"
+  },
+  {
+    "name": "Harlow",
+    "country": "England"
+  },
+  {
+    "name": "Harpenden and Berkhamsted",
+    "country": "England"
+  },
+  {
+    "name": "Harrogate and Knaresborough",
+    "country": "England"
+  },
+  {
+    "name": "Harrow East",
+    "country": "England"
+  },
+  {
+    "name": "Harrow West",
+    "country": "England"
+  },
+  {
+    "name": "Hartlepool",
+    "country": "England"
+  },
+  {
+    "name": "Harwich and North Essex",
+    "country": "England"
+  },
+  {
+    "name": "Hastings and Rye",
+    "country": "England"
+  },
+  {
+    "name": "Havant",
+    "country": "England"
+  },
+  {
+    "name": "Hayes and Harlington",
+    "country": "England"
+  },
+  {
+    "name": "Hazel Grove",
+    "country": "England"
+  },
+  {
+    "name": "Hemel Hempstead",
+    "country": "England"
+  },
+  {
+    "name": "Hendon",
+    "country": "England"
+  },
+  {
+    "name": "Henley and Thame",
+    "country": "England"
+  },
+  {
+    "name": "Hereford and South Herefordshire",
+    "country": "England"
+  },
+  {
+    "name": "Herne Bay and Sandwich",
+    "country": "England"
+  },
+  {
+    "name": "Hertford and Stortford",
+    "country": "England"
+  },
+  {
+    "name": "Hertsmere",
+    "country": "England"
+  },
+  {
+    "name": "Hexham",
+    "country": "England"
+  },
+  {
+    "name": "Heywood and Middleton North",
+    "country": "England"
+  },
+  {
+    "name": "High Peak",
+    "country": "England"
+  },
+  {
+    "name": "Hinckley and Bosworth",
+    "country": "England"
+  },
+  {
+    "name": "Hitchin",
+    "country": "England"
+  },
+  {
+    "name": "Holborn and St Pancras",
+    "country": "England"
+  },
+  {
+    "name": "Honiton and Sidmouth",
+    "country": "England"
+  },
+  {
+    "name": "Hornchurch and Upminster",
+    "country": "England"
+  },
+  {
+    "name": "Hornsey and Friern Barnet",
+    "country": "England"
+  },
+  {
+    "name": "Horsham",
+    "country": "England"
+  },
+  {
+    "name": "Houghton and Sunderland South",
+    "country": "England"
+  },
+  {
+    "name": "Hove and Portslade",
+    "country": "England"
+  },
+  {
+    "name": "Huddersfield",
+    "country": "England"
+  },
+  {
+    "name": "Huntingdon",
+    "country": "England"
+  },
+  {
+    "name": "Hyndburn",
+    "country": "England"
+  },
+  {
+    "name": "Ilford North",
+    "country": "England"
+  },
+  {
+    "name": "Ilford South",
+    "country": "England"
+  },
+  {
+    "name": "Ipswich",
+    "country": "England"
+  },
+  {
+    "name": "Isle of Wight East",
+    "country": "England"
+  },
+  {
+    "name": "Isle of Wight West",
+    "country": "England"
+  },
+  {
+    "name": "Islington North",
+    "country": "England"
+  },
+  {
+    "name": "Islington South and Finsbury",
+    "country": "England"
+  },
+  {
+    "name": "Jarrow and Gateshead East",
+    "country": "England"
+  },
+  {
+    "name": "Keighley and Ilkley",
+    "country": "England"
+  },
+  {
+    "name": "Kenilworth and Southam",
+    "country": "England"
+  },
+  {
+    "name": "Kensington and Bayswater",
+    "country": "England"
+  },
+  {
+    "name": "Kettering",
+    "country": "England"
+  },
+  {
+    "name": "Kingston and Surbiton",
+    "country": "England"
+  },
+  {
+    "name": "Kingston upon Hull East",
+    "country": "England"
+  },
+  {
+    "name": "Kingston upon Hull North and Cottingham",
+    "country": "England"
+  },
+  {
+    "name": "Kingston upon Hull West and Haltemprice",
+    "country": "England"
+  },
+  {
+    "name": "Kingswinford and South Staffordshire",
+    "country": "England"
+  },
+  {
+    "name": "Knowsley",
+    "country": "England"
+  },
+  {
+    "name": "Lancaster and Wyre",
+    "country": "England"
+  },
+  {
+    "name": "Leeds Central and Headingley",
+    "country": "England"
+  },
+  {
+    "name": "Leeds East",
+    "country": "England"
+  },
+  {
+    "name": "Leeds North East",
+    "country": "England"
+  },
+  {
+    "name": "Leeds North West",
+    "country": "England"
+  },
+  {
+    "name": "Leeds South",
+    "country": "England"
+  },
+  {
+    "name": "Leeds South West and Morley",
+    "country": "England"
+  },
+  {
+    "name": "Leeds West and Pudsey",
+    "country": "England"
+  },
+  {
+    "name": "Leicester East",
+    "country": "England"
+  },
+  {
+    "name": "Leicester South",
+    "country": "England"
+  },
+  {
+    "name": "Leicester West",
+    "country": "England"
+  },
+  {
+    "name": "Leigh and Atherton",
+    "country": "England"
+  },
+  {
+    "name": "Lewes",
+    "country": "England"
+  },
+  {
+    "name": "Lewisham East",
+    "country": "England"
+  },
+  {
+    "name": "Lewisham North",
+    "country": "England"
+  },
+  {
+    "name": "Lewisham West and East Dulwich",
+    "country": "England"
+  },
+  {
+    "name": "Leyton and Wanstead",
+    "country": "England"
+  },
+  {
+    "name": "Lichfield",
+    "country": "England"
+  },
+  {
+    "name": "Lincoln",
+    "country": "England"
+  },
+  {
+    "name": "Liverpool Garston",
+    "country": "England"
+  },
+  {
+    "name": "Liverpool Riverside",
+    "country": "England"
+  },
+  {
+    "name": "Liverpool Walton",
+    "country": "England"
+  },
+  {
+    "name": "Liverpool Wavertree",
+    "country": "England"
+  },
+  {
+    "name": "Liverpool West Derby",
+    "country": "England"
+  },
+  {
+    "name": "Loughborough",
+    "country": "England"
+  },
+  {
+    "name": "Louth and Horncastle",
+    "country": "England"
+  },
+  {
+    "name": "Lowestoft",
+    "country": "England"
+  },
+  {
+    "name": "Luton North",
+    "country": "England"
+  },
+  {
+    "name": "Luton South and South Bedfordshire",
+    "country": "England"
+  },
+  {
+    "name": "Macclesfield",
+    "country": "England"
+  },
+  {
+    "name": "Maidenhead",
+    "country": "England"
+  },
+  {
+    "name": "Maidstone and Malling",
+    "country": "England"
+  },
+  {
+    "name": "Makerfield",
+    "country": "England"
+  },
+  {
+    "name": "Maldon",
+    "country": "England"
+  },
+  {
+    "name": "Manchester Central",
+    "country": "England"
+  },
+  {
+    "name": "Manchester Rusholme",
+    "country": "England"
+  },
+  {
+    "name": "Manchester Withington",
+    "country": "England"
+  },
+  {
+    "name": "Mansfield",
+    "country": "England"
+  },
+  {
+    "name": "Melksham and Devizes",
+    "country": "England"
+  },
+  {
+    "name": "Melton and Syston",
+    "country": "England"
+  },
+  {
+    "name": "Meriden and Solihull East",
+    "country": "England"
+  },
+  {
+    "name": "Mid Bedfordshire",
+    "country": "England"
+  },
+  {
+    "name": "Mid Buckinghamshire",
+    "country": "England"
+  },
+  {
+    "name": "Mid Cheshire",
+    "country": "England"
+  },
+  {
+    "name": "Mid Derbyshire",
+    "country": "England"
+  },
+  {
+    "name": "Mid Dorset and North Poole",
+    "country": "England"
+  },
+  {
+    "name": "Mid Leicestershire",
+    "country": "England"
+  },
+  {
+    "name": "Mid Norfolk",
+    "country": "England"
+  },
+  {
+    "name": "Mid Sussex",
+    "country": "England"
+  },
+  {
+    "name": "Middlesbrough South and East Cleveland",
+    "country": "England"
+  },
+  {
+    "name": "Middlesbrough and Thornaby East",
+    "country": "England"
+  },
+  {
+    "name": "Milton Keynes Central",
+    "country": "England"
+  },
+  {
+    "name": "Milton Keynes North",
+    "country": "England"
+  },
+  {
+    "name": "Mitcham and Morden",
+    "country": "England"
+  },
+  {
+    "name": "Morecambe and Lunesdale",
+    "country": "England"
+  },
+  {
+    "name": "New Forest East",
+    "country": "England"
+  },
+  {
+    "name": "New Forest West",
+    "country": "England"
+  },
+  {
+    "name": "Newark",
+    "country": "England"
+  },
+  {
+    "name": "Newbury",
+    "country": "England"
+  },
+  {
+    "name": "Newcastle upon Tyne Central and West",
+    "country": "England"
+  },
+  {
+    "name": "Newcastle upon Tyne East and Wallsend",
+    "country": "England"
+  },
+  {
+    "name": "Newcastle upon Tyne North",
+    "country": "England"
+  },
+  {
+    "name": "Newcastle-under-Lyme",
+    "country": "England"
+  },
+  {
+    "name": "Newton Abbot",
+    "country": "England"
+  },
+  {
+    "name": "Newton Aycliffe and Spennymoor",
+    "country": "England"
+  },
+  {
+    "name": "Normanton and Hemsworth",
+    "country": "England"
+  },
+  {
+    "name": "North Bedfordshire",
+    "country": "England"
+  },
+  {
+    "name": "North Cornwall",
+    "country": "England"
+  },
+  {
+    "name": "North Cotswolds",
+    "country": "England"
+  },
+  {
+    "name": "North Devon",
+    "country": "England"
+  },
+  {
+    "name": "North Dorset",
+    "country": "England"
+  },
+  {
+    "name": "North Durham",
+    "country": "England"
+  },
+  {
+    "name": "North East Cambridgeshire",
+    "country": "England"
+  },
+  {
+    "name": "North East Derbyshire",
+    "country": "England"
+  },
+  {
+    "name": "North East Hampshire",
+    "country": "England"
+  },
+  {
+    "name": "North East Hertfordshire",
+    "country": "England"
+  },
+  {
+    "name": "North East Somerset and Hanham",
+    "country": "England"
+  },
+  {
+    "name": "North Herefordshire",
+    "country": "England"
+  },
+  {
+    "name": "North Norfolk",
+    "country": "England"
+  },
+  {
+    "name": "North Northumberland",
+    "country": "England"
+  },
+  {
+    "name": "North Shropshire",
+    "country": "England"
+  },
+  {
+    "name": "North Somerset",
+    "country": "England"
+  },
+  {
+    "name": "North Warwickshire and Bedworth",
+    "country": "England"
+  },
+  {
+    "name": "North West Cambridgeshire",
+    "country": "England"
+  },
+  {
+    "name": "North West Essex",
+    "country": "England"
+  },
+  {
+    "name": "North West Hampshire",
+    "country": "England"
+  },
+  {
+    "name": "North West Leicestershire",
+    "country": "England"
+  },
+  {
+    "name": "North West Norfolk",
+    "country": "England"
+  },
+  {
+    "name": "Northampton North",
+    "country": "England"
+  },
+  {
+    "name": "Northampton South",
+    "country": "England"
+  },
+  {
+    "name": "Norwich North",
+    "country": "England"
+  },
+  {
+    "name": "Norwich South",
+    "country": "England"
+  },
+  {
+    "name": "Nottingham East",
+    "country": "England"
+  },
+  {
+    "name": "Nottingham North and Kimberley",
+    "country": "England"
+  },
+  {
+    "name": "Nottingham South",
+    "country": "England"
+  },
+  {
+    "name": "Nuneaton",
+    "country": "England"
+  },
+  {
+    "name": "Old Bexley and Sidcup",
+    "country": "England"
+  },
+  {
+    "name": "Oldham East and Saddleworth",
+    "country": "England"
+  },
+  {
+    "name": "Oldham West, Chadderton and Royton",
+    "country": "England"
+  },
+  {
+    "name": "Orpington",
+    "country": "England"
+  },
+  {
+    "name": "Ossett and Denby Dale",
+    "country": "England"
+  },
+  {
+    "name": "Oxford East",
+    "country": "England"
+  },
+  {
+    "name": "Oxford West and Abingdon",
+    "country": "England"
+  },
+  {
+    "name": "Peckham",
+    "country": "England"
+  },
+  {
+    "name": "Pendle and Clitheroe",
+    "country": "England"
+  },
+  {
+    "name": "Penistone and Stocksbridge",
+    "country": "England"
+  },
+  {
+    "name": "Penrith and Solway",
+    "country": "England"
+  },
+  {
+    "name": "Peterborough",
+    "country": "England"
+  },
+  {
+    "name": "Plymouth Moor View",
+    "country": "England"
+  },
+  {
+    "name": "Plymouth Sutton and Devonport",
+    "country": "England"
+  },
+  {
+    "name": "Pontefract, Castleford and Knottingley",
+    "country": "England"
+  },
+  {
+    "name": "Poole",
+    "country": "England"
+  },
+  {
+    "name": "Poplar and Limehouse",
+    "country": "England"
+  },
+  {
+    "name": "Portsmouth North",
+    "country": "England"
+  },
+  {
+    "name": "Portsmouth South",
+    "country": "England"
+  },
+  {
+    "name": "Preston",
+    "country": "England"
+  },
+  {
+    "name": "Putney",
+    "country": "England"
+  },
+  {
+    "name": "Queen's Park and Maida Vale",
+    "country": "England"
+  },
+  {
+    "name": "Rawmarsh and Conisbrough",
+    "country": "England"
+  },
+  {
+    "name": "Rayleigh and Wickford",
+    "country": "England"
+  },
+  {
+    "name": "Reading Central",
+    "country": "England"
+  },
+  {
+    "name": "Reading West and Mid Berkshire",
+    "country": "England"
+  },
+  {
+    "name": "Redcar",
+    "country": "England"
+  },
+  {
+    "name": "Redditch",
+    "country": "England"
+  },
+  {
+    "name": "Reigate",
+    "country": "England"
+  },
+  {
+    "name": "Ribble Valley",
+    "country": "England"
+  },
+  {
+    "name": "Richmond Park",
+    "country": "England"
+  },
+  {
+    "name": "Richmond and Northallerton",
+    "country": "England"
+  },
+  {
+    "name": "Rochdale",
+    "country": "England"
+  },
+  {
+    "name": "Rochester and Strood",
+    "country": "England"
+  },
+  {
+    "name": "Romford",
+    "country": "England"
+  },
+  {
+    "name": "Romsey and Southampton North",
+    "country": "England"
+  },
+  {
+    "name": "Rossendale and Darwen",
+    "country": "England"
+  },
+  {
+    "name": "Rother Valley",
+    "country": "England"
+  },
+  {
+    "name": "Rotherham",
+    "country": "England"
+  },
+  {
+    "name": "Rugby",
+    "country": "England"
+  },
+  {
+    "name": "Ruislip, Northwood and Pinner",
+    "country": "England"
+  },
+  {
+    "name": "Runcorn and Helsby",
+    "country": "England"
+  },
+  {
+    "name": "Runnymede and Weybridge",
+    "country": "England"
+  },
+  {
+    "name": "Rushcliffe",
+    "country": "England"
+  },
+  {
+    "name": "Rutland and Stamford",
+    "country": "England"
+  },
+  {
+    "name": "Salford",
+    "country": "England"
+  },
+  {
+    "name": "Salisbury",
+    "country": "England"
+  },
+  {
+    "name": "Scarborough and Whitby",
+    "country": "England"
+  },
+  {
+    "name": "Scunthorpe",
+    "country": "England"
+  },
+  {
+    "name": "Sefton Central",
+    "country": "England"
+  },
+  {
+    "name": "Selby",
+    "country": "England"
+  },
+  {
+    "name": "Sevenoaks",
+    "country": "England"
+  },
+  {
+    "name": "Sheffield Brightside and Hillsborough",
+    "country": "England"
+  },
+  {
+    "name": "Sheffield Central",
+    "country": "England"
+  },
+  {
+    "name": "Sheffield Hallam",
+    "country": "England"
+  },
+  {
+    "name": "Sheffield Heeley",
+    "country": "England"
+  },
+  {
+    "name": "Sheffield South East",
+    "country": "England"
+  },
+  {
+    "name": "Sherwood Forest",
+    "country": "England"
+  },
+  {
+    "name": "Shipley",
+    "country": "England"
+  },
+  {
+    "name": "Shrewsbury",
+    "country": "England"
+  },
+  {
+    "name": "Sittingbourne and Sheppey",
+    "country": "England"
+  },
+  {
+    "name": "Skipton and Ripon",
+    "country": "England"
+  },
+  {
+    "name": "Sleaford and North Hykeham",
+    "country": "England"
+  },
+  {
+    "name": "Slough",
+    "country": "England"
+  },
+  {
+    "name": "Smethwick",
+    "country": "England"
+  },
+  {
+    "name": "Solihull West and Shirley",
+    "country": "England"
+  },
+  {
+    "name": "South Basildon and East Thurrock",
+    "country": "England"
+  },
+  {
+    "name": "South Cambridgeshire",
+    "country": "England"
+  },
+  {
+    "name": "South Cotswolds",
+    "country": "England"
+  },
+  {
+    "name": "South Derbyshire",
+    "country": "England"
+  },
+  {
+    "name": "South Devon",
+    "country": "England"
+  },
+  {
+    "name": "South Dorset",
+    "country": "England"
+  },
+  {
+    "name": "South East Cornwall",
+    "country": "England"
+  },
+  {
+    "name": "South Holland and The Deepings",
+    "country": "England"
+  },
+  {
+    "name": "South Leicestershire",
+    "country": "England"
+  },
+  {
+    "name": "South Norfolk",
+    "country": "England"
+  },
+  {
+    "name": "South Northamptonshire",
+    "country": "England"
+  },
+  {
+    "name": "South Ribble",
+    "country": "England"
+  },
+  {
+    "name": "South Shields",
+    "country": "England"
+  },
+  {
+    "name": "South Shropshire",
+    "country": "England"
+  },
+  {
+    "name": "South Suffolk",
+    "country": "England"
+  },
+  {
+    "name": "South West Devon",
+    "country": "England"
+  },
+  {
+    "name": "South West Hertfordshire",
+    "country": "England"
+  },
+  {
+    "name": "South West Norfolk",
+    "country": "England"
+  },
+  {
+    "name": "South West Wiltshire",
+    "country": "England"
+  },
+  {
+    "name": "Southampton Itchen",
+    "country": "England"
+  },
+  {
+    "name": "Southampton Test",
+    "country": "England"
+  },
+  {
+    "name": "Southend East and Rochford",
+    "country": "England"
+  },
+  {
+    "name": "Southend West and Leigh",
+    "country": "England"
+  },
+  {
+    "name": "Southgate and Wood Green",
+    "country": "England"
+  },
+  {
+    "name": "Southport",
+    "country": "England"
+  },
+  {
+    "name": "Spelthorne",
+    "country": "England"
+  },
+  {
+    "name": "Spen Valley",
+    "country": "England"
+  },
+  {
+    "name": "St Albans",
+    "country": "England"
+  },
+  {
+    "name": "St Austell and Newquay",
+    "country": "England"
+  },
+  {
+    "name": "St Helens North",
+    "country": "England"
+  },
+  {
+    "name": "St Helens South and Whiston",
+    "country": "England"
+  },
+  {
+    "name": "St Ives",
+    "country": "England"
+  },
+  {
+    "name": "St Neots and Mid Cambridgeshire",
+    "country": "England"
+  },
+  {
+    "name": "Stafford",
+    "country": "England"
+  },
+  {
+    "name": "Staffordshire Moorlands",
+    "country": "England"
+  },
+  {
+    "name": "Stalybridge and Hyde",
+    "country": "England"
+  },
+  {
+    "name": "Stevenage",
+    "country": "England"
+  },
+  {
+    "name": "Stockport",
+    "country": "England"
+  },
+  {
+    "name": "Stockton North",
+    "country": "England"
+  },
+  {
+    "name": "Stockton West",
+    "country": "England"
+  },
+  {
+    "name": "Stoke-on-Trent Central",
+    "country": "England"
+  },
+  {
+    "name": "Stoke-on-Trent North",
+    "country": "England"
+  },
+  {
+    "name": "Stoke-on-Trent South",
+    "country": "England"
+  },
+  {
+    "name": "Stone, Great Wyrley and Penkridge",
+    "country": "England"
+  },
+  {
+    "name": "Stourbridge",
+    "country": "England"
+  },
+  {
+    "name": "Stratford and Bow",
+    "country": "England"
+  },
+  {
+    "name": "Stratford-on-Avon",
+    "country": "England"
+  },
+  {
+    "name": "Streatham and Croydon North",
+    "country": "England"
+  },
+  {
+    "name": "Stretford and Urmston",
+    "country": "England"
+  },
+  {
+    "name": "Stroud",
+    "country": "England"
+  },
+  {
+    "name": "Suffolk Coastal",
+    "country": "England"
+  },
+  {
+    "name": "Sunderland Central",
+    "country": "England"
+  },
+  {
+    "name": "Surrey Heath",
+    "country": "England"
+  },
+  {
+    "name": "Sussex Weald",
+    "country": "England"
+  },
+  {
+    "name": "Sutton Coldfield",
+    "country": "England"
+  },
+  {
+    "name": "Sutton and Cheam",
+    "country": "England"
+  },
+  {
+    "name": "Swindon North",
+    "country": "England"
+  },
+  {
+    "name": "Swindon South",
+    "country": "England"
+  },
+  {
+    "name": "Tamworth",
+    "country": "England"
+  },
+  {
+    "name": "Tatton",
+    "country": "England"
+  },
+  {
+    "name": "Taunton and Wellington",
+    "country": "England"
+  },
+  {
+    "name": "Telford",
+    "country": "England"
+  },
+  {
+    "name": "Tewkesbury",
+    "country": "England"
+  },
+  {
+    "name": "The Wrekin",
+    "country": "England"
+  },
+  {
+    "name": "Thirsk and Malton",
+    "country": "England"
+  },
+  {
+    "name": "Thornbury and Yate",
+    "country": "England"
+  },
+  {
+    "name": "Thurrock",
+    "country": "England"
+  },
+  {
+    "name": "Tipton and Wednesbury",
+    "country": "England"
+  },
+  {
+    "name": "Tiverton and Minehead",
+    "country": "England"
+  },
+  {
+    "name": "Tonbridge",
+    "country": "England"
+  },
+  {
+    "name": "Tooting",
+    "country": "England"
+  },
+  {
+    "name": "Torbay",
+    "country": "England"
+  },
+  {
+    "name": "Torridge and Tavistock",
+    "country": "England"
+  },
+  {
+    "name": "Tottenham",
+    "country": "England"
+  },
+  {
+    "name": "Truro and Falmouth",
+    "country": "England"
+  },
+  {
+    "name": "Tunbridge Wells",
+    "country": "England"
+  },
+  {
+    "name": "Twickenham",
+    "country": "England"
+  },
+  {
+    "name": "Tynemouth",
+    "country": "England"
+  },
+  {
+    "name": "Uxbridge and South Ruislip",
+    "country": "England"
+  },
+  {
+    "name": "Vauxhall and Camberwell Green",
+    "country": "England"
+  },
+  {
+    "name": "Wakefield and Rothwell",
+    "country": "England"
+  },
+  {
+    "name": "Wallasey",
+    "country": "England"
+  },
+  {
+    "name": "Walsall and Bloxwich",
+    "country": "England"
+  },
+  {
+    "name": "Walthamstow",
+    "country": "England"
+  },
+  {
+    "name": "Warrington North",
+    "country": "England"
+  },
+  {
+    "name": "Warrington South",
+    "country": "England"
+  },
+  {
+    "name": "Warwick and Leamington",
+    "country": "England"
+  },
+  {
+    "name": "Washington and Gateshead South",
+    "country": "England"
+  },
+  {
+    "name": "Watford",
+    "country": "England"
+  },
+  {
+    "name": "Waveney Valley",
+    "country": "England"
+  },
+  {
+    "name": "Weald of Kent",
+    "country": "England"
+  },
+  {
+    "name": "Wellingborough and Rushden",
+    "country": "England"
+  },
+  {
+    "name": "Wells and Mendip Hills",
+    "country": "England"
+  },
+  {
+    "name": "Welwyn Hatfield",
+    "country": "England"
+  },
+  {
+    "name": "West Bromwich",
+    "country": "England"
+  },
+  {
+    "name": "West Dorset",
+    "country": "England"
+  },
+  {
+    "name": "West Ham and Beckton",
+    "country": "England"
+  },
+  {
+    "name": "West Lancashire",
+    "country": "England"
+  },
+  {
+    "name": "West Suffolk",
+    "country": "England"
+  },
+  {
+    "name": "West Worcestershire",
+    "country": "England"
+  },
+  {
+    "name": "Westmorland and Lonsdale",
+    "country": "England"
+  },
+  {
+    "name": "Weston-super-Mare",
+    "country": "England"
+  },
+  {
+    "name": "Wetherby and Easingwold",
+    "country": "England"
+  },
+  {
+    "name": "Whitehaven and Workington",
+    "country": "England"
+  },
+  {
+    "name": "Widnes and Halewood",
+    "country": "England"
+  },
+  {
+    "name": "Wigan",
+    "country": "England"
+  },
+  {
+    "name": "Wimbledon",
+    "country": "England"
+  },
+  {
+    "name": "Winchester",
+    "country": "England"
+  },
+  {
+    "name": "Windsor",
+    "country": "England"
+  },
+  {
+    "name": "Wirral West",
+    "country": "England"
+  },
+  {
+    "name": "Witham",
+    "country": "England"
+  },
+  {
+    "name": "Witney",
+    "country": "England"
+  },
+  {
+    "name": "Woking",
+    "country": "England"
+  },
+  {
+    "name": "Wokingham",
+    "country": "England"
+  },
+  {
+    "name": "Wolverhampton North East",
+    "country": "England"
+  },
+  {
+    "name": "Wolverhampton South East",
+    "country": "England"
+  },
+  {
+    "name": "Wolverhampton West",
+    "country": "England"
+  },
+  {
+    "name": "Worcester",
+    "country": "England"
+  },
+  {
+    "name": "Worsley and Eccles",
+    "country": "England"
+  },
+  {
+    "name": "Worthing West",
+    "country": "England"
+  },
+  {
+    "name": "Wycombe",
+    "country": "England"
+  },
+  {
+    "name": "Wyre Forest",
+    "country": "England"
+  },
+  {
+    "name": "Wythenshawe and Sale East",
+    "country": "England"
+  },
+  {
+    "name": "Yeovil",
+    "country": "England"
+  },
+  {
+    "name": "York Central",
+    "country": "England"
+  },
+  {
+    "name": "York Outer",
+    "country": "England"
+  },
+  {
+    "name": "Belfast East",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Belfast North",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Belfast South and Mid Down",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Belfast West",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "East Antrim",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "East Londonderry",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Fermanagh and South Tyrone",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Foyle",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Lagan Valley",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Mid Ulster",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Newry and Armagh",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "North Antrim",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "North Down",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "South Antrim",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "South Down",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Strangford",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Upper Bann",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "West Tyrone",
+    "country": "Northern Ireland"
+  },
+  {
+    "name": "Aberdeen North",
+    "country": "Scotland"
+  },
+  {
+    "name": "Aberdeen South",
+    "country": "Scotland"
+  },
+  {
+    "name": "Aberdeenshire North and Moray East",
+    "country": "Scotland"
+  },
+  {
+    "name": "Airdrie and Shotts",
+    "country": "Scotland"
+  },
+  {
+    "name": "Alloa and Grangemouth",
+    "country": "Scotland"
+  },
+  {
+    "name": "Angus and Perthshire Glens",
+    "country": "Scotland"
+  },
+  {
+    "name": "Arbroath and Broughty Ferry",
+    "country": "Scotland"
+  },
+  {
+    "name": "Argyll, Bute and South Lochaber",
+    "country": "Scotland"
+  },
+  {
+    "name": "Ayr, Carrick and Cumnock",
+    "country": "Scotland"
+  },
+  {
+    "name": "Bathgate and Linlithgow",
+    "country": "Scotland"
+  },
+  {
+    "name": "Berwickshire, Roxburgh and Selkirk",
+    "country": "Scotland"
+  },
+  {
+    "name": "Caithness, Sutherland and Easter Ross",
+    "country": "Scotland"
+  },
+  {
+    "name": "Central Ayrshire",
+    "country": "Scotland"
+  },
+  {
+    "name": "Coatbridge and Bellshill",
+    "country": "Scotland"
+  },
+  {
+    "name": "Cowdenbeath and Kirkcaldy",
+    "country": "Scotland"
+  },
+  {
+    "name": "Cumbernauld and Kirkintilloch",
+    "country": "Scotland"
+  },
+  {
+    "name": "Dumfries and Galloway",
+    "country": "Scotland"
+  },
+  {
+    "name": "Dumfriesshire, Clydesdale and Tweeddale",
+    "country": "Scotland"
+  },
+  {
+    "name": "Dundee Central",
+    "country": "Scotland"
+  },
+  {
+    "name": "Dunfermline and Dollar",
+    "country": "Scotland"
+  },
+  {
+    "name": "East Kilbride and Strathaven",
+    "country": "Scotland"
+  },
+  {
+    "name": "East Renfrewshire",
+    "country": "Scotland"
+  },
+  {
+    "name": "Edinburgh East and Musselburgh",
+    "country": "Scotland"
+  },
+  {
+    "name": "Edinburgh North and Leith",
+    "country": "Scotland"
+  },
+  {
+    "name": "Edinburgh South",
+    "country": "Scotland"
+  },
+  {
+    "name": "Edinburgh South West",
+    "country": "Scotland"
+  },
+  {
+    "name": "Edinburgh West",
+    "country": "Scotland"
+  },
+  {
+    "name": "Falkirk",
+    "country": "Scotland"
+  },
+  {
+    "name": "Glasgow East",
+    "country": "Scotland"
+  },
+  {
+    "name": "Glasgow North",
+    "country": "Scotland"
+  },
+  {
+    "name": "Glasgow North East",
+    "country": "Scotland"
+  },
+  {
+    "name": "Glasgow South",
+    "country": "Scotland"
+  },
+  {
+    "name": "Glasgow South West",
+    "country": "Scotland"
+  },
+  {
+    "name": "Glasgow West",
+    "country": "Scotland"
+  },
+  {
+    "name": "Glenrothes and Mid Fife",
+    "country": "Scotland"
+  },
+  {
+    "name": "Gordon and Buchan",
+    "country": "Scotland"
+  },
+  {
+    "name": "Hamilton and Clyde Valley",
+    "country": "Scotland"
+  },
+  {
+    "name": "Inverclyde and Renfrewshire West",
+    "country": "Scotland"
+  },
+  {
+    "name": "Inverness, Skye and West Ross-shire",
+    "country": "Scotland"
+  },
+  {
+    "name": "Kilmarnock and Loudoun",
+    "country": "Scotland"
+  },
+  {
+    "name": "Livingston",
+    "country": "Scotland"
+  },
+  {
+    "name": "Lothian East",
+    "country": "Scotland"
+  },
+  {
+    "name": "Mid Dunbartonshire",
+    "country": "Scotland"
+  },
+  {
+    "name": "Midlothian",
+    "country": "Scotland"
+  },
+  {
+    "name": "Moray West, Nairn and Strathspey",
+    "country": "Scotland"
+  },
+  {
+    "name": "Motherwell, Wishaw and Carluke",
+    "country": "Scotland"
+  },
+  {
+    "name": "Na h-Eileanan an Iar",
+    "country": "Scotland"
+  },
+  {
+    "name": "North Ayrshire and Arran",
+    "country": "Scotland"
+  },
+  {
+    "name": "North East Fife",
+    "country": "Scotland"
+  },
+  {
+    "name": "Orkney and Shetland",
+    "country": "Scotland"
+  },
+  {
+    "name": "Paisley and Renfrewshire North",
+    "country": "Scotland"
+  },
+  {
+    "name": "Paisley and Renfrewshire South",
+    "country": "Scotland"
+  },
+  {
+    "name": "Perth and Kinross-shire",
+    "country": "Scotland"
+  },
+  {
+    "name": "Rutherglen",
+    "country": "Scotland"
+  },
+  {
+    "name": "Stirling and Strathallan",
+    "country": "Scotland"
+  },
+  {
+    "name": "West Aberdeenshire and Kincardine",
+    "country": "Scotland"
+  },
+  {
+    "name": "West Dunbartonshire",
+    "country": "Scotland"
+  },
+  {
+    "name": "Aberafan Maesteg",
+    "country": "Wales"
+  },
+  {
+    "name": "Alyn and Deeside",
+    "country": "Wales"
+  },
+  {
+    "name": "Bangor Aberconwy",
+    "country": "Wales"
+  },
+  {
+    "name": "Blaenau Gwent and Rhymney",
+    "country": "Wales"
+  },
+  {
+    "name": "Brecon, Radnor and Cwm Tawe",
+    "country": "Wales"
+  },
+  {
+    "name": "Bridgend",
+    "country": "Wales"
+  },
+  {
+    "name": "Caerfyrddin",
+    "country": "Wales"
+  },
+  {
+    "name": "Caerphilly",
+    "country": "Wales"
+  },
+  {
+    "name": "Cardiff East",
+    "country": "Wales"
+  },
+  {
+    "name": "Cardiff North",
+    "country": "Wales"
+  },
+  {
+    "name": "Cardiff South and Penarth",
+    "country": "Wales"
+  },
+  {
+    "name": "Cardiff West",
+    "country": "Wales"
+  },
+  {
+    "name": "Ceredigion Preseli",
+    "country": "Wales"
+  },
+  {
+    "name": "Clwyd East",
+    "country": "Wales"
+  },
+  {
+    "name": "Clwyd North",
+    "country": "Wales"
+  },
+  {
+    "name": "Dwyfor Meirionnydd",
+    "country": "Wales"
+  },
+  {
+    "name": "Gower",
+    "country": "Wales"
+  },
+  {
+    "name": "Llanelli",
+    "country": "Wales"
+  },
+  {
+    "name": "Merthyr Tydfil and Aberdare",
+    "country": "Wales"
+  },
+  {
+    "name": "Mid and South Pembrokeshire",
+    "country": "Wales"
+  },
+  {
+    "name": "Monmouthshire",
+    "country": "Wales"
+  },
+  {
+    "name": "Montgomeryshire and Glynd\u0175r",
+    "country": "Wales"
+  },
+  {
+    "name": "Neath and Swansea East",
+    "country": "Wales"
+  },
+  {
+    "name": "Newport East",
+    "country": "Wales"
+  },
+  {
+    "name": "Newport West and Islwyn",
+    "country": "Wales"
+  },
+  {
+    "name": "Pontypridd",
+    "country": "Wales"
+  },
+  {
+    "name": "Rhondda and Ogmore",
+    "country": "Wales"
+  },
+  {
+    "name": "Swansea West",
+    "country": "Wales"
+  },
+  {
+    "name": "Torfaen",
+    "country": "Wales"
+  },
+  {
+    "name": "Vale of Glamorgan",
+    "country": "Wales"
+  },
+  {
+    "name": "Wrexham",
+    "country": "Wales"
+  },
+  {
+    "name": "Ynys M\u00f4n",
+    "country": "Wales"
+  }
+]

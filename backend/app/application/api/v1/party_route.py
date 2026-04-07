@@ -36,9 +36,8 @@ router = APIRouter(
 )
 async def get_all_parties(
     service: PartyService = Depends(get_party_service),
-    current_user: TokenPayload = Depends(get_current_user),
 ) -> List[PartyItem]:
-    """Get all parties."""
+    """Get all parties (public – voters need party names for ballot)."""
     return await service.get_all_parties()
 
 

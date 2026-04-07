@@ -16,7 +16,7 @@ class InvestigationRepository:
 
     _UPDATABLE_FIELDS = frozenset({
         "status", "category", "assigned_to", "notes",
-        "resolved_by", "resolved_at",
+        "resolved_by", "resolution_summary", "resolved_at",
     })
 
     def __init__(self, model: Type[Investigation] = Investigation) -> None:

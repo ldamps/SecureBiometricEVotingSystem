@@ -3,6 +3,7 @@
 from fastapi import APIRouter, status, Path, Depends, Query
 from app.application.api.responses import responses
 from app.application.constants import Resource
+from app.application.core.exceptions import NotFoundError
 from uuid import UUID
 import structlog
 from typing import Optional
@@ -54,6 +55,5 @@ async def get_constituency(
 ) -> ConstituencyItem:
     constituency = await service.get_by_id(constituency_id)
     if not constituency:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Constituency not found")
+        raise NotFoundError("Constituency not found")
     return ConstituencyItem.model_validate(constituency, from_attributes=True)

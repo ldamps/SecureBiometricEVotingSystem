@@ -210,4 +210,63 @@ class AddressRepository:
             )
             raise
 
+    async def update_address_status(
+        self,
+        session: AsyncSession,
+        address_id: UUID,
+        address_status: str,
+    ) -> Address:
+        """Update the status of an address (e.g. PENDING -> ACTIVE)."""
+        from app.models.sqlalchemy.address import AddressStatus
+        try:
+            stmt = (
+                update(self._model)
+                .where(self._model.id == address_id)
+                .values(address_status=AddressStatus(address_status))
+                .returning(self._model)
+            )
+            result = await session.execute(stmt)
+            updated = result.scalar_one_or_none()
+            if not updated:
+                raise NotFoundError("Address not found")
+            logger.info("Address status updated", address_id=address_id, status=address_status)
+            return updated
+        except NotFoundError:
+            raise
+        except Exception:
+            logger.exception("Failed to update address status", address_id=address_id)
+            raise
+
+    async def has_overseas_address(
+        self,
+        session: AsyncSession,
+        voter_id: UUID,
+    ) -> bool:
+        """Return True if the voter has an active OVERSEAS address."""
+        from app.models.sqlalchemy.address import AddressType, AddressStatus
+        try:
+            result = await session.execute(
+                select(self._model.id).where(
+                    self._model.voter_id == voter_id,
+                    self._model.address_type == AddressType.OVERSEAS,
+                    self._model.address_status == AddressStatus.ACTIVE,
+                ).limit(1)
+            )
+            return result.scalar_one_or_none() is not None
+        except Exception:
+            logger.exception("Failed to check overseas address", voter_id=voter_id)
+            raise
+
+    async def get_all_addresses(
+        self,
+        session: AsyncSession,
+    ) -> List[Address]:
+        """Get all addresses (used for verification fallback when no postcode is provided)."""
+        try:
+            result = await session.execute(select(self._model))
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception("Failed to get all addresses")
+            raise
+
     # ------------------------------------------------------------
