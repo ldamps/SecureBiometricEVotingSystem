@@ -32,15 +32,12 @@ jobs:
             echo "==> Pulling latest code..."
             git pull origin main
 
-            # ── Write backend .env ────────────────────────────────────────
+            # ── Write backend .env (stable secrets from GitHub) ─────────
             cat > backend/.env <<ENVEOF
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             ENCRYPTION_PROVIDER=${{ secrets.ENCRYPTION_PROVIDER }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             ENCRYPTION_HMAC_SECRET=${{ secrets.ENCRYPTION_HMAC_SECRET }}
-            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
             AWS_REGION=${{ secrets.AWS_REGION }}
             KMS_KEY_ID=${{ secrets.KMS_KEY_ID }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
@@ -55,6 +52,14 @@ jobs:
             STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' backend/.env
+
+            # ── Append AWS credentials managed on EC2 (rotates per lab session)
+            if [ -f backend/aws.env ]; then
+              cat backend/aws.env >> backend/.env
+              echo "    AWS credentials appended from backend/aws.env"
+            else
+              echo "WARNING: backend/aws.env not found — KMS encryption will be unavailable"
+            fi
 
             # ── Export compose variables ──────────────────────────────────
             export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
