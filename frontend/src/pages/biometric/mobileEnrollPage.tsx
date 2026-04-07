@@ -164,19 +164,20 @@ function MobileEnrollPage() {
                 marginTop: theme.spacing.md,
                 padding: theme.spacing.md,
                 borderRadius: theme.borderRadius?.md || "8px",
-                backgroundColor: "#f0fff4",
+                backgroundColor: theme.colors.background?.secondary || theme.colors.background,
                 border: `1px solid ${theme.colors.status.success}`,
                 textAlign: "center",
+                color: theme.colors.text.primary,
               }}
             >
               <strong>Device enrolled</strong>
               <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>
                 Biometric modalities: face + ear (stored on device only)
               </p>
-              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.85rem", color: "#666" }}>
+              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.85rem", color: theme.colors.text.secondary }}>
                 Your signing key is encrypted with your biometric features and cannot be used without your face and ear.
               </p>
-              <p style={{ margin: `${theme.spacing.sm} 0 0 0`, fontSize: "0.85rem", color: "#666" }}>
+              <p style={{ margin: `${theme.spacing.sm} 0 0 0`, fontSize: "0.85rem", color: theme.colors.text.secondary }}>
                 You can now close this tab and return to the registration page.
               </p>
             </div>

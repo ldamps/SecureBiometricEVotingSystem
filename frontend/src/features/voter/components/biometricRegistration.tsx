@@ -231,8 +231,9 @@ function BiometricRegistration({
                         marginTop: theme.spacing.md,
                         padding: theme.spacing.md,
                         borderRadius: theme.borderRadius?.md || "8px",
-                        backgroundColor: "#f0fff4",
+                        backgroundColor: theme.colors.background?.secondary || theme.colors.background,
                         border: `1px solid ${theme.colors.status.success}`,
+                        color: theme.colors.text.primary,
                     }}>
                         <strong>Device enrolled</strong>
                         <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>

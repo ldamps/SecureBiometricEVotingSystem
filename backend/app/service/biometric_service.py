@@ -16,7 +16,7 @@ from uuid import UUID
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, utils as asym_utils
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sqlalchemy.biometric_credentials import DeviceCredential, BiometricChallenge
@@ -198,8 +198,17 @@ class BiometricService:
         # 3. Verify ECDSA signature
         try:
             public_key = self._parse_public_key(credential.public_key_pem)
-            signature_bytes = base64.b64decode(request.signature)
+            raw_sig = base64.b64decode(request.signature)
             challenge_bytes = bytes.fromhex(challenge.challenge)
+
+            # Web Crypto API produces IEEE P1363 signatures (r||s, 64 bytes
+            # for P-256). Python cryptography expects DER encoding, so convert.
+            if len(raw_sig) == 64:
+                r = int.from_bytes(raw_sig[:32], "big")
+                s = int.from_bytes(raw_sig[32:], "big")
+                signature_bytes = asym_utils.encode_dss_signature(r, s)
+            else:
+                signature_bytes = raw_sig
 
             public_key.verify(
                 signature_bytes,
