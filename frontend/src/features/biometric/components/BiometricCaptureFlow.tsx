@@ -17,8 +17,8 @@ import { useTheme } from "../../../styles/ThemeContext";
 import { getCardStyle } from "../../../styles/ui";
 import { useCameraStream } from "../hooks/useCameraStream";
 import * as faceapi from "face-api.js";
-import { loadFaceModels, extractFaceDescriptor, extractStableFaceDescriptor } from "../services/face-recognition.service";
-import { loadEarModel, extractEarDescriptor } from "../services/ear-recognition.service";
+import { loadFaceModels, extractStableFaceDescriptor } from "../services/face-recognition.service";
+import { loadEarModel, extractStableEarDescriptor } from "../services/ear-recognition.service";
 import { FeatureDescriptor } from "../models/biometric-feature.model";
 
 type CaptureStep =
@@ -185,9 +185,11 @@ function BiometricCaptureFlow({ mode, onComplete, onError }: BiometricCaptureFlo
       if (!video) return;
 
       try {
+        // Always use multi-sample averaging for a more stable descriptor.
+        // Enrollment uses 5 samples; verification uses 3 for speed.
         const result = mode === "enroll"
-          ? await extractStableFaceDescriptor(video, 3, 250)
-          : await extractFaceDescriptor(video);
+          ? await extractStableFaceDescriptor(video, 5, 250)
+          : await extractStableFaceDescriptor(video, 3, 200);
 
         if (cancelled) return;
 
@@ -255,7 +257,10 @@ function BiometricCaptureFlow({ mode, onComplete, onError }: BiometricCaptureFlo
       }
 
       try {
-        const earResult = await extractEarDescriptor(video);
+        // Multi-sample averaging for stable ear descriptors.
+        // Enrollment uses 5 samples; verification uses 3 for speed.
+        const earSamples = mode === "enroll" ? 5 : 3;
+        const earResult = await extractStableEarDescriptor(video, earSamples, 300);
         if (cancelled) return;
 
         if (!earResult) {

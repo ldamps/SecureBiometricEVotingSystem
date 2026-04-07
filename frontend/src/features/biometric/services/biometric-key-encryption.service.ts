@@ -84,13 +84,14 @@ async function deriveAesKey(
  */
 function generateOffsets(): number[] {
   const offsets: number[] = [0]; // always include zero-offset (exact match)
-  // For binary quantisation with range [-1, 1], bin width = 1.0.
-  // Offsets of ±0.05 to ±0.25 cover typical cross-device drift.
-  for (const delta of [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35]) {
+  // With 8 bins across [-1, 1], bin width = 0.25.
+  // Offsets of ±0.03 to ±0.06 cover typical cross-device drift
+  // without exceeding ~25% of the bin width.
+  for (const delta of [0.03, 0.06]) {
     offsets.push(delta);
     offsets.push(-delta);
   }
-  return offsets; // 15 offsets total
+  return offsets; // 5 offsets total
 }
 
 /**

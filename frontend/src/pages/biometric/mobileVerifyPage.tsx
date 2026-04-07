@@ -2,13 +2,18 @@
  * Mobile Biometric Verification Page
  *
  * Accessed by scanning the QR code shown on the desktop voting flow.
- * Fetches the encrypted key bundle from the server, re-captures face +
- * ear biometrics, decrypts the signing key with the biometric-derived
- * AES key, signs the server challenge, and submits the signature.
+ * Verification is locked to the enrolled device — the device_id stored
+ * in localStorage must match the credential registered on the server.
  *
- * The encrypted bundle is stored on the server but can only be decrypted
- * with the voter's matching face + ear — the server cannot use it.
- * This means the voter can verify from ANY device/browser.
+ * Flow:
+ *   1. Fetch credential from server, verify device_id matches this device.
+ *   2. Load enrolled face + ear templates from local IndexedDB.
+ *   3. Capture fresh biometrics and match against enrolled templates (gate).
+ *   4. Decrypt the ECDSA private key with the biometric-derived AES key.
+ *   5. Sign the server challenge and submit.
+ *
+ * No biometric data ever leaves the device — only a cryptographic
+ * signature is sent to the server.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -18,6 +23,8 @@ import { getCardStyle, getPageTitleStyle, getSuccessAlertStyle, PrimaryButton } 
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
+import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
+import { retrieveBiometricData } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
 
 const biometricApi = new BiometricApiRepository();
@@ -47,6 +54,7 @@ type VerifyState =
   | "success"
   | "error"
   | "no_enrollment"
+  | "wrong_device"
   | "decrypt_failed";
 
 function MobileVerifyPage() {
@@ -58,7 +66,14 @@ function MobileVerifyPage() {
   const [state, setState] = useState<VerifyState>("ready");
   const [error, setError] = useState<string | null>(null);
   const [encryptedBundle, setEncryptedBundle] = useState<EncryptedKeyBundle | null>(null);
-  const [deviceId, setDeviceId] = useState<string>("");
+  const [enrolledDeviceId, setEnrolledDeviceId] = useState<string>("");
+  const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
+  const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
+
+  /** Read this device's ID from localStorage (set during enrollment). */
+  function getLocalDeviceId(): string | null {
+    return localStorage.getItem("evoting_device_id");
+  }
 
   useEffect(() => {
     if (!challengeId || !voterId) {
@@ -67,13 +82,14 @@ function MobileVerifyPage() {
     }
   }, [challengeId, voterId]);
 
-  // Fetch the encrypted key bundle from the server.
+  // Fetch credential from server, enforce same-device, load local templates.
   const handleStartVerify = useCallback(async () => {
     if (!voterId) return;
     setError(null);
     setState("loading");
 
     try {
+      // 1. Fetch credential from server
       const credentials = await biometricApi.listCredentials(voterId);
       const active = credentials.find((c) => c.is_active && c.encrypted_key_bundle);
 
@@ -83,8 +99,35 @@ function MobileVerifyPage() {
         return;
       }
 
+      // 2. Enforce same-device: the device_id in localStorage must match
+      //    the device_id registered during enrollment on the server.
+      const localDeviceId = getLocalDeviceId();
+      if (!localDeviceId || localDeviceId !== active.device_id) {
+        setState("wrong_device");
+        setError(
+          "This is not the device you enrolled with. " +
+          "Biometric verification must be performed on the same phone " +
+          "used during enrollment to protect your identity.",
+        );
+        return;
+      }
+
+      // 3. Load enrolled templates from local IndexedDB (device-only storage).
+      //    These MUST exist — without them the matching gate cannot run.
+      const stored = await retrieveBiometricData(voterId);
+      if (!stored || !stored.faceTemplate || !stored.earTemplate) {
+        setState("no_enrollment");
+        setError(
+          "Your enrolled biometric templates were not found on this device. " +
+          "Please re-enrol your biometrics from the registration page.",
+        );
+        return;
+      }
+
       setEncryptedBundle(JSON.parse(active.encrypted_key_bundle));
-      setDeviceId(active.device_id);
+      setEnrolledDeviceId(active.device_id);
+      setEnrolledFace(new Float32Array(stored.faceTemplate));
+      setEnrolledEar(new Float32Array(stored.earTemplate));
       setState("capturing");
     } catch (err: any) {
       setError(err.message || "Failed to fetch enrollment data.");
@@ -92,7 +135,7 @@ function MobileVerifyPage() {
     }
   }, [voterId]);
 
-  // After biometric capture completes — decrypt and sign.
+  // After biometric capture completes — match, decrypt, and sign.
   const handleCaptureComplete = useCallback(
     async (result: { faceDescriptor: FeatureDescriptor; earDescriptor: FeatureDescriptor }) => {
       if (!encryptedBundle || !voterId) return;
@@ -100,7 +143,37 @@ function MobileVerifyPage() {
       try {
         setState("decrypting");
 
-        // Attempt to decrypt the signing key with the captured biometrics.
+        // MANDATORY GATE: compare fresh biometrics against the enrolled
+        // reference templates stored locally in IndexedDB on this device.
+        // Both face AND ear must independently pass the 0.99 cosine
+        // similarity threshold.  If either fails, verification is blocked
+        // entirely — the system will NOT fall through to key decryption.
+        if (!enrolledFace || !enrolledEar) {
+          setState("error");
+          setError(
+            "Enrolled biometric templates are missing. " +
+            "Please re-enrol your biometrics to continue.",
+          );
+          return;
+        }
+
+        const match = matchBoth(
+          result.faceDescriptor, enrolledFace,
+          result.earDescriptor, enrolledEar,
+        );
+        if (!match.overallPassed) {
+          setState("decrypt_failed");
+          setError(
+            `Biometric verification failed — you do not match the enrolled voter. ` +
+            `Face similarity: ${(match.face.similarity * 100).toFixed(1)}%, ` +
+            `ear similarity: ${(match.ear.similarity * 100).toFixed(1)}%. ` +
+            `Both must be at least 99%. ` +
+            `Please ensure good lighting and try again.`,
+          );
+          return;
+        }
+
+        // Template gate passed — now attempt to decrypt the signing key.
         let privateKey: CryptoKey;
         try {
           privateKey = await decryptPrivateKey(
@@ -124,7 +197,7 @@ function MobileVerifyPage() {
 
         const verifyResult = await biometricApi.verifyBiometric({
           challenge_id: challenge.id,
-          device_id: deviceId,
+          device_id: enrolledDeviceId,
           signature,
         });
 
@@ -139,7 +212,7 @@ function MobileVerifyPage() {
         setState("error");
       }
     },
-    [encryptedBundle, voterId, deviceId],
+    [encryptedBundle, voterId, enrolledDeviceId, enrolledFace, enrolledEar],
   );
 
   const handleCaptureError = useCallback((message: string) => {
@@ -150,6 +223,7 @@ function MobileVerifyPage() {
   const messages: Record<VerifyState, string> = {
     ready:
       "Verify your identity using your face and ear biometrics. " +
+      "You must use the same device you enrolled with. " +
       "Your biometric data never leaves this device \u2014 only a cryptographic " +
       "signature is sent to confirm your identity.",
     loading: "Fetching your enrollment data\u2026",
@@ -162,6 +236,9 @@ function MobileVerifyPage() {
       "It will update automatically.",
     error: "Verification encountered a problem.",
     no_enrollment: "No biometric enrollment found for your account.",
+    wrong_device:
+      "This is not the device you enrolled with. " +
+      "Please open the QR code on the phone you used during enrollment.",
     decrypt_failed: "Biometric verification failed.",
   };
 
@@ -226,6 +303,10 @@ function MobileVerifyPage() {
 
         {(state === "error" || state === "no_enrollment" || state === "decrypt_failed") && (
           <PrimaryButton onClick={handleStartVerify}>Retry</PrimaryButton>
+        )}
+
+        {state === "wrong_device" && (
+          <PrimaryButton disabled>Wrong device</PrimaryButton>
         )}
       </div>
     </div>
