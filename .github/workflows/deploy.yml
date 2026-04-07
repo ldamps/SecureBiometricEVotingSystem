@@ -35,7 +35,7 @@ jobs:
             # ── Write backend .env (stable secrets from GitHub) ─────────
             cat > backend/.env <<ENVEOF
             DATABASE_URL=${{ secrets.DATABASE_URL }}
-            ENCRYPTION_PROVIDER=${{ secrets.ENCRYPTION_PROVIDER }}
+            ENCRYPTION_PROVIDER=local
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             ENCRYPTION_HMAC_SECRET=${{ secrets.ENCRYPTION_HMAC_SECRET }}
             AWS_REGION=${{ secrets.AWS_REGION }}
