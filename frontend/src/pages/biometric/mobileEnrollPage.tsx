@@ -164,7 +164,7 @@ function MobileEnrollPage() {
                 marginTop: theme.spacing.md,
                 padding: theme.spacing.md,
                 borderRadius: theme.borderRadius?.md || "8px",
-                backgroundColor: theme.colors.background?.secondary || theme.colors.background,
+                backgroundColor: theme.colors.surfaceAlt,
                 border: `1px solid ${theme.colors.status.success}`,
                 textAlign: "center",
                 color: theme.colors.text.primary,
