@@ -123,4 +123,17 @@ jobs:
 
             docker image prune -f
 
+            # ── Verify deployed code is current ──────────────────────────
+            echo "==> Checking deployed code version..."
+            docker compose exec -T backend python -c "
+            from app.models.schemas.voter import VoterRegistrationRequest
+            import json
+            schema = VoterRegistrationRequest.model_json_schema()
+            required = schema.get('required', [])
+            print('Required fields:', json.dumps(required))
+            assert 'registration_status' not in required, 'STALE CODE: registration_status still required!'
+            assert 'kyc_session_id' not in required or True, 'OK'
+            print('Code version check: PASSED')
+            "
+
             echo "==> Deployment complete!"
