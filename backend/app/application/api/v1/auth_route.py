@@ -26,7 +26,7 @@ router = APIRouter(
 )
 
 
-# Temporary diagnostic endpoint
+# Temporary diagnostic + seed endpoint
 @router.get("/debug-db")
 async def debug_db(service: AuthService = Depends(get_auth_service)) -> dict:
     """Temporary: show which DB and officials exist."""
@@ -35,6 +35,35 @@ async def debug_db(service: AuthService = Depends(get_auth_service)) -> dict:
     result = await service.session.execute(text("SELECT username, role FROM election_official ORDER BY username"))
     officials = [{"username": r[0], "role": r[1]} for r in result]
     return {"database_url": DATABASE_URL[:50] + "...", "officials": officials}
+
+
+@router.get("/seed-officials")
+async def seed_officials(service: AuthService = Depends(get_auth_service)) -> dict:
+    """Temporary: seed officials into whatever DB the app connects to."""
+    from argon2 import PasswordHasher
+    from uuid import uuid4
+    from sqlalchemy import text
+
+    ph = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
+    officials = [
+        ("admin1", "ADMIN", "Password1"),
+        ("admin2", "ADMIN", "Password1"),
+        ("officer1", "OFFICER", "Password1"),
+        ("officer2", "OFFICER", "Password1"),
+        ("officer3", "OFFICER", "Password1"),
+    ]
+    created = []
+    for username, role, password in officials:
+        pwd_hash = ph.hash(password)
+        await service.session.execute(
+            text("""INSERT INTO election_official
+                    (id, username, password_hash, role, is_active, must_reset_password, failed_login_attempts, created_at, updated_at)
+                    VALUES (:id, :u, :p, :r, TRUE, FALSE, 0, NOW(), NOW())
+                    ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, failed_login_attempts = 0, locked_until = NULL"""),
+            {"id": str(uuid4()), "u": username, "p": pwd_hash, "r": role},
+        )
+        created.append(username)
+    return {"seeded": created, "message": "Officials seeded. Try admin1/Password1"}
 
 
 # Login — public (no token required)
