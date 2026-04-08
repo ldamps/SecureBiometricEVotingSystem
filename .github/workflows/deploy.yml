@@ -77,24 +77,6 @@ jobs:
             echo "==> Starting updated containers..."
             docker compose up -d --remove-orphans
 
-            # ── Provision Let's Encrypt certificate (if not already present)
-            echo "==> Checking Let's Encrypt certificate..."
-            CERT_PATH="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
-            if ! docker compose exec -T certbot test -f "$CERT_PATH"; then
-              echo "==> Requesting initial Let's Encrypt certificate for ${DOMAIN}..."
-              docker compose exec -T certbot certbot certonly \
-                --webroot -w /var/www/certbot \
-                --email "${{ secrets.CERTBOT_EMAIL }}" \
-                --domain "${DOMAIN}" \
-                --agree-tos \
-                --no-eff-email \
-                --non-interactive
-              echo "==> Reloading nginx with new certificate..."
-              docker compose exec -T frontend nginx -s reload
-            else
-              echo "    Certificate already exists — skipping"
-            fi
-
             # ── Run database migrations ───────────────────────────────────
             echo "==> Running database migrations..."
             docker compose exec -T backend alembic upgrade head
@@ -142,6 +124,24 @@ jobs:
             fi
 
             docker image prune -f
+
+            # ── Provision Let's Encrypt certificate (if not already present)
+            echo "==> Checking Let's Encrypt certificate..."
+            CERT_PATH="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+            if ! docker compose exec -T certbot test -f "$CERT_PATH"; then
+              echo "==> Requesting initial Let's Encrypt certificate for ${DOMAIN}..."
+              docker compose exec -T certbot certbot certonly \
+                --webroot -w /var/www/certbot \
+                --email "${{ secrets.CERTBOT_EMAIL }}" \
+                --domain "${DOMAIN}" \
+                --agree-tos \
+                --no-eff-email \
+                --non-interactive
+              echo "==> Reloading nginx with new certificate..."
+              docker compose exec -T frontend nginx -s reload
+            else
+              echo "    Certificate already exists — skipping"
+            fi
 
             # ── Verify deployed code is current ──────────────────────────
             echo "==> Checking deployed code version..."
