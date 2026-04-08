@@ -8,6 +8,7 @@ export enum ReferendumScope {
 }
 
 export enum ReferendumStatus {
+    DRAFT = "DRAFT",
     OPEN = "OPEN",
     CLOSED = "CLOSED",
     CANCELLED = "CANCELLED",
@@ -31,16 +32,20 @@ export interface CreateReferendumRequest {
     question: string;
     description: string;
     scope: ReferendumScope;
+    status?: ReferendumStatus;
     constituency_ids?: string[];
     voting_opens?: string;
     voting_closes?: string;
 }
 
 export interface UpdateReferendumRequest {
+    title?: string;
     question?: string;
     description?: string;
+    scope?: string;
     status?: ReferendumStatus;
     voting_opens?: string;
     voting_closes?: string;
     is_active?: boolean;
+    constituency_ids?: string[];
 }

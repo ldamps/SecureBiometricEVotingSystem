@@ -52,6 +52,7 @@ function createReferendumBody(body: CreateReferendumRequest): Record<string, unk
         question: body.question,
         description: body.description,
         scope: body.scope,
+        status: body.status,
         constituency_ids: body.constituency_ids,
         voting_opens: body.voting_opens,
         voting_closes: body.voting_closes,
@@ -60,12 +61,15 @@ function createReferendumBody(body: CreateReferendumRequest): Record<string, unk
 
 function updateReferendumBody(body: UpdateReferendumRequest): Record<string, unknown> {
     return definedPayload({
+        title: body.title,
         question: body.question,
         description: body.description,
+        scope: body.scope,
         status: body.status,
         voting_opens: body.voting_opens,
         voting_closes: body.voting_closes,
         is_active: body.is_active,
+        constituency_ids: body.constituency_ids,
     });
 }
 

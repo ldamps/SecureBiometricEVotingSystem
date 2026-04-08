@@ -15,7 +15,8 @@ logger = structlog.get_logger()
 class ReferendumRepository:
     """Referendum-specific repository operations."""
 
-    _UPDATABLE_FIELDS = frozenset({"question", "description", "status", "voting_opens", "voting_closes", "is_active"})
+    _ALWAYS_UPDATABLE = frozenset({"question", "description", "status", "voting_opens", "voting_closes", "is_active"})
+    _DRAFT_UPDATABLE = frozenset({"title", "scope"})
 
     def __init__(self, model: Type[Referendum] = Referendum) -> None:
         self._model = model
@@ -106,10 +107,12 @@ class ReferendumRepository:
         session: AsyncSession,
         referendum_id: UUID,
         update_data: dict,
+        is_draft: bool = False,
     ) -> Referendum:
         """Update a referendum's mutable fields."""
         try:
-            filtered = {k: v for k, v in update_data.items() if k in self._UPDATABLE_FIELDS and v is not None}
+            allowed = self._ALWAYS_UPDATABLE | (self._DRAFT_UPDATABLE if is_draft else frozenset())
+            filtered = {k: v for k, v in update_data.items() if k in allowed and v is not None}
             if not filtered:
                 raise ValueError("No valid fields to update")
 

@@ -20,11 +20,19 @@ from sqlalchemy import insert
 
 # Valid election status transitions (CANCELLED is terminal).
 _VALID_TRANSITIONS: dict[str, set[str]] = {
+    ElectionStatus.DRAFT.value: {
+        ElectionStatus.OPEN.value,
+        ElectionStatus.CANCELLED.value,
+    },
     ElectionStatus.OPEN.value: {
+        ElectionStatus.DRAFT.value,
         ElectionStatus.CLOSED.value,
         ElectionStatus.CANCELLED.value,
     },
-    ElectionStatus.CLOSED.value: {ElectionStatus.CANCELLED.value},
+    ElectionStatus.CLOSED.value: {
+        ElectionStatus.OPEN.value,
+        ElectionStatus.CANCELLED.value,
+    },
 }
 from app.service.keys_manager_service import KeysManagerService
 from app.service.encryption_mapper_service import EncryptionMapperService
@@ -75,9 +83,11 @@ class ElectionService(EncryptionUtilsMixin):
                 )
                 await self.session.flush()
 
-            election = await sync_election_status_with_voting_schedule(
-                self.session, self.election_repo, election
-            )
+            # Don't auto-sync status for drafts — they stay as DRAFT until published.
+            if election.status != ElectionStatus.DRAFT.value:
+                election = await sync_election_status_with_voting_schedule(
+                    self.session, self.election_repo, election
+                )
 
             # Re-fetch with constituencies eagerly loaded
             election = await self.election_repo.get_election_by_id(
@@ -148,13 +158,28 @@ class ElectionService(EncryptionUtilsMixin):
         election_id: UUID,
         dto: UpdateElectionPlainDTO,
     ) -> ElectionItem:
-        """Update an election's mutable fields (status, voting_opens, voting_closes)."""
+        """Update an election's mutable fields.
+
+        Title, election_type, scope, allocation_method, and constituency_ids
+        are only editable while the election is in DRAFT status.
+        """
         try:
+            current = await self.election_repo.get_election_by_id(
+                self.session, election_id,
+            )
+            is_draft = current.status == ElectionStatus.DRAFT.value
+
+            # Block draft-only fields when not in DRAFT
+            if not is_draft:
+                draft_only = {"title", "election_type", "scope", "allocation_method", "constituency_ids"}
+                for field in draft_only:
+                    if getattr(dto, field, None) is not None:
+                        raise ValidationError(
+                            f"Field '{field}' can only be edited while the election is in DRAFT status."
+                        )
+
             # Validate status transition if status is being changed
-            if hasattr(dto, "status") and dto.status is not None:
-                current = await self.election_repo.get_election_by_id(
-                    self.session, election_id,
-                )
+            if dto.status is not None:
                 allowed = _VALID_TRANSITIONS.get(current.status, set())
                 if dto.status not in allowed:
                     raise ValidationError(
@@ -162,19 +187,42 @@ class ElectionService(EncryptionUtilsMixin):
                     )
 
             updated = await self.election_repo.update_election(
-                self.session, election_id, dto
+                self.session, election_id, dto, is_draft=is_draft,
             )
-            # When officials only change times, align status with the window. If they
-            # sent an explicit status, keep it for this response (schedule still applies on later reads).
-            if dto.status is None:
+
+            # Re-link constituencies if provided (draft only)
+            if is_draft and dto.constituency_ids is not None:
+                from sqlalchemy import delete
+                await self.session.execute(
+                    delete(election_constituency).where(
+                        election_constituency.c.election_id == election_id
+                    )
+                )
+                if dto.constituency_ids:
+                    await self.session.execute(
+                        insert(election_constituency),
+                        [
+                            {"election_id": election_id, "constituency_id": UUID(cid)}
+                            for cid in dto.constituency_ids
+                        ],
+                    )
+                await self.session.flush()
+
+            # When officials only change times, align status with the window.
+            if dto.status is None and not is_draft:
                 updated = await sync_election_status_with_voting_schedule(
                     self.session, self.election_repo, updated
                 )
 
+            # Re-fetch with constituencies eagerly loaded
+            updated = await self.election_repo.get_election_by_id(
+                self.session, election_id
+            )
+
             # Audit: election updated
             summary = f"Election {election_id} updated"
             event_type = "ELECTION_UPDATED"
-            if hasattr(dto, "status") and dto.status is not None:
+            if dto.status is not None:
                 event_type = "ELECTION_STATUS_CHANGED"
                 summary = f"Election {election_id} status changed to {dto.status}"
 

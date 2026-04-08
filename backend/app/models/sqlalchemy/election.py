@@ -82,10 +82,12 @@ class ElectionScope(str, enum.Enum):
 class ElectionStatus(str, enum.Enum):
     """
     Election status.
+    ** DRAFT ** - Election is being prepared; not yet visible to voters.
     ** OPEN ** - Election is open for voting.
     ** CLOSED ** - Election is closed for voting.
     ** CANCELLED ** - Election voided; no voting or ballot issuance.
     """
+    DRAFT = "DRAFT"
     OPEN = "OPEN"
     CLOSED = "CLOSED"
     CANCELLED = "CANCELLED"

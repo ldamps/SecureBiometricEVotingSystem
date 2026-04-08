@@ -16,9 +16,10 @@ logger = structlog.get_logger()
 class ElectionRepository:
     """Election-specific repository operations."""
 
-    # Only these fields can be updated after an election is created.
-    # Title, election_type, and allocation_method are immutable.
-    _UPDATABLE_FIELDS = frozenset({"status", "voting_opens", "voting_closes"})
+    # Fields that can always be updated.
+    _ALWAYS_UPDATABLE = frozenset({"status", "voting_opens", "voting_closes"})
+    # Additional fields that can be updated while in DRAFT status.
+    _DRAFT_UPDATABLE = frozenset({"title", "election_type", "scope", "allocation_method"})
 
     def __init__(self, model: Type[Election] = Election) -> None:
         self._model = model
@@ -126,15 +127,17 @@ class ElectionRepository:
         session: AsyncSession,
         election_id: UUID,
         dto: UpdateElectionPlainDTO,
+        is_draft: bool = False,
     ) -> Election:
         """Update an election's mutable fields.
 
-        Only status, voting_opens, and voting_closes can be changed.
-        All other election fields are immutable after creation.
+        When *is_draft* is True, title/election_type/scope/allocation_method
+        are also editable.
         """
         try:
+            allowed = self._ALWAYS_UPDATABLE | (self._DRAFT_UPDATABLE if is_draft else frozenset())
             update_data = {}
-            for field in self._UPDATABLE_FIELDS:
+            for field in allowed:
                 val = getattr(dto, field, None)
                 if val is not None:
                     update_data[field] = val

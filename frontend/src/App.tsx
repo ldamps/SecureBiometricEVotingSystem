@@ -22,6 +22,8 @@ import OfficialLandingPage from './pages/official/officialLandingPage';
 import OfficialHomePage from './pages/official/officialHomePage';
 import OfficialProfilePage from './pages/official/officialProfilePage';
 import OfficialOnboardingPage from './pages/official/officialOnboardingPage';
+import ManageElectionsPage from './pages/official/manageElectionsPage';
+import ManageReferendumsPage from './pages/official/manageReferendumsPage';
 
 // Mobile biometric pages (accessed via QR code from phone/tablet)
 import MobileEnrollPage from './pages/biometric/mobileEnrollPage';
@@ -54,6 +56,8 @@ const App: React.FC = () => {
                 <Route path="home" element={<OfficialHomePage />} />
                 <Route path="profile" element={<OfficialProfilePage />} />
                 <Route path="onboarding" element={<OfficialOnboardingPage />} />
+                <Route path="elections" element={<ManageElectionsPage />} />
+                <Route path="referendums" element={<ManageReferendumsPage />} />
               </Route>
             </Route>
             

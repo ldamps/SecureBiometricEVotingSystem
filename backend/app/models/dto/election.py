@@ -71,8 +71,12 @@ class CreateElectionPlainDTO(ElectionBaseDTO):
             d["created_by"] = UUID(d["created_by"]) if isinstance(d["created_by"], str) else d["created_by"]
         opens = d.get("voting_opens")
         closes = d.get("voting_closes")
-        now = datetime.now(timezone.utc)
-        status = initial_status_from_voting_schedule(now, opens, closes)
+        explicit_status = d.get("status")
+        if explicit_status:
+            status = explicit_status.value if isinstance(explicit_status, ElectionStatus) else explicit_status
+        else:
+            now = datetime.now(timezone.utc)
+            status = initial_status_from_voting_schedule(now, opens, closes)
         return cls(
             title=d["title"],
             election_type=d["election_type"],
@@ -111,18 +115,32 @@ class CreateElectionEncryptedDTO(ElectionBaseDTO):
 class UpdateElectionPlainDTO(ElectionBaseDTO):
     """Plaintext fields for updating an election.
 
-    Only status, voting_opens, and voting_closes can be updated
-    once an election has been created. All other fields are immutable.
+    Status, voting_opens, and voting_closes can always be updated.
+    Title, election_type, scope, allocation_method, and constituency_ids
+    are only editable while the election is in DRAFT status.
     """
 
     election_id: Optional[UUID] = None
+    title: Optional[str] = None
+    election_type: Optional[str] = None
+    scope: Optional[str] = None
+    allocation_method: Optional[str] = None
     status: Optional[str] = None
     voting_opens: Optional[datetime] = None
     voting_closes: Optional[datetime] = None
+    constituency_ids: Optional[List[str]] = None
 
     @classmethod
     def create_dto(cls, data: UpdateElectionRequest, election_id: UUID) -> "UpdateElectionPlainDTO":
         d = data.model_dump(exclude_none=True)
         if "status" in d and isinstance(d["status"], ElectionStatus):
             d["status"] = d["status"].value
+        if "election_type" in d:
+            et = d["election_type"]
+            if isinstance(et, ElectionType):
+                d["election_type"] = et.value
+                from app.models.sqlalchemy.election import ELECTION_TYPE_ALLOCATION_MAP
+                d["allocation_method"] = ELECTION_TYPE_ALLOCATION_MAP[et].value
+        if "scope" in d and isinstance(d["scope"], ElectionScope):
+            d["scope"] = d["scope"].value
         return cls(**d, election_id=election_id)

@@ -69,7 +69,7 @@ type SelectableItem = { id: string; title: string; status: string; kind: "electi
 
 /** Derive the effective status from the voting schedule if the backend status is stale. */
 function effectiveStatus(backendStatus: string, votingOpens?: string, votingCloses?: string): string {
-  if (backendStatus === "CANCELLED") return "CANCELLED";
+  if (backendStatus === "CANCELLED" || backendStatus === "DRAFT") return backendStatus;
   const now = Date.now();
   if (votingCloses) {
     const close = Date.parse(votingCloses);
