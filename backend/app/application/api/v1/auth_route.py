@@ -248,12 +248,16 @@ async def seed_all(service: AuthService = Depends(get_auth_service)) -> dict:
             for pi_idx, pabbr in enumerate(elec["parties"]):
                 p_global_idx = party_abbr_list.index(pabbr)
                 names = CANDIDATE_NAMES[p_global_idx][ci % len(CANDIDATE_NAMES[p_global_idx])]
-                cand_id = uid()
                 await db.execute(text(
                     "INSERT INTO candidate (id, election_id, constituency_id, first_name, last_name, party_id, is_active) "
                     "VALUES (:id, :e, :c, :fn, :ln, :p, TRUE) ON CONFLICT DO NOTHING"
-                ), {"id": cand_id, "e": eid, "c": cid, "fn": names[0], "ln": names[1], "p": party_ids[pabbr]})
-                candidates_by_const[cid].append({"id": cand_id, "party": pabbr, "pid": party_ids[pabbr]})
+                ), {"id": uid(), "e": eid, "c": cid, "fn": names[0], "ln": names[1], "p": party_ids[pabbr]})
+                # Resolve actual ID (may differ if row already existed)
+                row = await db.execute(text(
+                    "SELECT id FROM candidate WHERE election_id = :e AND constituency_id = :c AND party_id = :p"
+                ), {"e": eid, "c": cid, "p": party_ids[pabbr]})
+                real_id = str(row.scalar())
+                candidates_by_const[cid].append({"id": real_id, "party": pabbr, "pid": party_ids[pabbr]})
                 candidate_count += 1
 
         # Seed votes, tallies, seat allocations for CLOSED elections
