@@ -26,6 +26,17 @@ router = APIRouter(
 )
 
 
+# Temporary diagnostic endpoint
+@router.get("/debug-db")
+async def debug_db(service: AuthService = Depends(get_auth_service)) -> dict:
+    """Temporary: show which DB and officials exist."""
+    from app.config import DATABASE_URL
+    from sqlalchemy import text
+    result = await service.session.execute(text("SELECT username, role FROM election_official ORDER BY username"))
+    officials = [{"username": r[0], "role": r[1]} for r in result]
+    return {"database_url": DATABASE_URL[:50] + "...", "officials": officials}
+
+
 # Login — public (no token required)
 @router.post(
     "/login",
