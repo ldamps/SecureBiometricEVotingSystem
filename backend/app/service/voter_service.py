@@ -204,10 +204,6 @@ class VoterService(EncryptionUtilsMixin):
                 raise ValidationError(
                     "A voter with this national insurance number is already registered."
                 ) from exc
-            if "email_search_token" in error_msg:
-                raise ValidationError(
-                    "A voter with this email address is already registered."
-                ) from exc
             raise ValidationError(
                 "A voter with these details is already registered."
             ) from exc
@@ -237,17 +233,6 @@ class VoterService(EncryptionUtilsMixin):
             )
             voter = await self.voter_repo.get_voter_by_ni_search_token(
                 self.session, ni_token
-            )
-            if voter and voter.voter_status == VoterStatus.PENDING.value:
-                return voter
-
-        # Check email
-        if dto.email:
-            email_token = await self._mapper.create_search_token(
-                dto.email, args, self.session
-            )
-            voter = await self.voter_repo.get_voter_by_email_search_token(
-                self.session, email_token
             )
             if voter and voter.voter_status == VoterStatus.PENDING.value:
                 return voter
