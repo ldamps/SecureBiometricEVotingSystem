@@ -16,6 +16,21 @@ else
     -keyout "$CERT_DIR/privkey.pem" \
     -out    "$CERT_DIR/fullchain.pem" \
     -subj   "/C=GB/ST=Aberdeen/L=Aberdeen/O=SecureBiometricEVoting/CN=${DOMAIN:-localhost}"
+
+  # Background watcher: once certbot obtains the LE cert, switch to it and reload nginx
+  (
+    while :; do
+      sleep 30
+      if [ -f "$LE_DIR/fullchain.pem" ] && [ -f "$LE_DIR/privkey.pem" ]; then
+        echo "==> Let's Encrypt certificate detected — switching from self-signed"
+        ln -sf "$LE_DIR/fullchain.pem" "$CERT_DIR/fullchain.pem"
+        ln -sf "$LE_DIR/privkey.pem"   "$CERT_DIR/privkey.pem"
+        nginx -s reload
+        echo "==> Nginx reloaded with Let's Encrypt certificate"
+        exit 0
+      fi
+    done
+  ) &
 fi
 
 exec "$@"
