@@ -1,8 +1,12 @@
 /**
- * Parse QR code URLs from the desktop voting site.
+ * Parse QR code deep-link URLs from the desktop voting site.
  *
- * Enrollment URL:  https://host/biometric/enroll?voter_id=UUID
- * Verify URL:      https://host/biometric/verify?voter_id=UUID&challenge_id=UUID
+ * Deep-link enrollment:  evoting://enroll?voter_id=UUID
+ * Deep-link verify:      evoting://verify?voter_id=UUID&challenge_id=UUID
+ *
+ * Legacy web URLs are also accepted for backwards compatibility:
+ *   https://host/biometric/enroll?voter_id=UUID
+ *   https://host/biometric/verify?voter_id=UUID&challenge_id=UUID
  */
 
 export type QRAction =
@@ -13,16 +17,19 @@ export type QRAction =
 export function parseQRCode(data: string): QRAction {
   try {
     const url = new URL(data);
-    const path = url.pathname;
     const voterId = url.searchParams.get("voter_id");
 
     if (!voterId) return { type: "unknown" };
 
-    if (path.includes("/biometric/enroll") || path.includes("/enroll")) {
+    // For deep links (evoting://enroll, evoting://verify) the "host" is
+    // the action name.  For web URLs, check the pathname.
+    const action = url.hostname || url.pathname;
+
+    if (action.includes("enroll")) {
       return { type: "enroll", voterId };
     }
 
-    if (path.includes("/biometric/verify") || path.includes("/verify")) {
+    if (action.includes("verify")) {
       const challengeId = url.searchParams.get("challenge_id");
       if (!challengeId) return { type: "unknown" };
       return { type: "verify", voterId, challengeId };

@@ -13,6 +13,18 @@ root.render(
   </React.StrictMode>
 );
 
+// Register service worker for PWA installability.
+// When installed to the home screen, IndexedDB storage is persistent
+// (not cleared with normal browser history), which protects biometric
+// enrollment data stored on the device.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // SW registration is non-critical — biometrics still work without it.
+    });
+  });
+}
+
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals

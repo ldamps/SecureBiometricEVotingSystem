@@ -3,7 +3,7 @@
  *
  * Accessed by scanning the QR code shown on the desktop voting flow.
  * Verification is locked to the enrolled device — the device_id stored
- * in localStorage must match the credential registered on the server.
+ * in IndexedDB must match the credential registered on the server.
  *
  * Flow:
  *   1. Fetch credential from server, verify device_id matches this device.
@@ -24,7 +24,7 @@ import { BiometricApiRepository } from "../../features/voter/repositories/biomet
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
 import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
-import { retrieveBiometricData } from "../../features/biometric/services/biometric-storage.service";
+import { retrieveBiometricData, getDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
 
 const biometricApi = new BiometricApiRepository();
@@ -70,11 +70,6 @@ function MobileVerifyPage() {
   const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
   const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
 
-  /** Read this device's ID from localStorage (set during enrollment). */
-  function getLocalDeviceId(): string | null {
-    return localStorage.getItem("evoting_device_id");
-  }
-
   useEffect(() => {
     if (!challengeId || !voterId) {
       setError("Missing challenge or voter ID. Please scan the QR code again.");
@@ -99,9 +94,9 @@ function MobileVerifyPage() {
         return;
       }
 
-      // 2. Enforce same-device: the device_id in localStorage must match
+      // 2. Enforce same-device: the device_id in IndexedDB must match
       //    the device_id registered during enrollment on the server.
-      const localDeviceId = getLocalDeviceId();
+      const localDeviceId = await getDeviceId();
       if (!localDeviceId || localDeviceId !== active.device_id) {
         setState("wrong_device");
         setError(

@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "E-Voting",
+  "name": "Secure Biometric E-Voting",
   "icons": [
     {
       "src": "electionLogo.svg",
@@ -10,16 +10,20 @@
     {
       "src": "electionLogo192.svg",
       "type": "image/svg+xml",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "electionLogo512.svg",
       "type": "image/svg+xml",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#1B2444",
+  "background_color": "#E4E9FA",
+  "scope": "/",
+  "orientation": "portrait"
 }

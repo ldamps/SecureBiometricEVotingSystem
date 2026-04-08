@@ -21,20 +21,10 @@ import { getCardStyle, getPageTitleStyle, PrimaryButton } from "../../styles/ui"
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { generateAndEncryptKeyPair } from "../../features/biometric/services/biometric-key-encryption.service";
-import { storeBiometricData } from "../../features/biometric/services/biometric-storage.service";
+import { storeBiometricData, getOrCreateDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor } from "../../features/biometric/models/biometric-feature.model";
 
 const biometricApi = new BiometricApiRepository();
-
-function getOrCreateDeviceId(): string {
-  const STORAGE_KEY = "evoting_device_id";
-  let deviceId = localStorage.getItem(STORAGE_KEY);
-  if (!deviceId) {
-    deviceId = crypto.randomUUID();
-    localStorage.setItem(STORAGE_KEY, deviceId);
-  }
-  return deviceId;
-}
 
 type EnrollState =
   | "ready"
@@ -91,7 +81,7 @@ function MobileEnrollPage() {
         // Register the public key AND the encrypted key bundle with the server.
         // The server stores the bundle but cannot decrypt it — only a
         // matching face+ear biometric can recover the signing key.
-        const deviceId = getOrCreateDeviceId();
+        const deviceId = await getOrCreateDeviceId();
         await biometricApi.enrollDevice({
           voter_id: voterId,
           public_key_pem: publicKeyPem,

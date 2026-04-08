@@ -101,11 +101,9 @@ function BiometricRegistration({
     /**
      * Generate the QR code payload and start polling.
      *
-     * The QR code encodes a deep-link URL that the mobile voting app
-     * can open to begin on-device biometric enrollment.  The URL
-     * includes the voter_id so the phone knows which voter to enrol for.
-     *
-     * Example deep link:  evoting://enroll?voter_id=<uuid>
+     * The QR code encodes a deep-link URI (evoting://enroll?voter_id=<uuid>)
+     * that opens the native mobile voting app for on-device biometric
+     * enrollment.
      */
     const isMobile = isMobileOrTablet();
 

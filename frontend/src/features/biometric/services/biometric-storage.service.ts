@@ -62,3 +62,47 @@ export async function deleteBiometricData(voterId: string): Promise<void> {
     tx.onerror = () => reject(tx.error);
   });
 }
+
+/**
+ * Device ID management — stored in IndexedDB alongside biometric data
+ * so it survives browser history/cache clearing (unlike localStorage).
+ */
+const DEVICE_ID_KEY = "__evoting_device_id__";
+
+export async function getOrCreateDeviceId(): Promise<string> {
+  const db = await openDb();
+
+  const existing: string | undefined = await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const req = tx.objectStore(STORE_NAME).get(DEVICE_ID_KEY);
+    req.onsuccess = () => resolve(req.result as string | undefined);
+    req.onerror = () => reject(req.error);
+  });
+
+  if (existing) return existing;
+
+  // Migrate from localStorage if present (one-time upgrade).
+  const legacy = typeof localStorage !== "undefined"
+    ? localStorage.getItem("evoting_device_id")
+    : null;
+  const deviceId = legacy || crypto.randomUUID();
+
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(deviceId, DEVICE_ID_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+
+  return deviceId;
+}
+
+export async function getDeviceId(): Promise<string | null> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const req = tx.objectStore(STORE_NAME).get(DEVICE_ID_KEY);
+    req.onsuccess = () => resolve((req.result as string) ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
