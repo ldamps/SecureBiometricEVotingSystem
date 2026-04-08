@@ -37,7 +37,7 @@ export interface CreateChallengeResponse {
 
 export interface VerifyBiometricRequest {
     challenge_id: string;
-    device_id: string;
+    device_id?: string;
     signature: string;
 }
 

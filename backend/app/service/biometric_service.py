@@ -185,14 +185,22 @@ class BiometricService:
                 message="Challenge has expired.",
             )
 
-        # 2. Find active credential
-        credential = await self.credentials_repo.get_active_by_voter_and_device(
-            self.session, challenge.voter_id, request.device_id
-        )
+        # 2. Find active credential — prefer voter+device lookup, fall back
+        #    to voter-only when the browser's device_id was lost (e.g. Safari
+        #    purged IndexedDB between enrollment and verification).
+        credential = None
+        if request.device_id:
+            credential = await self.credentials_repo.get_active_by_voter_and_device(
+                self.session, challenge.voter_id, request.device_id
+            )
+        if not credential:
+            credential = await self.credentials_repo.get_active_by_voter(
+                self.session, challenge.voter_id
+            )
         if not credential:
             return VerifyBiometricResponse(
                 verified=False,
-                message="No active device credential found for this voter and device.",
+                message="No active device credential found for this voter.",
             )
 
         # 3. Verify ECDSA signature

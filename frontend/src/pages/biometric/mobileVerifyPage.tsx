@@ -2,15 +2,18 @@
  * Mobile Biometric Verification Page
  *
  * Accessed by scanning the QR code shown on the desktop voting flow.
- * Verification is locked to the enrolled device — the device_id stored
- * in IndexedDB must match the credential registered on the server.
  *
  * Flow:
- *   1. Fetch credential from server, verify device_id matches this device.
- *   2. Load enrolled face + ear templates from local IndexedDB.
- *   3. Capture fresh biometrics and match against enrolled templates (gate).
+ *   1. Fetch credential + encrypted key bundle from server.
+ *   2. Load enrolled templates from IndexedDB if available (optional gate).
+ *   3. Capture fresh biometrics; run template matching gate when templates exist.
  *   4. Decrypt the ECDSA private key with the biometric-derived AES key.
  *   5. Sign the server challenge and submit.
+ *
+ * The biometric key decryption (step 4) is the primary security gate —
+ * only the correct face + ear can recover the signing key.  The template
+ * matching gate (step 3) provides better error messages when local
+ * templates are available, but is skipped when Safari has purged IndexedDB.
  *
  * No biometric data ever leaves the device — only a cryptographic
  * signature is sent to the server.
@@ -54,7 +57,6 @@ type VerifyState =
   | "success"
   | "error"
   | "no_enrollment"
-  | "wrong_device"
   | "decrypt_failed";
 
 function MobileVerifyPage() {
@@ -77,7 +79,7 @@ function MobileVerifyPage() {
     }
   }, [challengeId, voterId]);
 
-  // Fetch credential from server, enforce same-device, load local templates.
+  // Fetch credential from server and load local templates if available.
   const handleStartVerify = useCallback(async () => {
     if (!voterId) return;
     setError(null);
@@ -94,35 +96,25 @@ function MobileVerifyPage() {
         return;
       }
 
-      // 2. Enforce same-device: the device_id in IndexedDB must match
-      //    the device_id registered during enrollment on the server.
+      // 2. Use local device_id if available (for server-side lookup), but
+      //    don't block verification when Safari has purged IndexedDB.
       const localDeviceId = await getDeviceId();
-      if (!localDeviceId || localDeviceId !== active.device_id) {
-        setState("wrong_device");
-        setError(
-          "This is not the device you enrolled with. " +
-          "Biometric verification must be performed on the same phone " +
-          "used during enrollment to protect your identity.",
-        );
-        return;
-      }
+      setEnrolledDeviceId(localDeviceId || active.device_id);
 
-      // 3. Load enrolled templates from local IndexedDB (device-only storage).
-      //    These MUST exist — without them the matching gate cannot run.
+      // 3. Load enrolled templates from local IndexedDB if available.
+      //    When present, we run an extra template-matching gate for better
+      //    error messages. When absent (Safari purged storage), we skip the
+      //    gate and rely on biometric key decryption as the security check.
       const stored = await retrieveBiometricData(voterId);
-      if (!stored || !stored.faceTemplate || !stored.earTemplate) {
-        setState("no_enrollment");
-        setError(
-          "Your enrolled biometric templates were not found on this device. " +
-          "Please re-enrol your biometrics from the registration page.",
-        );
-        return;
+      if (stored?.faceTemplate && stored?.earTemplate) {
+        setEnrolledFace(new Float32Array(stored.faceTemplate));
+        setEnrolledEar(new Float32Array(stored.earTemplate));
+      } else {
+        setEnrolledFace(null);
+        setEnrolledEar(null);
       }
 
       setEncryptedBundle(JSON.parse(active.encrypted_key_bundle));
-      setEnrolledDeviceId(active.device_id);
-      setEnrolledFace(new Float32Array(stored.faceTemplate));
-      setEnrolledEar(new Float32Array(stored.earTemplate));
       setState("capturing");
     } catch (err: any) {
       setError(err.message || "Failed to fetch enrollment data.");
@@ -138,37 +130,28 @@ function MobileVerifyPage() {
       try {
         setState("decrypting");
 
-        // MANDATORY GATE: compare fresh biometrics against the enrolled
-        // reference templates stored locally in IndexedDB on this device.
-        // Both face AND ear must independently pass the 0.99 cosine
-        // similarity threshold.  If either fails, verification is blocked
-        // entirely — the system will NOT fall through to key decryption.
-        if (!enrolledFace || !enrolledEar) {
-          setState("error");
-          setError(
-            "Enrolled biometric templates are missing. " +
-            "Please re-enrol your biometrics to continue.",
+        // If enrolled templates are available locally, run the matching
+        // gate for better error messages.  When Safari has purged
+        // IndexedDB, we skip this gate and rely solely on key decryption.
+        if (enrolledFace && enrolledEar) {
+          const match = matchBoth(
+            result.faceDescriptor, enrolledFace,
+            result.earDescriptor, enrolledEar,
           );
-          return;
+          if (!match.overallPassed) {
+            setState("decrypt_failed");
+            setError(
+              `Biometric verification failed — you do not match the enrolled voter. ` +
+              `Face similarity: ${(match.face.similarity * 100).toFixed(1)}%, ` +
+              `ear similarity: ${(match.ear.similarity * 100).toFixed(1)}%. ` +
+              `Both must be at least 99%. ` +
+              `Please ensure good lighting and try again.`,
+            );
+            return;
+          }
         }
 
-        const match = matchBoth(
-          result.faceDescriptor, enrolledFace,
-          result.earDescriptor, enrolledEar,
-        );
-        if (!match.overallPassed) {
-          setState("decrypt_failed");
-          setError(
-            `Biometric verification failed — you do not match the enrolled voter. ` +
-            `Face similarity: ${(match.face.similarity * 100).toFixed(1)}%, ` +
-            `ear similarity: ${(match.ear.similarity * 100).toFixed(1)}%. ` +
-            `Both must be at least 99%. ` +
-            `Please ensure good lighting and try again.`,
-          );
-          return;
-        }
-
-        // Template gate passed — now attempt to decrypt the signing key.
+        // Attempt to decrypt the signing key with fresh biometrics.
         let privateKey: CryptoKey;
         try {
           privateKey = await decryptPrivateKey(
@@ -192,7 +175,7 @@ function MobileVerifyPage() {
 
         const verifyResult = await biometricApi.verifyBiometric({
           challenge_id: challenge.id,
-          device_id: enrolledDeviceId,
+          ...(enrolledDeviceId ? { device_id: enrolledDeviceId } : {}),
           signature,
         });
 
@@ -218,7 +201,6 @@ function MobileVerifyPage() {
   const messages: Record<VerifyState, string> = {
     ready:
       "Verify your identity using your face and ear biometrics. " +
-      "You must use the same device you enrolled with. " +
       "Your biometric data never leaves this device \u2014 only a cryptographic " +
       "signature is sent to confirm your identity.",
     loading: "Fetching your enrollment data\u2026",
@@ -231,9 +213,6 @@ function MobileVerifyPage() {
       "It will update automatically.",
     error: "Verification encountered a problem.",
     no_enrollment: "No biometric enrollment found for your account.",
-    wrong_device:
-      "This is not the device you enrolled with. " +
-      "Please open the QR code on the phone you used during enrollment.",
     decrypt_failed: "Biometric verification failed.",
   };
 
@@ -300,9 +279,7 @@ function MobileVerifyPage() {
           <PrimaryButton onClick={handleStartVerify}>Retry</PrimaryButton>
         )}
 
-        {state === "wrong_device" && (
-          <PrimaryButton disabled>Wrong device</PrimaryButton>
-        )}
+
       </div>
     </div>
   );
