@@ -99,21 +99,17 @@ function AuthVerifyPage() {
       try {
         setState("decrypting");
 
+        // Advisory template matching — does NOT block key decryption.
+        let templateMatchFailed = false;
         if (enrolledFace && enrolledEar) {
           const match = matchBoth(
             result.faceDescriptor, enrolledFace,
             result.earDescriptor, enrolledEar,
           );
-          if (!match.overallPassed) {
-            setState("decrypt_failed");
-            setError(
-              "Biometric verification failed. Your face and ear did not match the enrollment. " +
-              "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories.",
-            );
-            return;
-          }
+          templateMatchFailed = !match.overallPassed;
         }
 
+        // Primary security gate: biometric key decryption (AES-GCM).
         let privateKey: CryptoKey;
         try {
           privateKey = await decryptPrivateKey(
@@ -123,7 +119,12 @@ function AuthVerifyPage() {
           );
         } catch {
           setState("decrypt_failed");
-          setError("Biometric verification failed. Your biometrics did not match the enrollment.");
+          setError(
+            templateMatchFailed
+              ? "Biometric verification failed. Your face and ear did not match the enrollment. " +
+                "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories."
+              : "Biometric verification failed. Your biometrics did not match the enrollment. Please try again.",
+          );
           return;
         }
 

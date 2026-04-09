@@ -136,25 +136,23 @@ function MobileVerifyPage() {
       try {
         setState("decrypting");
 
-        // If enrolled templates are available locally, run the matching
-        // gate for better error messages.  When Safari has purged
-        // IndexedDB, we skip this gate and rely solely on key decryption.
+        // If enrolled templates are available locally, run an advisory
+        // matching check.  A failure here does NOT block verification —
+        // the real security gate is the biometric key decryption below.
+        // We record the result so we can show a more helpful error
+        // message if key decryption also fails.
+        let templateMatchFailed = false;
         if (enrolledFace && enrolledEar) {
           const match = matchBoth(
             result.faceDescriptor, enrolledFace,
             result.earDescriptor, enrolledEar,
           );
-          if (!match.overallPassed) {
-            setState("decrypt_failed");
-            setError(
-              "Biometric verification failed. Your face and ear did not match the enrollment. " +
-              "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories.",
-            );
-            return;
-          }
+          templateMatchFailed = !match.overallPassed;
         }
 
         // Attempt to decrypt the signing key with fresh biometrics.
+        // This is the primary security gate — only the correct face +
+        // ear can recover the ECDSA private key via AES-GCM decryption.
         let privateKey: CryptoKey;
         try {
           privateKey = await decryptPrivateKey(
@@ -165,8 +163,11 @@ function MobileVerifyPage() {
         } catch {
           setState("decrypt_failed");
           setError(
-            "Biometric verification failed. Your face and ear did not match " +
-            "the enrollment closely enough to unlock the signing key. Please try again.",
+            templateMatchFailed
+              ? "Biometric verification failed. Your face and ear did not match the enrollment. " +
+                "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories."
+              : "Biometric verification failed. Your face and ear did not match " +
+                "the enrollment closely enough to unlock the signing key. Please try again.",
           );
           return;
         }

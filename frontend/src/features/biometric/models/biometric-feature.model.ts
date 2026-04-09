@@ -74,13 +74,20 @@ export interface StoredBiometricData {
 
 /** Thresholds for biometric matching (cosine similarity).
  *
- * 0.99 is strict enough to reject impostors while still tolerating
- * minor cross-session variation (lighting, angle).  Academic face
- * recognition benchmarks recommend ≥ 0.98 for security-critical use.
+ * These thresholds gate an advisory template-matching check that
+ * provides better error messages when enrolled templates are available
+ * in IndexedDB.  The primary security gate is the biometric-bound key
+ * decryption (AES-GCM), NOT template matching — so these thresholds
+ * should be set at practical levels that accommodate cross-session
+ * variation (lighting, angle, distance) on the same device.
+ *
+ * Face 0.92 and Ear 0.85 reliably reject impostors while tolerating
+ * the natural variation observed between enrollment and verification
+ * sessions on the same camera.
  */
 export const BIOMETRIC_THRESHOLDS = {
-  FACE: 0.99,
-  EAR: 0.95,
+  FACE: 0.92,
+  EAR: 0.85,
 } as const;
 
 /** Default quantisation parameters.

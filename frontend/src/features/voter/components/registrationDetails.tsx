@@ -648,7 +648,11 @@ function RegistrationDetails({
                         // Required common fields (registration only)
                         if (!state.firstName?.trim()) errors.firstName = "First name is required.";
                         if (!state.lastName?.trim()) errors.lastName = "Surname is required.";
-                        if (!state.email?.trim()) errors.email = "Email is required.";
+                        if (!state.email?.trim()) {
+                            errors.email = "Email is required.";
+                        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email.trim())) {
+                            errors.email = "Please enter a valid email address (e.g. john.doe@example.com).";
+                        }
                         if (!state.dateOfBirth?.trim()) errors.dateOfBirth = "Date of birth is required.";
                     }
 
@@ -672,7 +676,12 @@ function RegistrationDetails({
                         if (!idMethod) {
                             errors.identificationMethod = "Please select an identification method.";
                         } else if (idMethod === "ni") {
-                            if (!state.nationalInsuranceNumber?.trim()) errors.nationalInsuranceNumber = "National Insurance Number is required.";
+                            const ni = (state.nationalInsuranceNumber || "").trim();
+                            if (!ni) {
+                                errors.nationalInsuranceNumber = "National Insurance Number is required.";
+                            } else if (!/^[A-Za-z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-Za-z]$/i.test(ni)) {
+                                errors.nationalInsuranceNumber = "National Insurance Number must be in the format QQ 12 34 56 C (2 letters, 6 digits, 1 letter).";
+                            }
                         } else if (idMethod === "passport") {
                             if (!state.passportNumber?.trim()) errors.passportNumber = "Passport number is required.";
                             if (!state.passportCountry) errors.passportCountry = "Passport country is required.";

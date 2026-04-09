@@ -40,6 +40,10 @@ function VoterIdentity({ next, state, setState, progressStep = 1, showProgressBa
         if (!state.name?.trim()) errors.name = "Full name is required.";
         if (!state.addr1?.trim()) errors.addr1 = "Address line 1 is required.";
         if (!state.city?.trim()) errors.city = "City / Town is required.";
+        const pc = (state.postcode || "").trim();
+        if (pc && !/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s?\d[A-Za-z]{2}$/i.test(pc)) {
+            errors.postcode = "Please enter a valid UK postcode (e.g. SW1A 1AA).";
+        }
 
         setValidationErrors(errors);
         if (Object.keys(errors).length > 0) return;
