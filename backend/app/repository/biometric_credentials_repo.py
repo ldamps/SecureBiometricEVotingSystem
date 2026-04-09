@@ -61,12 +61,25 @@ class BiometricCredentialsRepository:
         self, session: AsyncSession, voter_id: UUID
     ) -> Optional[DeviceCredential]:
         result = await session.execute(
+            select(DeviceCredential)
+            .where(
+                DeviceCredential.voter_id == voter_id,
+                DeviceCredential.is_active.is_(True),
+            )
+            .order_by(DeviceCredential.created_at.desc())
+        )
+        return result.scalars().first()
+
+    async def list_active_by_voter(
+        self, session: AsyncSession, voter_id: UUID
+    ) -> list[DeviceCredential]:
+        result = await session.execute(
             select(DeviceCredential).where(
                 DeviceCredential.voter_id == voter_id,
                 DeviceCredential.is_active.is_(True),
             )
         )
-        return result.scalars().first()
+        return list(result.scalars().all())
 
     async def list_by_voter(
         self, session: AsyncSession, voter_id: UUID

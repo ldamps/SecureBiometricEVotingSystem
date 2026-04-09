@@ -201,7 +201,7 @@ export async function decryptPrivateKey(
   _earDescriptor: FeatureDescriptor,
   bundle: EncryptedKeyBundle,
 ): Promise<CryptoKey> {
-  const { quantisationParams } = bundle;
+  const quantisationParams = bundle.quantisationParams ?? DEFAULT_QUANTISATION_PARAMS;
 
   // Use only the face descriptor (matches enrollment).
   const combined = new Float32Array(faceDescriptor.length);

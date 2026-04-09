@@ -79,11 +79,13 @@ class BiometricService:
         # Validate the public key parses as ECDSA P-256
         self._parse_public_key(request.public_key_pem)
 
-        # Deactivate any existing credential for this voter+device
-        existing = await self.credentials_repo.get_active_by_voter_and_device(
-            self.session, voter_id, request.device_id
+        # Deactivate ALL existing active credentials for this voter so that
+        # stale enrollments (e.g. from a previous key-derivation scheme) are
+        # cleaned up even when the device_id changes between enrollments.
+        existing_credentials = await self.credentials_repo.list_active_by_voter(
+            self.session, voter_id
         )
-        if existing:
+        for existing in existing_credentials:
             await self.credentials_repo.deactivate(self.session, existing.id)
             logger.info(
                 "Deactivated previous credential for re-enrollment",
