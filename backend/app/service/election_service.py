@@ -1,6 +1,7 @@
 # election_service.py - Service layer for election-related operations.
 
 import structlog
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
@@ -185,6 +186,14 @@ class ElectionService(EncryptionUtilsMixin):
                     raise ValidationError(
                         f"Invalid status transition: {current.status} -> {dto.status}"
                     )
+
+                # When manually closing before the voting window ends,
+                # snap voting_closes to now so the schedule-based sync
+                # does not revert the status back to OPEN.
+                if dto.status == ElectionStatus.CLOSED.value:
+                    now = datetime.now(timezone.utc)
+                    if current.voting_closes is not None and current.voting_closes > now:
+                        dto.voting_closes = now
 
             updated = await self.election_repo.update_election(
                 self.session, election_id, dto, is_draft=is_draft,

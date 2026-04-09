@@ -1,6 +1,7 @@
 # referendum_service.py - Service layer for referendum-related operations.
 
 import structlog
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
@@ -180,6 +181,14 @@ class ReferendumService(EncryptionUtilsMixin):
                     raise ValidationError(
                         f"Invalid referendum status transition: {current.status} -> {new_status}"
                     )
+
+                # When manually closing before the voting window ends,
+                # snap voting_closes to now so the schedule-based sync
+                # does not revert the status back to OPEN.
+                if new_status == ReferendumStatus.CLOSED.value:
+                    now = datetime.now(timezone.utc)
+                    if current.voting_closes is not None and current.voting_closes > now:
+                        data["voting_closes"] = now
 
             # Extract constituency_ids before passing to repo (not a DB column)
             constituency_ids = data.pop("constituency_ids", None)
