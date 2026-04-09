@@ -1,21 +1,21 @@
 /**
  * Minimal service worker for PWA installability.
  *
- * Caches the app shell so the "Add to Home Screen" prompt appears on
- * mobile browsers.  The biometric enrollment/verification pages then
- * run inside a standalone PWA context where IndexedDB is persistent
- * (not cleared with normal browser history).
+ * Exists so the browser offers "Add to Home Screen".  The biometric
+ * enrollment/verification pages then run in a standalone PWA context
+ * where IndexedDB is persistent (not cleared with browser history).
+ *
+ * IMPORTANT: This SW intentionally does NOT cache navigation requests
+ * (HTML pages).  Caching index.html caused blank-page bugs when deploys
+ * changed the JS bundle hash — the stale cached HTML referenced a JS
+ * file that no longer existed.  Only static assets (JS/CSS with
+ * content-hash filenames) are cached.
  */
 
-const CACHE_NAME = "evoting-pwa-v1";
+const CACHE_NAME = "evoting-pwa-v2";
 
-// Cache the app shell on install.
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll(["/", "/index.html"])
-    ),
-  );
+// Immediately take control on install — no precache of HTML.
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
@@ -31,20 +31,36 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Network-first strategy: try network, fall back to cache.
+// Network-first for static assets only.  Navigation requests (HTML)
+// always go straight to the network so the browser gets the latest
+// index.html with the correct JS bundle hash.
 self.addEventListener("fetch", (event) => {
-  // Skip non-GET and API requests — always go to network.
-  if (event.request.method !== "GET" || event.request.url.includes("/api/")) {
+  const { request } = event;
+
+  // Skip non-GET, API calls, and navigation (HTML) requests.
+  if (
+    request.method !== "GET" ||
+    request.url.includes("/api/") ||
+    request.mode === "navigate"
+  ) {
+    return;
+  }
+
+  // Only cache static assets (content-hashed filenames under /static/).
+  if (!request.url.includes("/static/")) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(() => caches.match(event.request)),
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(request).then((cached) => {
+        // Static assets have content hashes — cache-first is safe.
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          cache.put(request, response.clone());
+          return response;
+        });
+      }),
+    ),
   );
 });
