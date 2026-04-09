@@ -50,6 +50,17 @@ class EmailService:
             )
         )
 
+    def send_verification_code(self, to_email: str, code: str) -> None:
+        """Send a 6-digit verification code for updating registration details."""
+        self.send_email(
+            SendEmailDTO(
+                to_email=to_email,
+                subject="Your verification code",
+                template_name="email_verification_code.html",
+                template_vars={"code": code},
+            )
+        )
+
     def send_vote_confirmation(
         self, to_email: str, vote_name: str, vote_type: str = "election"
     ) -> None:

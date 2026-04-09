@@ -5,7 +5,7 @@ from app.application.api.versioning import (
     create_versioned_router,
     version_manager,
 )
-from app.application.api.v1 import health, voter_route, constituency_route, election_route, party_route, referendum_route, voting_route, biometric_route, official_route, investigation_route, audit_route, auth_route, kyc_route
+from app.application.api.v1 import health, voter_route, constituency_route, election_route, party_route, referendum_route, voting_route, biometric_route, official_route, investigation_route, audit_route, auth_route, kyc_route, email_verification_route
 
 # Build the v1 router and include all v1 sub-routers
 v1_router = create_versioned_router(APIVersion.V1, "")
@@ -22,5 +22,6 @@ v1_router.include_router(investigation_route.router)
 v1_router.include_router(audit_route.router)
 v1_router.include_router(auth_route.router)
 v1_router.include_router(kyc_route.router)
+v1_router.include_router(email_verification_route.router)
 
 version_manager.register_version(APIVersion.V1, v1_router)

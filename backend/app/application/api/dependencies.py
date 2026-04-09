@@ -125,6 +125,20 @@ def get_keys_manager_service() -> KeysManagerService:
     )
 
 
+def get_email_verification_service(
+    session: AsyncSession = Depends(get_db),
+    email_service: EmailService = Depends(get_email_service),
+) -> "EmailVerificationService":
+    """Get the email verification code service."""
+    from app.service.email_verification_service import EmailVerificationService
+    from app.repository.email_verification_repo import EmailVerificationRepository
+    return EmailVerificationService(
+        repo=EmailVerificationRepository(),
+        session=session,
+        email_service=email_service,
+    )
+
+
 def get_voter_service(
     session: AsyncSession = Depends(get_db),
     keys_manager: KeysManagerService = Depends(get_keys_manager_service),

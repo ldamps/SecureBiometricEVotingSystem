@@ -1,10 +1,16 @@
 /**
  * Biometric-bound key encryption — ported from the web frontend.
  *
- * Identical algorithm: quantise face+ear features, derive AES key via
+ * Identical algorithm: quantise face features, derive AES key via
  * PBKDF2, encrypt/decrypt the ECDSA private key with AES-GCM.
  * The only change is using react-native-quick-crypto instead of
  * window.crypto.subtle.
+ *
+ * KEY DESIGN DECISION — face-only key derivation:
+ * Only the face descriptor is used for AES key derivation.  The ear
+ * descriptor is excluded because hand-crafted pixel-level ear features
+ * are too sensitive to position/lighting to survive quantisation across
+ * sessions.  The ear is still verified via cosine-similarity matching.
  */
 
 import {
@@ -45,12 +51,12 @@ function quantiseFeatures(
 }
 
 function generateOffsets(): number[] {
-  const offsets: number[] = [0];
-  for (const delta of [0.03, 0.06]) {
+  const offsets: number[] = [0]; // always include zero-offset (exact match)
+  for (const delta of [0.02, 0.04, 0.06, 0.08, 0.10, 0.12]) {
     offsets.push(delta);
     offsets.push(-delta);
   }
-  return offsets; // 5 offsets
+  return offsets; // 13 offsets total
 }
 
 async function encryptOneCopy(
@@ -81,12 +87,12 @@ async function encryptOneCopy(
 /** Generate ECDSA keypair and encrypt private key with biometric features. */
 export async function generateAndEncryptKeyPair(
   faceDescriptor: FeatureDescriptor,
-  earDescriptor: FeatureDescriptor,
+  _earDescriptor: FeatureDescriptor,
   params: QuantisationParams = DEFAULT_QUANTISATION_PARAMS,
 ): Promise<{ publicKeyPem: string; encryptedBundle: EncryptedKeyBundle }> {
-  const combined = new Float32Array(faceDescriptor.length + earDescriptor.length);
+  // Use only face descriptor for key derivation — see module doc.
+  const combined = new Float32Array(faceDescriptor.length);
   combined.set(faceDescriptor);
-  combined.set(earDescriptor, faceDescriptor.length);
 
   const keyPair = await generateECDSAKeyPair();
   const privateKeyDer = await exportPrivateKeyDer(keyPair.privateKey);
@@ -107,14 +113,14 @@ export async function generateAndEncryptKeyPair(
 /** Decrypt the ECDSA private key using fresh biometric features. */
 export async function decryptPrivateKey(
   faceDescriptor: FeatureDescriptor,
-  earDescriptor: FeatureDescriptor,
+  _earDescriptor: FeatureDescriptor,
   bundle: EncryptedKeyBundle,
 ): Promise<CryptoKey> {
   const { quantisationParams } = bundle;
 
-  const combined = new Float32Array(faceDescriptor.length + earDescriptor.length);
+  // Use only face descriptor (matches enrollment).
+  const combined = new Float32Array(faceDescriptor.length);
   combined.set(faceDescriptor);
-  combined.set(earDescriptor, faceDescriptor.length);
 
   let copies: EncryptedKeyCopy[];
   if (bundle.copies && bundle.copies.length > 0) {
