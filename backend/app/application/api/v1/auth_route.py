@@ -78,6 +78,16 @@ async def seed_all(service: AuthService = Depends(get_auth_service)) -> dict:
     db = service.session
     summary = {}
 
+    # ── 0. Wipe existing election & referendum data ───────────────────
+    for tbl in [
+        "seat_allocation", "tally_result", "vote", "referendum_vote",
+        "candidate", "election_constituency", "referendum_constituency",
+        "voter_ledger",
+        "election", "referendum",
+    ]:
+        await db.execute(text(f"DELETE FROM {tbl}"))
+    summary["cleared"] = True
+
     # ── helpers ────────────────────────────────────────────────────────
     def uid() -> str:
         return str(uuid4())
@@ -153,41 +163,94 @@ async def seed_all(service: AuthService = Depends(get_auth_service)) -> dict:
 
     # ── 3. Elections ──────────────────────────────────────────────────
     now = datetime.now(timezone.utc)
+    may_5 = datetime(2026, 5, 5, 22, 0, tzinfo=timezone.utc)
+    open_start = datetime(2026, 4, 1, 8, 0, tzinfo=timezone.utc)
     ELECTIONS = [
+        # ── CLOSED elections ──
         {
             "title": "2026 UK General Election",
             "type": "GENERAL", "scope": "NATIONAL", "method": "FPTP", "status": "CLOSED",
-            "opens": now - timedelta(days=14), "closes": now - timedelta(days=7),
+            "opens": now - timedelta(days=60), "closes": now - timedelta(days=30),
             "country": "England", "limit": 12,
             "parties": ["CON", "LAB", "LD", "GRN", "REF"],
         },
         {
-            "title": "2026 Scottish Parliament Election",
+            "title": "2025 Scottish Parliament Election",
             "type": "SCOTTISH_PARLIAMENT", "scope": "REGIONAL", "method": "AMS", "status": "CLOSED",
-            "opens": now - timedelta(days=14), "closes": now - timedelta(days=7),
+            "opens": now - timedelta(days=90), "closes": now - timedelta(days=60),
             "country": "Scotland", "limit": 6,
             "parties": ["CON", "LAB", "LD", "SNP", "GRN"],
         },
         {
-            "title": "2026 Northern Ireland Assembly Election",
+            "title": "2025 Northern Ireland Assembly Election",
             "type": "NORTHERN_IRELAND_ASSEMBLY", "scope": "REGIONAL", "method": "STV", "status": "CLOSED",
-            "opens": now - timedelta(days=14), "closes": now - timedelta(days=7),
+            "opens": now - timedelta(days=90), "closes": now - timedelta(days=60),
             "country": "Northern Ireland", "limit": 5,
             "parties": ["SF", "DUP", "ALL", "LAB", "GRN"],
         },
         {
+            "title": "2025 London Assembly Election",
+            "type": "LONDON_ASSEMBLY", "scope": "REGIONAL", "method": "AMS", "status": "CLOSED",
+            "opens": now - timedelta(days=120), "closes": now - timedelta(days=90),
+            "country": "England", "limit": 3,
+            "parties": ["CON", "LAB", "LD", "GRN", "REF"],
+        },
+        {
+            "title": "2025 Mayoral Elections",
+            "type": "MAYORS", "scope": "LOCAL", "method": "FPTP", "status": "CLOSED",
+            "opens": now - timedelta(days=120), "closes": now - timedelta(days=90),
+            "country": "England", "limit": 3,
+            "parties": ["CON", "LAB", "LD", "GRN", "REF"],
+        },
+        {
+            "title": "2025 Local Council Elections (England & Wales)",
+            "type": "LOCAL_ENGLAND_WALES", "scope": "LOCAL", "method": "FPTP", "status": "CLOSED",
+            "opens": now - timedelta(days=150), "closes": now - timedelta(days=120),
+            "country": "Wales", "limit": 4,
+            "parties": ["CON", "LAB", "LD", "GRN", "PC"],
+        },
+        # ── OPEN elections (close May 5th) ──
+        {
             "title": "2026 London Assembly Election",
             "type": "LONDON_ASSEMBLY", "scope": "REGIONAL", "method": "AMS", "status": "OPEN",
-            "opens": now - timedelta(days=1), "closes": now + timedelta(days=30),
+            "opens": open_start, "closes": may_5,
             "country": "England", "limit": 3,
             "parties": ["CON", "LAB", "LD", "GRN", "REF"],
         },
         {
             "title": "2026 Local Council Elections (England & Wales)",
             "type": "LOCAL_ENGLAND_WALES", "scope": "LOCAL", "method": "FPTP", "status": "OPEN",
-            "opens": now - timedelta(days=1), "closes": now + timedelta(days=30),
+            "opens": open_start, "closes": may_5,
             "country": "Wales", "limit": 4,
             "parties": ["CON", "LAB", "LD", "GRN", "PC"],
+        },
+        {
+            "title": "2026 Scottish Parliament Election",
+            "type": "SCOTTISH_PARLIAMENT", "scope": "REGIONAL", "method": "AMS", "status": "OPEN",
+            "opens": open_start, "closes": may_5,
+            "country": "Scotland", "limit": 6,
+            "parties": ["CON", "LAB", "LD", "SNP", "GRN"],
+        },
+        {
+            "title": "2026 Northern Ireland Assembly Election",
+            "type": "NORTHERN_IRELAND_ASSEMBLY", "scope": "REGIONAL", "method": "STV", "status": "OPEN",
+            "opens": open_start, "closes": may_5,
+            "country": "Northern Ireland", "limit": 5,
+            "parties": ["SF", "DUP", "ALL", "LAB", "GRN"],
+        },
+        {
+            "title": "2026 Mayoral Elections",
+            "type": "MAYORS", "scope": "LOCAL", "method": "FPTP", "status": "OPEN",
+            "opens": open_start, "closes": may_5,
+            "country": "England", "limit": 3,
+            "parties": ["CON", "LAB", "LD", "GRN", "REF"],
+        },
+        {
+            "title": "2026 Police and Crime Commissioner Elections",
+            "type": "POLICE_AND_CRIME_COMMISSIONER", "scope": "LOCAL", "method": "FPTP", "status": "OPEN",
+            "opens": open_start, "closes": may_5,
+            "country": "England", "limit": 4,
+            "parties": ["CON", "LAB", "LD", "GRN", "REF"],
         },
     ]
 
@@ -329,20 +392,46 @@ async def seed_all(service: AuthService = Depends(get_auth_service)) -> dict:
 
     # ── 4. Referendums ────────────────────────────────────────────────
     REFERENDUMS = [
+        # ── CLOSED referendums ──
         {
             "title": "National Voting Age Referendum",
             "question": "Should the minimum voting age in the United Kingdom be lowered from 18 to 16 for all elections and referendums?",
             "description": "This referendum seeks to determine public opinion on whether 16 and 17 year olds should be granted the right to vote.",
             "scope": "NATIONAL", "status": "CLOSED",
-            "opens": now - timedelta(days=14), "closes": now - timedelta(days=7),
+            "opens": now - timedelta(days=60), "closes": now - timedelta(days=30),
             "country": None,
         },
+        {
+            "title": "EU Membership Referendum",
+            "question": "Should the United Kingdom remain a member of the European Union or leave the European Union?",
+            "description": "A binding referendum on the United Kingdom's continued membership of the European Union.",
+            "scope": "NATIONAL", "status": "CLOSED",
+            "opens": now - timedelta(days=120), "closes": now - timedelta(days=90),
+            "country": None,
+        },
+        {
+            "title": "Northern Ireland Border Poll",
+            "question": "Should Northern Ireland remain part of the United Kingdom or join a united Ireland?",
+            "description": "A consultative referendum on the constitutional status of Northern Ireland under the provisions of the Good Friday Agreement.",
+            "scope": "REGIONAL", "status": "CLOSED",
+            "opens": now - timedelta(days=90), "closes": now - timedelta(days=60),
+            "country": "Northern Ireland", "limit": 5,
+        },
+        {
+            "title": "London Congestion Charge Expansion Referendum",
+            "question": "Should the London congestion charge zone be expanded to include areas within the North and South Circular roads?",
+            "description": "A local referendum on whether to expand the congestion charge boundary to reduce traffic and improve air quality across Greater London.",
+            "scope": "LOCAL", "status": "CLOSED",
+            "opens": now - timedelta(days=90), "closes": now - timedelta(days=60),
+            "country": "England", "limit": 3,
+        },
+        # ── OPEN referendums (close May 5th) ──
         {
             "title": "Scottish Independence Referendum",
             "question": "Should Scotland be an independent country?",
             "description": "A consultative referendum on whether Scotland should become an independent sovereign state.",
             "scope": "REGIONAL", "status": "OPEN",
-            "opens": now - timedelta(days=1), "closes": now + timedelta(days=30),
+            "opens": open_start, "closes": may_5,
             "country": "Scotland", "limit": 6,
         },
         {
@@ -350,8 +439,24 @@ async def seed_all(service: AuthService = Depends(get_auth_service)) -> dict:
             "question": "Should Welsh language education be mandatory in all primary and secondary schools in Wales?",
             "description": "This referendum asks whether the Welsh Government should mandate Welsh language instruction as a core subject.",
             "scope": "REGIONAL", "status": "OPEN",
-            "opens": now - timedelta(days=1), "closes": now + timedelta(days=30),
+            "opens": open_start, "closes": may_5,
             "country": "Wales", "limit": 4,
+        },
+        {
+            "title": "Electoral Reform Referendum",
+            "question": "Should the United Kingdom adopt a proportional representation system for general elections?",
+            "description": "This referendum asks whether the UK should replace the current first-past-the-post system with a form of proportional representation for Westminster elections.",
+            "scope": "NATIONAL", "status": "OPEN",
+            "opens": open_start, "closes": may_5,
+            "country": None,
+        },
+        {
+            "title": "Net Zero 2030 Referendum",
+            "question": "Should the United Kingdom bring forward its net zero carbon emissions target from 2050 to 2030?",
+            "description": "This referendum asks whether the UK should accelerate its legally binding commitment to achieve net zero greenhouse gas emissions.",
+            "scope": "NATIONAL", "status": "OPEN",
+            "opens": open_start, "closes": may_5,
+            "country": None,
         },
     ]
     ref_count = 0
