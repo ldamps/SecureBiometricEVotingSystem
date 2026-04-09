@@ -53,7 +53,7 @@ const INSTRUCTIONS = {
   waiting_face: { title: "Step 1 of 3: Position your face", detail: "Centre your face within the oval guide. Make sure your face is well-lit and clearly visible." },
   waiting_blink: { title: "Step 1 of 3: Liveness check", detail: "Face detected! Now blink naturally to prove you are a real person." },
   extracting_face: { title: "Step 2 of 3: Capturing face", detail: "Hold still \u2014 capturing your facial features. This takes a few seconds." },
-  turn_head: { title: "Step 3 of 3: Show your ear", detail: "Turn your head to the LEFT to show your ear. The camera will capture automatically in a few seconds." },
+  turn_head: { title: "Step 3 of 3: Show your ear", detail: "Turn your head to the LEFT to show your ear. Please make sure your ear is not covered by hair, headphones, or piercings. The camera will capture automatically in a few seconds." },
   extracting_ear: { title: "Step 3 of 3: Capturing ear", detail: "Hold still \u2014 capturing your ear features." },
   done: { title: "Complete", detail: "Both face and ear captured successfully." },
   error: { title: "Error", detail: "Something went wrong. Please try again." },

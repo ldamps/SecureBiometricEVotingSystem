@@ -147,11 +147,8 @@ function MobileVerifyPage() {
           if (!match.overallPassed) {
             setState("decrypt_failed");
             setError(
-              `Biometric verification failed — you do not match the enrolled voter. ` +
-              `Face similarity: ${(match.face.similarity * 100).toFixed(1)}%, ` +
-              `ear similarity: ${(match.ear.similarity * 100).toFixed(1)}%. ` +
-              `Both must be at least 99%. ` +
-              `Please ensure good lighting and try again.`,
+              "Biometric verification failed. Your face and ear did not match the enrollment. " +
+              "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories.",
             );
             return;
           }

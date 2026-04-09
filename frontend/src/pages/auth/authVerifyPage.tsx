@@ -107,9 +107,8 @@ function AuthVerifyPage() {
           if (!match.overallPassed) {
             setState("decrypt_failed");
             setError(
-              `Biometric verification failed. ` +
-              `Face: ${(match.face.similarity * 100).toFixed(1)}%, ` +
-              `Ear: ${(match.ear.similarity * 100).toFixed(1)}%. Both must be at least 99%.`,
+              "Biometric verification failed. Your face and ear did not match the enrollment. " +
+              "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories.",
             );
             return;
           }

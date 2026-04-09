@@ -80,7 +80,7 @@ export interface StoredBiometricData {
  */
 export const BIOMETRIC_THRESHOLDS = {
   FACE: 0.99,
-  EAR: 0.99,
+  EAR: 0.95,
 } as const;
 
 /** Default quantisation parameters.
