@@ -30,8 +30,11 @@ import AuthenticatorLayout from './layouts/authenticatorLayout';
 
 // Biometric pages — lazy-loaded so face-api.js / TensorFlow.js
 // are only downloaded when the user navigates to a biometric route.
-const MobileEnrollPage = React.lazy(() => import('./pages/biometric/mobileEnrollPage'));
-const MobileVerifyPage = React.lazy(() => import('./pages/biometric/mobileVerifyPage'));
+/** Redirect legacy /biometric/* URLs to /auth/*, preserving query params. */
+function BiometricRedirect({ to }: { to: string }) {
+  const search = window.location.search;
+  return <Navigate to={to + search} replace />;
+}
 
 // Authenticator PWA pages (built-in QR scanner flow)
 const AuthHomePage = React.lazy(() => import('./pages/auth/authHomePage'));
@@ -90,9 +93,9 @@ const App: React.FC = () => {
               </Route>
             </Route>
             
-            {/* Mobile biometric routes (accessed via QR code on phone/tablet) */}
-            <Route path="/biometric/enroll" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric enrollment…</div>}><MobileEnrollPage /></Suspense>} />
-            <Route path="/biometric/verify" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric verification…</div>}><MobileVerifyPage /></Suspense>} />
+            {/* Legacy biometric routes — redirect to authenticator pages */}
+            <Route path="/biometric/enroll" element={<BiometricRedirect to="/auth/enroll" />} />
+            <Route path="/biometric/verify" element={<BiometricRedirect to="/auth/verify" />} />
 
             {/* Default route — resume biometric flow if PWA was installed, else landing */}
             <Route path="/" element={<PwaRedirect />} />

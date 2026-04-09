@@ -15,6 +15,7 @@ import BiometricCaptureFlow from "../../features/biometric/components/BiometricC
 import { generateAndEncryptKeyPair } from "../../features/biometric/services/biometric-key-encryption.service";
 import { storeBiometricData, getOrCreateDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor } from "../../features/biometric/models/biometric-feature.model";
+import PwaInstallGate from "../../features/biometric/components/PwaInstallGate";
 
 const biometricApi = new BiometricApiRepository();
 
@@ -100,6 +101,7 @@ function AuthEnrollPage() {
   };
 
   return (
+    <PwaInstallGate>
     <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem 1rem" }}>
       <h1 style={{ fontSize: "1.3rem", fontWeight: 700, textAlign: "center", color: theme.colors.text.primary }}>
         Biometric Enrollment
@@ -165,6 +167,7 @@ function AuthEnrollPage() {
         )}
       </div>
     </div>
+    </PwaInstallGate>
   );
 }
 
