@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import { getCardStyle, getPageTitleStyle, PrimaryButton, SecondaryButton } from "../../styles/ui";
+import { getCardStyle, getPageTitleStyle, PrimaryButton } from "../../styles/ui";
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { generateAndEncryptKeyPair } from "../../features/biometric/services/biometric-key-encryption.service";
@@ -29,9 +29,7 @@ const biometricApi = new BiometricApiRepository();
 /** True when the page is running as an installed PWA (Add to Home Screen). */
 function isInstalledPwa(): boolean {
   if (typeof window === "undefined") return false;
-  // iOS standalone mode
   if ((navigator as any).standalone === true) return true;
-  // Android / desktop PWA
   if (window.matchMedia("(display-mode: standalone)").matches) return true;
   return false;
 }
@@ -85,13 +83,11 @@ function MobileEnrollPage() {
       try {
         setState("generating_keys");
 
-        // Generate ECDSA keypair and encrypt private key with biometric-derived key.
         const { publicKeyPem, encryptedBundle } = await generateAndEncryptKeyPair(
           result.faceDescriptor,
           result.earDescriptor,
         );
 
-        // Persist biometric templates + encrypted key locally.
         await storeBiometricData({
           voterId,
           faceTemplate: Array.from(result.faceDescriptor),
@@ -102,9 +98,6 @@ function MobileEnrollPage() {
 
         setState("enrolling");
 
-        // Register the public key AND the encrypted key bundle with the server.
-        // The server stores the bundle but cannot decrypt it — only a
-        // matching face+ear biometric can recover the signing key.
         const deviceId = await getOrCreateDeviceId();
         await biometricApi.enrollDevice({
           voter_id: voterId,
@@ -160,7 +153,7 @@ function MobileEnrollPage() {
         Biometric Enrollment
       </h1>
 
-      {/* PWA install prompt — shown when opened in a regular browser tab */}
+      {/* PWA install prompt */}
       {state === "install_pwa" && (
         <div style={{ ...getCardStyle(theme), marginTop: "1.25rem" }}>
           <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem", fontWeight: 600 }}>
@@ -179,9 +172,9 @@ function MobileEnrollPage() {
               paddingLeft: "1.25rem",
             }}>
               <li>Tap the <strong>Share</strong> button at the bottom of Safari (the square with an arrow pointing up).</li>
-              <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
-              <li>Tap <strong>"Add"</strong> in the top-right corner.</li>
-              <li>Open the <strong>"Secure Biometric E-Voting"</strong> app from your home screen.</li>
+              <li>Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong>.</li>
+              <li>Tap <strong>&quot;Add&quot;</strong> in the top-right corner.</li>
+              <li>Open the <strong>&quot;E-Voting&quot;</strong> app from your home screen.</li>
               <li>Scan the QR code again from within the app.</li>
             </ol>
           ) : (
@@ -193,7 +186,7 @@ function MobileEnrollPage() {
               paddingLeft: "1.25rem",
             }}>
               <li>Tap the <strong>menu</strong> (three dots) in your browser.</li>
-              <li>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.</li>
+              <li>Tap <strong>&quot;Add to Home screen&quot;</strong> or <strong>&quot;Install app&quot;</strong>.</li>
               <li>Open the app from your home screen.</li>
               <li>Scan the QR code again from within the app.</li>
             </ol>
@@ -209,9 +202,9 @@ function MobileEnrollPage() {
           </p>
 
           <div style={{ marginTop: theme.spacing.lg, display: "flex", justifyContent: "center", gap: theme.spacing.md }}>
-            <SecondaryButton onClick={handleSkipInstall}>
+            <PrimaryButton onClick={handleSkipInstall}>
               Continue without installing
-            </SecondaryButton>
+            </PrimaryButton>
           </div>
         </div>
       )}

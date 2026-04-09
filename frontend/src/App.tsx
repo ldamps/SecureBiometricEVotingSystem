@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 import "./styles/global.css";
 import { ThemeProvider } from './styles/ThemeContext';
@@ -65,7 +65,9 @@ const App: React.FC = () => {
             <Route path="/biometric/enroll" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric enrollment…</div>}><MobileEnrollPage /></Suspense>} />
             <Route path="/biometric/verify" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric verification…</div>}><MobileVerifyPage /></Suspense>} />
 
-            {/* Shared routes */}
+            {/* Default route — redirect to voter landing */}
+            <Route path="/" element={<Navigate to="/voter/landing" replace />} />
+            <Route path="*" element={<Navigate to="/voter/landing" replace />} />
 
           </Route>
         </Routes>
