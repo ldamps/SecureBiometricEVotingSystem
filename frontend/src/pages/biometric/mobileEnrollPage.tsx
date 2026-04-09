@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import { getCardStyle, getPageTitleStyle, PrimaryButton } from "../../styles/ui";
+import { getCardStyle, getPageTitleStyle, PrimaryButton, SecondaryButton } from "../../styles/ui";
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { generateAndEncryptKeyPair } from "../../features/biometric/services/biometric-key-encryption.service";
@@ -26,7 +26,25 @@ import { FeatureDescriptor } from "../../features/biometric/models/biometric-fea
 
 const biometricApi = new BiometricApiRepository();
 
+/** True when the page is running as an installed PWA (Add to Home Screen). */
+function isInstalledPwa(): boolean {
+  if (typeof window === "undefined") return false;
+  // iOS standalone mode
+  if ((navigator as any).standalone === true) return true;
+  // Android / desktop PWA
+  if (window.matchMedia("(display-mode: standalone)").matches) return true;
+  return false;
+}
+
+/** Detect iOS Safari so we can show platform-specific install instructions. */
+function isIosSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iP(hone|od|ad)/.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
+}
+
 type EnrollState =
+  | "install_pwa"
   | "ready"
   | "capturing"
   | "generating_keys"
@@ -39,7 +57,9 @@ function MobileEnrollPage() {
   const [searchParams] = useSearchParams();
   const voterId = searchParams.get("voter_id");
 
-  const [state, setState] = useState<EnrollState>("ready");
+  const [state, setState] = useState<EnrollState>(() =>
+    isInstalledPwa() ? "ready" : "install_pwa"
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,6 +68,10 @@ function MobileEnrollPage() {
       setState("error");
     }
   }, [voterId]);
+
+  const handleSkipInstall = useCallback(() => {
+    setState("ready");
+  }, []);
 
   const handleStartEnroll = useCallback(() => {
     setState("capturing");
@@ -106,6 +130,7 @@ function MobileEnrollPage() {
   }, []);
 
   const messages: Record<EnrollState, string> = {
+    install_pwa: "",
     ready:
       "This device will be linked to your voter account. " +
       "Your face and ear biometrics will be captured and stored only on this device \u2014 " +
@@ -135,8 +160,64 @@ function MobileEnrollPage() {
         Biometric Enrollment
       </h1>
 
+      {/* PWA install prompt — shown when opened in a regular browser tab */}
+      {state === "install_pwa" && (
+        <div style={{ ...getCardStyle(theme), marginTop: "1.25rem" }}>
+          <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem", fontWeight: 600 }}>
+            Install the Voting App first
+          </p>
+          <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem", marginTop: theme.spacing.sm }}>
+            To keep your biometric data safe and persistent, please add this app to your home screen before enrolling.
+          </p>
+
+          {isIosSafari() ? (
+            <ol style={{
+              color: theme.colors.text.primary,
+              lineHeight: 1.8,
+              fontSize: "0.9rem",
+              marginTop: theme.spacing.md,
+              paddingLeft: "1.25rem",
+            }}>
+              <li>Tap the <strong>Share</strong> button at the bottom of Safari (the square with an arrow pointing up).</li>
+              <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+              <li>Tap <strong>"Add"</strong> in the top-right corner.</li>
+              <li>Open the <strong>"Secure Biometric E-Voting"</strong> app from your home screen.</li>
+              <li>Scan the QR code again from within the app.</li>
+            </ol>
+          ) : (
+            <ol style={{
+              color: theme.colors.text.primary,
+              lineHeight: 1.8,
+              fontSize: "0.9rem",
+              marginTop: theme.spacing.md,
+              paddingLeft: "1.25rem",
+            }}>
+              <li>Tap the <strong>menu</strong> (three dots) in your browser.</li>
+              <li>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.</li>
+              <li>Open the app from your home screen.</li>
+              <li>Scan the QR code again from within the app.</li>
+            </ol>
+          )}
+
+          <p style={{
+            color: theme.colors.text.secondary,
+            fontSize: "0.85rem",
+            marginTop: theme.spacing.md,
+            lineHeight: 1.5,
+          }}>
+            Installing the app ensures your biometric data is stored permanently on this device and won't be cleared by your browser.
+          </p>
+
+          <div style={{ marginTop: theme.spacing.lg, display: "flex", justifyContent: "center", gap: theme.spacing.md }}>
+            <SecondaryButton onClick={handleSkipInstall}>
+              Continue without installing
+            </SecondaryButton>
+          </div>
+        </div>
+      )}
+
       {/* Status / instructions */}
-      {state !== "capturing" && (
+      {state !== "capturing" && state !== "install_pwa" && (
         <div style={{ ...getCardStyle(theme), marginTop: "1.25rem" }}>
           <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem" }}>
             {messages[state]}

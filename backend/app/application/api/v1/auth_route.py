@@ -419,6 +419,19 @@ async def seed_all(service: AuthService = Depends(get_auth_service)) -> dict:
     return {"status": "success", "summary": summary}
 
 
+@router.get("/clear-voters")
+async def clear_voters(service: AuthService = Depends(get_auth_service)) -> dict:
+    """Temporary: remove all registered voters and cascading records
+    (addresses, passports, device credentials, voter ledger, biometric challenges)."""
+    from sqlalchemy import text
+
+    db = service.session
+    result = await db.execute(text("SELECT COUNT(*) FROM voter"))
+    count = result.scalar()
+    await db.execute(text("TRUNCATE voter CASCADE"))
+    return {"status": "success", "voters_removed": count}
+
+
 # Login — public (no token required)
 @router.post(
     "/login",

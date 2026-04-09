@@ -68,6 +68,29 @@ ELECTION_TYPE_ALLOCATION_MAP: dict[ElectionType, AllocationMethod] = {
     ElectionType.SCOTTISH_CROFTING_COMMISSION: AllocationMethod.ALTERNATIVE_VOTE,
 }
 
+# Minimum voting age per election type.
+# Scottish Parliament, Scottish local, and Welsh local elections allow 16+.
+# All other UK elections require voters to be at least 18.
+ELECTION_TYPE_MINIMUM_VOTING_AGE: dict[ElectionType, int] = {
+    # 18+ elections
+    ElectionType.GENERAL: 18,
+    ElectionType.MAYORS: 18,
+    ElectionType.POLICE_AND_CRIME_COMMISSIONER: 18,
+    ElectionType.NORTHERN_IRELAND_ASSEMBLY: 18,
+    ElectionType.LONDON_ASSEMBLY: 18,
+    ElectionType.HOUSE_OF_LORDS_HEREDITARY: 18,
+    # 16+ elections (Scotland / Wales)
+    ElectionType.SCOTTISH_PARLIAMENT: 16,
+    ElectionType.SCOTTISH_NATIONAL_PARK: 16,
+    ElectionType.SCOTTISH_CROFTING_COMMISSION: 16,
+    ElectionType.LOCAL_NORTHERN_IRELAND_SCOTLAND: 16,
+    ElectionType.LOCAL_ENGLAND_WALES: 16,
+}
+
+# Default minimum voting age for referendums (UK-wide = 18)
+REFERENDUM_MINIMUM_VOTING_AGE = 18
+
+
 class ElectionScope(str, enum.Enum):
     """
     Election scope.
