@@ -31,6 +31,27 @@ import ManageReferendumsPage from './pages/official/manageReferendumsPage';
 const MobileEnrollPage = React.lazy(() => import('./pages/biometric/mobileEnrollPage'));
 const MobileVerifyPage = React.lazy(() => import('./pages/biometric/mobileVerifyPage'));
 
+/**
+ * Check if the PWA was opened from the home screen and a biometric
+ * page saved a redirect URL before install.  If so, navigate there
+ * so the user resumes enrollment/verification without re-scanning.
+ */
+function PwaRedirect() {
+  const key = "evoting_pwa_redirect";
+  const saved = localStorage.getItem(key);
+  if (saved) {
+    localStorage.removeItem(key);
+    try {
+      const url = new URL(saved);
+      // Only redirect to same-origin biometric paths
+      if (url.origin === window.location.origin && url.pathname.startsWith("/biometric/")) {
+        return <Navigate to={url.pathname + url.search} replace />;
+      }
+    } catch { /* invalid URL, ignore */ }
+  }
+  return <Navigate to="/voter/landing" replace />;
+}
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -65,8 +86,8 @@ const App: React.FC = () => {
             <Route path="/biometric/enroll" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric enrollment…</div>}><MobileEnrollPage /></Suspense>} />
             <Route path="/biometric/verify" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric verification…</div>}><MobileVerifyPage /></Suspense>} />
 
-            {/* Default route — redirect to voter landing */}
-            <Route path="/" element={<Navigate to="/voter/landing" replace />} />
+            {/* Default route — resume biometric flow if PWA was installed, else landing */}
+            <Route path="/" element={<PwaRedirect />} />
             <Route path="*" element={<Navigate to="/voter/landing" replace />} />
 
           </Route>

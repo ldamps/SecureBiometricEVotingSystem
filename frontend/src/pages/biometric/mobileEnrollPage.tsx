@@ -26,12 +26,19 @@ import { FeatureDescriptor } from "../../features/biometric/models/biometric-fea
 
 const biometricApi = new BiometricApiRepository();
 
+const PWA_REDIRECT_KEY = "evoting_pwa_redirect";
+
 /** True when the page is running as an installed PWA (Add to Home Screen). */
 function isInstalledPwa(): boolean {
   if (typeof window === "undefined") return false;
   if ((navigator as any).standalone === true) return true;
   if (window.matchMedia("(display-mode: standalone)").matches) return true;
   return false;
+}
+
+/** Save the current URL so the PWA can resume here after install. */
+function saveRedirectUrl(): void {
+  localStorage.setItem(PWA_REDIRECT_KEY, window.location.href);
 }
 
 /** Detect iOS Safari so we can show platform-specific install instructions. */
@@ -55,9 +62,12 @@ function MobileEnrollPage() {
   const [searchParams] = useSearchParams();
   const voterId = searchParams.get("voter_id");
 
-  const [state, setState] = useState<EnrollState>(() =>
-    isInstalledPwa() ? "ready" : "install_pwa"
-  );
+  const [state, setState] = useState<EnrollState>(() => {
+    if (isInstalledPwa()) return "ready";
+    // Save the full URL so the PWA can resume here after install.
+    saveRedirectUrl();
+    return "install_pwa";
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

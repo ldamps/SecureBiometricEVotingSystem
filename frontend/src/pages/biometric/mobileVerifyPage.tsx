@@ -31,6 +31,7 @@ import { retrieveBiometricData, getDeviceId } from "../../features/biometric/ser
 import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
 
 const biometricApi = new BiometricApiRepository();
+const PWA_REDIRECT_KEY = "evoting_pwa_redirect";
 
 /**
  * Sign a hex-encoded challenge with an ECDSA private key.
@@ -71,6 +72,11 @@ function MobileVerifyPage() {
   const [enrolledDeviceId, setEnrolledDeviceId] = useState<string>("");
   const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
   const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
+
+  // Save URL so PWA can resume here after install.
+  useEffect(() => {
+    localStorage.setItem(PWA_REDIRECT_KEY, window.location.href);
+  }, []);
 
   useEffect(() => {
     if (!challengeId || !voterId) {
