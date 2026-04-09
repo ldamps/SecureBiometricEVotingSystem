@@ -20,7 +20,7 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "/voter/landing",
+  "start_url": "/",
   "display": "standalone",
   "theme_color": "#1B2444",
   "background_color": "#E4E9FA",
