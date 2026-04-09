@@ -115,7 +115,8 @@ function BiometricRegistration({
         if (isMobile) {
             // On mobile/tablet — open enrollment in a new tab so the wizard
             // state is preserved in this tab.  Polling detects completion.
-            window.open(enrollUrl, "_blank");
+            const authEnrollUrl = `${window.location.origin}/auth/enroll?voter_id=${encodeURIComponent(state.voterId)}`;
+            window.open(authEnrollUrl, "_blank");
         }
 
         setEnrollmentStatus(BiometricEnrollmentStatus.WAITING_FOR_DEVICE);

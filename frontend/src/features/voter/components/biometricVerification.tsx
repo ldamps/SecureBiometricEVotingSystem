@@ -92,7 +92,7 @@ function BiometricVerification({
 
             if (isMobile) {
                 // On mobile/tablet — navigate directly to the verification page
-                const verifyUrl = `${window.location.origin}/biometric/verify?challenge_id=${encodeURIComponent(challenge.id)}&voter_id=${encodeURIComponent(state.voterId)}`;
+                const verifyUrl = `${window.location.origin}/auth/verify?challenge_id=${encodeURIComponent(challenge.id)}&voter_id=${encodeURIComponent(state.voterId)}`;
                 window.location.href = verifyUrl;
                 return;
             }
