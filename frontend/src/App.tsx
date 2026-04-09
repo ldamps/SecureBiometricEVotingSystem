@@ -25,11 +25,18 @@ import OfficialOnboardingPage from './pages/official/officialOnboardingPage';
 import ManageElectionsPage from './pages/official/manageElectionsPage';
 import ManageReferendumsPage from './pages/official/manageReferendumsPage';
 
-// Mobile biometric pages — lazy-loaded so face-api.js / TensorFlow.js
+// Authenticator PWA layout
+import AuthenticatorLayout from './layouts/authenticatorLayout';
+
+// Biometric pages — lazy-loaded so face-api.js / TensorFlow.js
 // are only downloaded when the user navigates to a biometric route.
-// This prevents TF.js initialisation from blocking or crashing non-biometric pages.
 const MobileEnrollPage = React.lazy(() => import('./pages/biometric/mobileEnrollPage'));
 const MobileVerifyPage = React.lazy(() => import('./pages/biometric/mobileVerifyPage'));
+
+// Authenticator PWA pages (built-in QR scanner flow)
+const AuthHomePage = React.lazy(() => import('./pages/auth/authHomePage'));
+const AuthEnrollPage = React.lazy(() => import('./pages/auth/authEnrollPage'));
+const AuthVerifyPage = React.lazy(() => import('./pages/auth/authVerifyPage'));
 
 /**
  * Check if the PWA was opened from the home screen and a biometric
@@ -37,17 +44,11 @@ const MobileVerifyPage = React.lazy(() => import('./pages/biometric/mobileVerify
  * so the user resumes enrollment/verification without re-scanning.
  */
 function PwaRedirect() {
-  const key = "evoting_pwa_redirect";
-  const saved = localStorage.getItem(key);
-  if (saved) {
-    localStorage.removeItem(key);
-    try {
-      const url = new URL(saved);
-      // Only redirect to same-origin biometric paths
-      if (url.origin === window.location.origin && url.pathname.startsWith("/biometric/")) {
-        return <Navigate to={url.pathname + url.search} replace />;
-      }
-    } catch { /* invalid URL, ignore */ }
+  // If running as an installed PWA, go to the authenticator QR scanner.
+  if (typeof window !== "undefined") {
+    const standalone = (navigator as any).standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+    if (standalone) return <Navigate to="/auth" replace />;
   }
   return <Navigate to="/voter/landing" replace />;
 }
@@ -57,6 +58,13 @@ const App: React.FC = () => {
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
+          {/* Authenticator PWA routes — chromeless layout with built-in QR scanner */}
+          <Route element={<AuthenticatorLayout />}>
+            <Route path="/auth" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading…</div>}><AuthHomePage /></Suspense>} />
+            <Route path="/auth/enroll" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading enrollment…</div>}><AuthEnrollPage /></Suspense>} />
+            <Route path="/auth/verify" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading verification…</div>}><AuthVerifyPage /></Suspense>} />
+          </Route>
+
           <Route element={<MainLayout />}>
 
             {/* Voter routes */}

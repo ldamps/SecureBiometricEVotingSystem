@@ -208,9 +208,8 @@ function BiometricRegistration({
                             textAlign: "center",
                             maxWidth: "320px",
                         }}>
-                            Open the voting app on your phone and scan this code.
-                            Your biometrics (face + ear) will be captured and stored
-                            only on your device.
+                            Open the <strong>E-Voting Authenticator</strong> app on your phone and scan this code.
+                            If you haven&apos;t installed it yet, visit <strong>{window.location.origin}/auth</strong> on your phone first.
                         </p>
 
                         <p style={{

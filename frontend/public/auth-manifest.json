@@ -1,0 +1,29 @@
+{
+  "short_name": "E-Vote Auth",
+  "name": "E-Voting Authenticator",
+  "icons": [
+    {
+      "src": "electionLogo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "electionLogo192.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "electionLogo512.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/auth",
+  "display": "standalone",
+  "theme_color": "#1B2444",
+  "background_color": "#E4E9FA",
+  "scope": "/",
+  "orientation": "portrait"
+}

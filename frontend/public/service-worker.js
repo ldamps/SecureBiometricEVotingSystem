@@ -46,8 +46,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Only cache static assets (content-hashed filenames under /static/).
-  if (!request.url.includes("/static/")) {
+  // Cache static assets (content-hashed) and ML model files (immutable).
+  if (!request.url.includes("/static/") && !request.url.includes("/models/")) {
     return;
   }
 

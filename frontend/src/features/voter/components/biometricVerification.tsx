@@ -226,8 +226,7 @@ function BiometricVerification({
                             textAlign: "center",
                             maxWidth: "320px",
                         }}>
-                            Scan this QR code with your phone or tablet camera.
-                            Complete the face + ear check on your device.
+                            Open the <strong>E-Voting Authenticator</strong> app on your phone and scan this code.
                         </p>
 
                         <p style={{
