@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 
 import "./styles/global.css";
@@ -25,11 +25,11 @@ import OfficialOnboardingPage from './pages/official/officialOnboardingPage';
 import ManageElectionsPage from './pages/official/manageElectionsPage';
 import ManageReferendumsPage from './pages/official/manageReferendumsPage';
 
-// Mobile biometric pages (accessed via QR code from phone/tablet)
-import MobileEnrollPage from './pages/biometric/mobileEnrollPage';
-import MobileVerifyPage from './pages/biometric/mobileVerifyPage';
-
-// Shared pages
+// Mobile biometric pages — lazy-loaded so face-api.js / TensorFlow.js
+// are only downloaded when the user navigates to a biometric route.
+// This prevents TF.js initialisation from blocking or crashing non-biometric pages.
+const MobileEnrollPage = React.lazy(() => import('./pages/biometric/mobileEnrollPage'));
+const MobileVerifyPage = React.lazy(() => import('./pages/biometric/mobileVerifyPage'));
 
 const App: React.FC = () => {
   return (
@@ -62,8 +62,8 @@ const App: React.FC = () => {
             </Route>
             
             {/* Mobile biometric routes (accessed via QR code on phone/tablet) */}
-            <Route path="/biometric/enroll" element={<MobileEnrollPage />} />
-            <Route path="/biometric/verify" element={<MobileVerifyPage />} />
+            <Route path="/biometric/enroll" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric enrollment…</div>}><MobileEnrollPage /></Suspense>} />
+            <Route path="/biometric/verify" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading biometric verification…</div>}><MobileVerifyPage /></Suspense>} />
 
             {/* Shared routes */}
 
