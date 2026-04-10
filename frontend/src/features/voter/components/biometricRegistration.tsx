@@ -55,6 +55,8 @@ function BiometricRegistration({
     const [error, setError] = useState<string | null>(null);
     const [qrPayload, setQrPayload] = useState<string | null>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const voterIdRef = useRef<string>(state.voterId);
+    voterIdRef.current = state.voterId;
 
     // Stop polling on unmount or when enrolled
     useEffect(() => {
@@ -80,44 +82,42 @@ function BiometricRegistration({
                 return;
             }
             try {
-                const credentials = await biometricApi.listCredentials(state.voterId);
+                const credentials = await biometricApi.listCredentials(voterIdRef.current);
                 const active = credentials.find((c) => c.is_active);
                 if (active) {
                     if (pollRef.current) clearInterval(pollRef.current);
-                    setState({
-                        ...state,
+                    setState((prev: any) => ({
+                        ...prev,
                         biometricEnrolled: true,
                         credentialId: active.id,
                         deviceId: active.device_id,
-                    });
+                    }));
                     setEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED);
                 }
             } catch {
                 // Polling failure is non-fatal — we just retry next tick.
             }
         }, POLL_INTERVAL);
-    }, [state, setState]);
+    }, [setState]);
 
     /**
      * Generate the QR code payload and start polling.
      *
-     * The QR code encodes a deep-link URL that the mobile voting app
-     * can open to begin on-device biometric enrollment.  The URL
-     * includes the voter_id so the phone knows which voter to enrol for.
-     *
-     * Example deep link:  evoting://enroll?voter_id=<uuid>
+     * The QR code encodes a deep-link URI (evoting://enroll?voter_id=<uuid>)
+     * that opens the native mobile voting app for on-device biometric
+     * enrollment.
      */
     const isMobile = isMobileOrTablet();
 
     const handleStartEnrollment = () => {
         setError(null);
-        const enrollUrl = `${window.location.origin}/biometric/enroll?voter_id=${encodeURIComponent(state.voterId)}`;
+        const voterId = voterIdRef.current;
+        const enrollUrl = `${window.location.origin}/biometric/enroll?voter_id=${encodeURIComponent(voterId)}`;
         setQrPayload(enrollUrl);
 
         if (isMobile) {
-            // On mobile/tablet — open enrollment in a new tab so the wizard
-            // state is preserved in this tab.  Polling detects completion.
-            window.open(enrollUrl, "_blank");
+            const authEnrollUrl = `${window.location.origin}/auth/enroll?voter_id=${encodeURIComponent(voterId)}`;
+            window.open(authEnrollUrl, "_blank");
         }
 
         setEnrollmentStatus(BiometricEnrollmentStatus.WAITING_FOR_DEVICE);
@@ -210,9 +210,8 @@ function BiometricRegistration({
                             textAlign: "center",
                             maxWidth: "320px",
                         }}>
-                            Open the voting app on your phone and scan this code.
-                            Your biometrics (face + ear) will be captured and stored
-                            only on your device.
+                            Open the <strong>E-Voting Authenticator</strong> app on your phone and scan this code.
+                            If you haven&apos;t installed it yet, visit <strong>{window.location.origin}/auth</strong> on your phone first.
                         </p>
 
                         <p style={{
@@ -231,8 +230,9 @@ function BiometricRegistration({
                         marginTop: theme.spacing.md,
                         padding: theme.spacing.md,
                         borderRadius: theme.borderRadius?.md || "8px",
-                        backgroundColor: "#f0fff4",
+                        backgroundColor: theme.colors.surfaceAlt,
                         border: `1px solid ${theme.colors.status.success}`,
+                        color: theme.colors.text.primary,
                     }}>
                         <strong>Device enrolled</strong>
                         <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>

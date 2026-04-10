@@ -15,7 +15,16 @@ from app.service.voting_schedule_status_sync import (
     sync_referendum_status_with_voting_schedule,
 )
 from app.models.dto.vote import CreateVotePlainDTO, CreateVoteEncryptedDTO
-from app.models.sqlalchemy.election import AllocationMethod, ELECTION_TYPE_ALLOCATION_MAP, ElectionType
+from app.models.sqlalchemy.election import (
+    AllocationMethod,
+    ELECTION_TYPE_ALLOCATION_MAP,
+    ELECTION_TYPE_MINIMUM_VOTING_AGE,
+    ElectionType,
+    Election,
+    ElectionScope,
+    ElectionStatus,
+    REFERENDUM_MINIMUM_VOTING_AGE,
+)
 from app.models.dto.referendum_vote import CreateReferendumVoteEncryptedDTO
 from app.models.schemas.vote import (
     CastVoteRequest,
@@ -23,7 +32,6 @@ from app.models.schemas.vote import (
     CastReferendumVoteRequest,
     CastReferendumVoteResponse,
 )
-from app.models.sqlalchemy.election import Election, ElectionScope, ElectionStatus
 from app.models.sqlalchemy.referendum import ReferendumStatus
 from app.models.sqlalchemy.voter_ledger import VoterLedger
 from app.repository.address_repo import AddressRepository
@@ -136,8 +144,12 @@ class VotingService(EncryptionUtilsMixin):
 
         allocation_method = election.allocation_method
 
-        # 1b. Validate the voter exists
-        await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        # 1b. Validate the voter exists and meets age requirement
+        voter = await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        min_age = ELECTION_TYPE_MINIMUM_VOTING_AGE.get(
+            ElectionType(election.election_type), 18
+        )
+        await self._check_voter_age_eligibility(voter, min_age, now)
 
         # 1c. Overseas voters can only participate in general elections
         if election.election_type != ElectionType.GENERAL.value:
@@ -359,8 +371,11 @@ class VotingService(EncryptionUtilsMixin):
         ):
             raise ValidationError("Voting is not open at this time for this referendum.")
 
-        # 1b. Validate the voter exists
-        await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        # 1b. Validate the voter exists and meets age requirement
+        voter = await self.voter_repo.get_voter_by_id(self.session, voter_id)
+        await self._check_voter_age_eligibility(
+            voter, REFERENDUM_MINIMUM_VOTING_AGE, now
+        )
 
         # 1c. Overseas voters can only participate in UK-wide referendums
         if referendum.scope != ElectionScope.NATIONAL.value:
@@ -579,3 +594,38 @@ class VotingService(EncryptionUtilsMixin):
             return
 
         self._email_service.send_vote_confirmation(voter_dto.email, vote_name, vote_type)
+
+    async def _check_voter_age_eligibility(
+        self, voter, minimum_age: int, now: datetime
+    ) -> None:
+        """Verify the voter meets the minimum age requirement.
+
+        Decrypts the voter's date of birth and computes their age
+        as of ``now``.  Raises ``ValidationError`` if the voter is
+        too young or has no date of birth on file.
+        """
+        from app.models.dto.voter import VoterDTO
+
+        await self._keys_manager.init_org_keys(self.session, org_id=None)
+        args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
+        voter_dto = await self._mapper.decrypt_model(voter, VoterDTO, args, self.session)
+
+        if not voter_dto.date_of_birth:
+            raise ValidationError("Voter date of birth is required to verify voting eligibility.")
+
+        dob_str = voter_dto.date_of_birth.strip()
+        if dob_str.endswith("Z"):
+            dob_str = dob_str[:-1] + "+00:00"
+        dob = datetime.fromisoformat(dob_str).date()
+        today = now.date()
+
+        # Accurate age: compare (month, day) to handle leap years correctly
+        age = today.year - dob.year - (
+            (today.month, today.day) < (dob.month, dob.day)
+        )
+
+        if age < minimum_age:
+            raise ValidationError(
+                f"You must be at least {minimum_age} years old to vote in this election. "
+                f"You are currently {age} years old."
+            )

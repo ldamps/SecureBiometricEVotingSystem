@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 # Matches ElectionStatus / referendum status string values in the DB.
+DRAFT_STATUS = "DRAFT"
 OPEN_STATUS = "OPEN"
 CLOSED_STATUS = "CLOSED"
 CANCELLED_STATUS = "CANCELLED"

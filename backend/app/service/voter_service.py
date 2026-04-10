@@ -118,6 +118,21 @@ class VoterService(EncryptionUtilsMixin):
             await self._keys_manager.init_org_keys(self.session, org_id=None)
             args = await self._keys_manager.build_encryption_args(self.session, org_id=None)
 
+            # --- Resume incomplete registration ---
+            # If a PENDING voter already exists with the same NI, email, or
+            # passport number, return it so the user can pick up where they
+            # left off (address / biometric enrollment) instead of being
+            # blocked by uniqueness constraints.
+            existing_voter = await self._find_existing_pending_voter(
+                dto, passport_entries, args
+            )
+            if existing_voter is not None:
+                logger.info(
+                    "Resuming incomplete registration for existing PENDING voter",
+                    voter_id=str(existing_voter.id),
+                )
+                return await self._build_voter_item_with_passports(existing_voter)
+
             plain_fields = prepare_voter_registration_plain_fields(dto)
             plain = RegisterVoterPlainDTO(**plain_fields)
 
@@ -189,10 +204,6 @@ class VoterService(EncryptionUtilsMixin):
                 raise ValidationError(
                     "A voter with this national insurance number is already registered."
                 ) from exc
-            if "email_search_token" in error_msg:
-                raise ValidationError(
-                    "A voter with this email address is already registered."
-                ) from exc
             raise ValidationError(
                 "A voter with these details is already registered."
             ) from exc
@@ -201,6 +212,63 @@ class VoterService(EncryptionUtilsMixin):
         except Exception:
             logger.exception("Failed to register voter", dto=dto)
             raise
+
+    async def _find_existing_pending_voter(
+        self,
+        dto: RegisterVoterPlainDTO,
+        passport_entries: List[PassportEntry] | None,
+        args,
+    ) -> Voter | None:
+        """Return an existing PENDING voter matched by NI, email, or passport number.
+
+        Only PENDING voters are returned; ACTIVE / SUSPENDED voters are left
+        for the normal IntegrityError path so the caller still receives
+        the correct "already registered" validation error.
+        """
+        # Check NI number
+        ni = dto.national_insurance_number
+        if ni and ni.strip():
+            ni_token = await self._mapper.create_search_token(
+                ni.strip(), args, self.session
+            )
+            voter = await self.voter_repo.get_voter_by_ni_search_token(
+                self.session, ni_token
+            )
+            if voter and voter.voter_status == VoterStatus.PENDING.value:
+                return voter
+
+        # Check passport numbers
+        if passport_entries:
+            for entry in passport_entries:
+                if not entry.passport_number:
+                    continue
+                pp_token = await self._mapper.create_search_token(
+                    entry.passport_number, args, self.session
+                )
+                voter_id = await self.passport_repo.get_voter_id_by_passport_search_token(
+                    self.session, pp_token
+                )
+                if voter_id:
+                    voter = await self.voter_repo.get_voter_by_id(
+                        self.session, voter_id
+                    )
+                    if voter.voter_status == VoterStatus.PENDING.value:
+                        return voter
+
+        return None
+
+    async def _build_voter_item_with_passports(self, voter: Voter) -> VoterItem:
+        """Build a VoterItem response including decrypted passport entries."""
+        voter_item = await self.voter_model_to_schema_item(voter, self.session)
+        passports = await self.passport_repo.get_all_passports_by_voter_id(
+            self.session, voter.id
+        )
+        if passports:
+            voter_item.passports = [
+                await self.passport_model_to_schema_item(p, self.session)
+                for p in passports
+            ]
+        return voter_item
 
     async def get_voter_by_id(self, voter_id: UUID) -> VoterItem:
         """Get a voter by their ID, including their passport entries."""

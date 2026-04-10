@@ -12,18 +12,15 @@ RUN npm run build
 # --- Stage 2: Serve with Nginx ---
 FROM nginx:alpine
 
-# Generate a self-signed SSL certificate for HTTPS
-RUN apk add --no-cache openssl \
- && mkdir -p /etc/nginx/ssl \
- && openssl req -x509 -nodes -days 365 \
-      -newkey rsa:2048 \
-      -keyout /etc/nginx/ssl/selfsigned.key \
-      -out    /etc/nginx/ssl/selfsigned.crt \
-      -subj   "/C=GB/ST=Aberdeen/L=Aberdeen/O=SecureBiometricEVoting/CN=localhost"
+# OpenSSL for self-signed fallback cert generation at runtime
+RUN apk add --no-cache openssl && mkdir -p /etc/nginx/ssl /var/www/certbot
 
 COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 80 443
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

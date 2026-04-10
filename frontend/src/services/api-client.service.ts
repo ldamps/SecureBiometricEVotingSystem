@@ -93,6 +93,50 @@ function readCsrfToken(): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Error message extraction
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract a human-readable error message from the backend response body.
+ *
+ * FastAPI returns validation errors as `{ detail: [{ loc, msg, type }] }`,
+ * custom errors as `{ message: "..." }` or `{ detail: "..." }`.  This
+ * function normalises all variants into a single string so that the UI
+ * never renders `[object Object]`.
+ */
+function extractErrorMessage(
+  errorBody: Record<string, unknown> | null,
+  fallback: string,
+): string {
+  if (!errorBody) return fallback;
+
+  if (typeof errorBody.message === "string" && errorBody.message) {
+    return errorBody.message;
+  }
+
+  const detail = errorBody.detail;
+  if (typeof detail === "string" && detail) return detail;
+
+  // FastAPI validation errors: detail is an array of { loc, msg, type }
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail
+      .map((item: unknown) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const obj = item as Record<string, unknown>;
+          const field = Array.isArray(obj.loc) ? String(obj.loc[obj.loc.length - 1]) : "";
+          const msg = typeof obj.msg === "string" ? obj.msg : String(obj);
+          return field ? `${field}: ${msg}` : msg;
+        }
+        return String(item);
+      })
+      .join(". ");
+  }
+
+  return fallback;
+}
+
+// ---------------------------------------------------------------------------
 // Core request function
 // ---------------------------------------------------------------------------
 
@@ -166,9 +210,7 @@ async function request<T>(
       }
 
       throw new ApiException(
-        (errorBody?.message as string) ??
-          (errorBody?.detail as string) ??
-          response.statusText,
+        extractErrorMessage(errorBody, response.statusText),
         response.status,
         (errorBody?.code as string) ?? undefined,
         errorBody?.details ?? errorBody,

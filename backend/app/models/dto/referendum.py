@@ -63,10 +63,14 @@ class CreateReferendumPlainDTO(ReferendumBaseDTO):
 
     @classmethod
     def create_dto(cls, data: CreateReferendumRequest) -> "CreateReferendumPlainDTO":
-        now = datetime.now(timezone.utc)
-        status = initial_status_from_voting_schedule(
-            now, data.voting_opens, data.voting_closes
-        )
+        if data.status:
+            from app.models.sqlalchemy.referendum import ReferendumStatus as RS
+            status = data.status.value if isinstance(data.status, RS) else data.status
+        else:
+            now = datetime.now(timezone.utc)
+            status = initial_status_from_voting_schedule(
+                now, data.voting_opens, data.voting_closes
+            )
         return cls(
             title=data.title,
             question=data.question,

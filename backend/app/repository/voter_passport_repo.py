@@ -20,6 +20,19 @@ class VoterPassportRepository:
     def __init__(self, model: Type[VoterPassport] = VoterPassport) -> None:
         self._model = model
 
+    async def get_voter_id_by_passport_search_token(
+        self,
+        session: AsyncSession,
+        token: str,
+    ) -> UUID | None:
+        """Return the voter_id that owns a passport with the given search token, or None."""
+        result = await session.execute(
+            select(self._model.voter_id).where(
+                self._model.passport_number_search_token == token
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def create_passport(
         self,
         session: AsyncSession,

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 class ReferendumStatus(str, enum.Enum):
     """Persisted referendum lifecycle status (stored as string in DB)."""
 
+    DRAFT = "DRAFT"
     OPEN = "OPEN"
     CLOSED = "CLOSED"
     CANCELLED = "CANCELLED"

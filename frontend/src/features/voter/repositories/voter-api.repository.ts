@@ -425,4 +425,23 @@ export class VoterApiRepository {
         );
         return mapLedger(raw);
     }
+
+    async sendEmailVerificationCode(
+        voterId: string,
+    ): Promise<{ sent: boolean; message: string }> {
+        return ApiClient.post<{ sent: boolean; message: string }>(
+            "/email-verification/send",
+            { voter_id: voterId },
+        );
+    }
+
+    async verifyEmailCode(
+        voterId: string,
+        code: string,
+    ): Promise<{ verified: boolean; message: string }> {
+        return ApiClient.post<{ verified: boolean; message: string }>(
+            "/email-verification/verify",
+            { voter_id: voterId, code },
+        );
+    }
 }

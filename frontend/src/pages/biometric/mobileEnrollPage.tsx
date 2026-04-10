@@ -21,22 +21,35 @@ import { getCardStyle, getPageTitleStyle, PrimaryButton } from "../../styles/ui"
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { generateAndEncryptKeyPair } from "../../features/biometric/services/biometric-key-encryption.service";
-import { storeBiometricData } from "../../features/biometric/services/biometric-storage.service";
+import { storeBiometricData, getOrCreateDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor } from "../../features/biometric/models/biometric-feature.model";
 
 const biometricApi = new BiometricApiRepository();
 
-function getOrCreateDeviceId(): string {
-  const STORAGE_KEY = "evoting_device_id";
-  let deviceId = localStorage.getItem(STORAGE_KEY);
-  if (!deviceId) {
-    deviceId = crypto.randomUUID();
-    localStorage.setItem(STORAGE_KEY, deviceId);
-  }
-  return deviceId;
+const PWA_REDIRECT_KEY = "evoting_pwa_redirect";
+
+/** True when the page is running as an installed PWA (Add to Home Screen). */
+function isInstalledPwa(): boolean {
+  if (typeof window === "undefined") return false;
+  if ((navigator as any).standalone === true) return true;
+  if (window.matchMedia("(display-mode: standalone)").matches) return true;
+  return false;
+}
+
+/** Save the current URL so the PWA can resume here after install. */
+function saveRedirectUrl(): void {
+  localStorage.setItem(PWA_REDIRECT_KEY, window.location.href);
+}
+
+/** Detect iOS Safari so we can show platform-specific install instructions. */
+function isIosSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iP(hone|od|ad)/.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
 }
 
 type EnrollState =
+  | "install_pwa"
   | "ready"
   | "capturing"
   | "generating_keys"
@@ -49,7 +62,12 @@ function MobileEnrollPage() {
   const [searchParams] = useSearchParams();
   const voterId = searchParams.get("voter_id");
 
-  const [state, setState] = useState<EnrollState>("ready");
+  const [state, setState] = useState<EnrollState>(() => {
+    if (isInstalledPwa()) return "ready";
+    // Save the full URL so the PWA can resume here after install.
+    saveRedirectUrl();
+    return "install_pwa";
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +76,10 @@ function MobileEnrollPage() {
       setState("error");
     }
   }, [voterId]);
+
+  const handleSkipInstall = useCallback(() => {
+    setState("ready");
+  }, []);
 
   const handleStartEnroll = useCallback(() => {
     setState("capturing");
@@ -71,13 +93,11 @@ function MobileEnrollPage() {
       try {
         setState("generating_keys");
 
-        // Generate ECDSA keypair and encrypt private key with biometric-derived key.
         const { publicKeyPem, encryptedBundle } = await generateAndEncryptKeyPair(
           result.faceDescriptor,
           result.earDescriptor,
         );
 
-        // Persist biometric templates + encrypted key locally.
         await storeBiometricData({
           voterId,
           faceTemplate: Array.from(result.faceDescriptor),
@@ -88,10 +108,7 @@ function MobileEnrollPage() {
 
         setState("enrolling");
 
-        // Register the public key AND the encrypted key bundle with the server.
-        // The server stores the bundle but cannot decrypt it — only a
-        // matching face+ear biometric can recover the signing key.
-        const deviceId = getOrCreateDeviceId();
+        const deviceId = await getOrCreateDeviceId();
         await biometricApi.enrollDevice({
           voter_id: voterId,
           public_key_pem: publicKeyPem,
@@ -116,6 +133,7 @@ function MobileEnrollPage() {
   }, []);
 
   const messages: Record<EnrollState, string> = {
+    install_pwa: "",
     ready:
       "This device will be linked to your voter account. " +
       "Your face and ear biometrics will be captured and stored only on this device \u2014 " +
@@ -145,8 +163,64 @@ function MobileEnrollPage() {
         Biometric Enrollment
       </h1>
 
+      {/* PWA install prompt */}
+      {state === "install_pwa" && (
+        <div style={{ ...getCardStyle(theme), marginTop: "1.25rem" }}>
+          <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem", fontWeight: 600 }}>
+            Install the Voting App first
+          </p>
+          <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem", marginTop: theme.spacing.sm }}>
+            To keep your biometric data safe and persistent, please add this app to your home screen before enrolling.
+          </p>
+
+          {isIosSafari() ? (
+            <ol style={{
+              color: theme.colors.text.primary,
+              lineHeight: 1.8,
+              fontSize: "0.9rem",
+              marginTop: theme.spacing.md,
+              paddingLeft: "1.25rem",
+            }}>
+              <li>Tap the <strong>Share</strong> button at the bottom of Safari (the square with an arrow pointing up).</li>
+              <li>Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong>.</li>
+              <li>Tap <strong>&quot;Add&quot;</strong> in the top-right corner.</li>
+              <li>Open the <strong>&quot;E-Voting&quot;</strong> app from your home screen.</li>
+              <li>Scan the QR code again from within the app.</li>
+            </ol>
+          ) : (
+            <ol style={{
+              color: theme.colors.text.primary,
+              lineHeight: 1.8,
+              fontSize: "0.9rem",
+              marginTop: theme.spacing.md,
+              paddingLeft: "1.25rem",
+            }}>
+              <li>Tap the <strong>menu</strong> (three dots) in your browser.</li>
+              <li>Tap <strong>&quot;Add to Home screen&quot;</strong> or <strong>&quot;Install app&quot;</strong>.</li>
+              <li>Open the app from your home screen.</li>
+              <li>Scan the QR code again from within the app.</li>
+            </ol>
+          )}
+
+          <p style={{
+            color: theme.colors.text.secondary,
+            fontSize: "0.85rem",
+            marginTop: theme.spacing.md,
+            lineHeight: 1.5,
+          }}>
+            Installing the app ensures your biometric data is stored permanently on this device and won't be cleared by your browser.
+          </p>
+
+          <div style={{ marginTop: theme.spacing.lg, display: "flex", justifyContent: "center", gap: theme.spacing.md }}>
+            <PrimaryButton onClick={handleSkipInstall}>
+              Continue without installing
+            </PrimaryButton>
+          </div>
+        </div>
+      )}
+
       {/* Status / instructions */}
-      {state !== "capturing" && (
+      {state !== "capturing" && state !== "install_pwa" && (
         <div style={{ ...getCardStyle(theme), marginTop: "1.25rem" }}>
           <p style={{ color: theme.colors.text.primary, lineHeight: 1.6, fontSize: "0.95rem" }}>
             {messages[state]}
@@ -164,19 +238,20 @@ function MobileEnrollPage() {
                 marginTop: theme.spacing.md,
                 padding: theme.spacing.md,
                 borderRadius: theme.borderRadius?.md || "8px",
-                backgroundColor: "#f0fff4",
+                backgroundColor: theme.colors.surfaceAlt,
                 border: `1px solid ${theme.colors.status.success}`,
                 textAlign: "center",
+                color: theme.colors.text.primary,
               }}
             >
               <strong>Device enrolled</strong>
               <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>
                 Biometric modalities: face + ear (stored on device only)
               </p>
-              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.85rem", color: "#666" }}>
+              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.85rem", color: theme.colors.text.secondary }}>
                 Your signing key is encrypted with your biometric features and cannot be used without your face and ear.
               </p>
-              <p style={{ margin: `${theme.spacing.sm} 0 0 0`, fontSize: "0.85rem", color: "#666" }}>
+              <p style={{ margin: `${theme.spacing.sm} 0 0 0`, fontSize: "0.85rem", color: theme.colors.text.secondary }}>
                 You can now close this tab and return to the registration page.
               </p>
             </div>

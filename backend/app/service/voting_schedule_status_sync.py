@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.core.voting_window import (
     CANCELLED_STATUS,
+    DRAFT_STATUS,
     status_implied_by_voting_schedule,
 )
 from app.models.dto.election import UpdateElectionPlainDTO
@@ -26,7 +27,7 @@ async def sync_election_status_with_voting_schedule(
     election: Election,
 ) -> Election:
     """If schedule implies a different status than stored, persist the update."""
-    if election.status == CANCELLED_STATUS:
+    if election.status in (CANCELLED_STATUS, DRAFT_STATUS):
         return election
     now = datetime.now(timezone.utc)
     desired = status_implied_by_voting_schedule(
@@ -54,7 +55,7 @@ async def sync_referendum_status_with_voting_schedule(
     referendum: Referendum,
 ) -> Referendum:
     """If schedule implies a different status than stored, persist the update."""
-    if referendum.status == CANCELLED_STATUS:
+    if referendum.status in (CANCELLED_STATUS, DRAFT_STATUS):
         return referendum
     now = datetime.now(timezone.utc)
     desired = status_implied_by_voting_schedule(

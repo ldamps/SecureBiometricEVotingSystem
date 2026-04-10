@@ -3,6 +3,7 @@ import {
     getCardStyle,
     getFirstSectionStyle,
     getPageTitleStyle,
+    getStepDescStyle,
     getVoterPageContentWrapperStyle,
     getErrorAlertStyle,
     getSuccessAlertStyle,
@@ -12,6 +13,7 @@ import {
 import { useTheme } from "../../styles/ThemeContext";
 import VoterIdentity from "../../features/voter/components/voterIdentity";
 import BiometricVerification from "../../features/voter/components/biometricVerification";
+import EmailCodeVerification from "../../features/voter/components/emailCodeVerification";
 import RegistrationDetails from "../../features/voter/components/registrationDetails";
 import CurrentAddress from "../../features/voter/components/currentAddress";
 import BiometricRegistration from "../../features/voter/components/biometricRegistration";
@@ -21,7 +23,7 @@ import { NationalityCategory } from "../../features/voter/model/voter.model";
 
 const voterApi = new VoterApiRepository();
 
-type VerificationPhase = "identity" | "biometric" | "verified";
+type VerificationPhase = "identity" | "choose_method" | "biometric" | "email_code" | "verified";
 type UpdateSection = null | "identity" | "address" | "biometric";
 
 const initialState: Record<string, unknown> = {
@@ -147,8 +149,9 @@ const VoterUpdateRegistrationPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [verificationPhase]);
 
-    const afterIdentity = () => setVerificationPhase("biometric");
+    const afterIdentity = () => setVerificationPhase("choose_method");
     const afterBiometric = () => setVerificationPhase("verified");
+    const afterEmailCode = () => setVerificationPhase("verified");
 
     const openSection = (section: UpdateSection) => {
         setStateSnapshot({ ...state });
@@ -306,6 +309,52 @@ const VoterUpdateRegistrationPage: React.FC = () => {
         );
     }
 
+    if (verificationPhase === "choose_method") {
+        return (
+            <div
+                className="voter-update-registration-page voter-page-content"
+                style={getVoterPageContentWrapperStyle(theme)}
+            >
+                <header>
+                    <h1 style={getPageTitleStyle(theme)}>Verify your identity</h1>
+                </header>
+                <section style={firstSectionStyle}>
+                    <p style={getStepDescStyle(theme)}>
+                        Before you can update your registration details, we need to verify
+                        your identity. Please choose a verification method:
+                    </p>
+
+                    <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: theme.spacing.md,
+                        marginTop: theme.spacing.lg,
+                    }}>
+                        <div style={{ ...getCardStyle(theme), cursor: "pointer" }} onClick={() => setVerificationPhase("biometric")}>
+                            <strong style={{ display: "block", marginBottom: theme.spacing.xs }}>
+                                Biometric verification
+                            </strong>
+                            <p style={{ margin: 0, fontSize: "0.9rem", color: theme.colors.text.secondary }}>
+                                Use your enrolled phone to verify with face and ear biometrics.
+                                This is the standard verification method.
+                            </p>
+                        </div>
+
+                        <div style={{ ...getCardStyle(theme), cursor: "pointer" }} onClick={() => setVerificationPhase("email_code")}>
+                            <strong style={{ display: "block", marginBottom: theme.spacing.xs }}>
+                                Email verification code
+                            </strong>
+                            <p style={{ margin: 0, fontSize: "0.9rem", color: theme.colors.text.secondary }}>
+                                Receive a 6-digit code at your registered email address.
+                                Use this if you have lost access to your enrolled phone.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        );
+    }
+
     if (verificationPhase === "biometric") {
         return (
             <BiometricVerification
@@ -314,6 +363,18 @@ const VoterUpdateRegistrationPage: React.FC = () => {
                 setState={setStateTyped}
                 progressStep={2}
                 showProgressBar={false}
+                usePageLayout
+            />
+        );
+    }
+
+    if (verificationPhase === "email_code") {
+        return (
+            <EmailCodeVerification
+                next={afterEmailCode}
+                back={() => setVerificationPhase("choose_method")}
+                state={state}
+                setState={setStateTyped}
                 usePageLayout
             />
         );

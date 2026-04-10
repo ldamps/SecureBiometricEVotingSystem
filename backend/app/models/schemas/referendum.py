@@ -31,15 +31,22 @@ class CreateReferendumRequest(RequestSchema):
     question: str = Field(..., description="The yes/no question posed to voters.")
     description: Optional[str] = Field(None, description="Additional context for the question.")
     scope: str = Field(..., description="The scope of the referendum (NATIONAL, REGIONAL, LOCAL).")
+    status: Optional[ReferendumStatus] = Field(None, description="Optional initial status. Pass DRAFT to save as draft; omit to auto-derive from voting window.")
     constituency_ids: List[str] = Field(default_factory=list, description="Constituencies this referendum is for (empty = national/all).")
     voting_opens: Optional[datetime] = Field(None, description="When voting opens.")
     voting_closes: Optional[datetime] = Field(None, description="When voting closes.")
 
 
 class UpdateReferendumRequest(RequestSchema):
-    """Update referendum request model."""
+    """Update referendum request model.
+
+    Title, scope, and constituency_ids are only editable while in DRAFT status
+    (enforced by the service layer).
+    """
+    title: Optional[str] = Field(None, description="The title of the referendum (editable in DRAFT only).")
     question: Optional[str] = Field(None, description="The yes/no question posed to voters.")
     description: Optional[str] = Field(None, description="Additional context for the question.")
+    scope: Optional[str] = Field(None, description="The scope of the referendum (editable in DRAFT only).")
     status: Optional[ReferendumStatus] = Field(
         None,
         description="Referendum status (e.g. CANCELLED). CANCELLED is terminal for schedule sync.",
@@ -47,3 +54,4 @@ class UpdateReferendumRequest(RequestSchema):
     voting_opens: Optional[datetime] = Field(None, description="When voting opens.")
     voting_closes: Optional[datetime] = Field(None, description="When voting closes.")
     is_active: Optional[bool] = Field(None, description="Whether the referendum is currently active.")
+    constituency_ids: Optional[List[str]] = Field(None, description="Constituencies (editable in DRAFT only). Pass to replace all.")

@@ -40,6 +40,10 @@ function VoterIdentity({ next, state, setState, progressStep = 1, showProgressBa
         if (!state.name?.trim()) errors.name = "Full name is required.";
         if (!state.addr1?.trim()) errors.addr1 = "Address line 1 is required.";
         if (!state.city?.trim()) errors.city = "City / Town is required.";
+        const pc = (state.postcode || "").trim();
+        if (pc && !/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s?\d[A-Za-z]{2}$/i.test(pc)) {
+            errors.postcode = "Please enter a valid UK postcode (e.g. SW1A 1AA).";
+        }
 
         setValidationErrors(errors);
         if (Object.keys(errors).length > 0) return;
@@ -65,9 +69,21 @@ function VoterIdentity({ next, state, setState, progressStep = 1, showProgressBa
                 });
             }
         } catch (err: any) {
-            setValidationErrors({
-                submit: err.message || "Something went wrong while verifying your identity. Please try again.",
-            });
+            let message: string;
+            if (err.code === "TIMEOUT") {
+                message = "The identity check is taking too long. Please check your details are correct and try again.";
+            } else if (err.code === "NETWORK_ERROR" || err.status === 0) {
+                message = "Unable to reach the server. Please check your internet connection and try again.";
+            } else if (err.status === 404) {
+                message = "We could not find a registered voter matching these details. Please double-check your name, address, and postcode.";
+            } else if (err.status === 422) {
+                message = "Some of the details you entered are invalid. Please correct them and try again.";
+            } else if (err.status && err.status >= 500) {
+                message = "The server encountered an error. Please try again in a few moments.";
+            } else {
+                message = "Something went wrong while verifying your identity. Please try again.";
+            }
+            setValidationErrors({ submit: message });
         } finally {
             setSubmitting(false);
         }

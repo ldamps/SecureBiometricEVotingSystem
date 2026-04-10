@@ -17,8 +17,8 @@ import { useTheme } from "../../../styles/ThemeContext";
 import { getCardStyle } from "../../../styles/ui";
 import { useCameraStream } from "../hooks/useCameraStream";
 import * as faceapi from "face-api.js";
-import { loadFaceModels, extractFaceDescriptor, extractStableFaceDescriptor } from "../services/face-recognition.service";
-import { loadEarModel, extractEarDescriptor } from "../services/ear-recognition.service";
+import { loadFaceModels, extractStableFaceDescriptor } from "../services/face-recognition.service";
+import { loadEarModel, extractStableEarDescriptor } from "../services/ear-recognition.service";
 import { FeatureDescriptor } from "../models/biometric-feature.model";
 
 type CaptureStep =
@@ -53,7 +53,7 @@ const INSTRUCTIONS = {
   waiting_face: { title: "Step 1 of 3: Position your face", detail: "Centre your face within the oval guide. Make sure your face is well-lit and clearly visible." },
   waiting_blink: { title: "Step 1 of 3: Liveness check", detail: "Face detected! Now blink naturally to prove you are a real person." },
   extracting_face: { title: "Step 2 of 3: Capturing face", detail: "Hold still \u2014 capturing your facial features. This takes a few seconds." },
-  turn_head: { title: "Step 3 of 3: Show your ear", detail: "Turn your head to the LEFT to show your ear. The camera will capture automatically in a few seconds." },
+  turn_head: { title: "Step 3 of 3: Show your ear", detail: "Turn your head to the LEFT to show your ear. Please make sure your ear is not covered by hair, headphones, or piercings. The camera will capture automatically in a few seconds." },
   extracting_ear: { title: "Step 3 of 3: Capturing ear", detail: "Hold still \u2014 capturing your ear features." },
   done: { title: "Complete", detail: "Both face and ear captured successfully." },
   error: { title: "Error", detail: "Something went wrong. Please try again." },
@@ -185,9 +185,11 @@ function BiometricCaptureFlow({ mode, onComplete, onError }: BiometricCaptureFlo
       if (!video) return;
 
       try {
+        // Always use multi-sample averaging for a more stable descriptor.
+        // Enrollment uses 5 samples; verification uses 3 for speed.
         const result = mode === "enroll"
-          ? await extractStableFaceDescriptor(video, 3, 250)
-          : await extractFaceDescriptor(video);
+          ? await extractStableFaceDescriptor(video, 5, 250)
+          : await extractStableFaceDescriptor(video, 3, 200);
 
         if (cancelled) return;
 
@@ -255,7 +257,10 @@ function BiometricCaptureFlow({ mode, onComplete, onError }: BiometricCaptureFlo
       }
 
       try {
-        const earResult = await extractEarDescriptor(video);
+        // Multi-sample averaging for stable ear descriptors.
+        // Enrollment uses 5 samples; verification uses 3 for speed.
+        const earSamples = mode === "enroll" ? 5 : 3;
+        const earResult = await extractStableEarDescriptor(video, earSamples, 300);
         if (cancelled) return;
 
         if (!earResult) {

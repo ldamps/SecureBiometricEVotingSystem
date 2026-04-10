@@ -39,6 +39,7 @@ class CreateElectionRequest(RequestSchema):
     election_type: ElectionType = Field(..., description="The type of election.")
     scope: ElectionScope = Field(..., description="The scope of the election.")
     allocation_method: Optional[str] = Field(None, description="Auto-derived from election_type. Ignored if provided.")
+    status: Optional[ElectionStatus] = Field(None, description="Optional initial status. Pass DRAFT to save as draft; omit to auto-derive from voting window.")
     voting_opens: Optional[datetime] = Field(None, description="The date and time the election opens for voting.")
     voting_closes: Optional[datetime] = Field(None, description="The date and time the election closes for voting.")
     created_by: Optional[str] = Field(None, description="The ID of the election official who created this election.")
@@ -54,12 +55,17 @@ class CreateElectionRequest(RequestSchema):
 class UpdateElectionRequest(RequestSchema):
     """Update election request model.
 
-    Only status, voting_opens, and voting_closes can be modified
-    after an election has been created. All other fields are immutable.
+    Status, voting_opens, and voting_closes can always be modified.
+    Title, election_type, scope, and constituency_ids are only editable
+    while the election is in DRAFT status (enforced by the service layer).
     """
+    title: Optional[str] = Field(None, description="The title of the election (editable in DRAFT only).")
+    election_type: Optional[ElectionType] = Field(None, description="The type of election (editable in DRAFT only).")
+    scope: Optional[ElectionScope] = Field(None, description="The scope of the election (editable in DRAFT only).")
     status: Optional[ElectionStatus] = Field(
         None,
         description="Election status. Officials may set CANCELLED from OPEN or CLOSED (terminal).",
     )
     voting_opens: Optional[datetime] = Field(None, description="The date and time the election opens for voting.")
     voting_closes: Optional[datetime] = Field(None, description="The date and time the election closes for voting.")
+    constituency_ids: Optional[List[str]] = Field(None, description="Constituencies (editable in DRAFT only). Pass to replace all.")

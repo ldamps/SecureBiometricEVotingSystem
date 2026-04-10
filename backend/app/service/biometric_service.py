@@ -16,7 +16,7 @@ from uuid import UUID
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, utils as asym_utils
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.sqlalchemy.biometric_credentials import DeviceCredential, BiometricChallenge
@@ -79,11 +79,13 @@ class BiometricService:
         # Validate the public key parses as ECDSA P-256
         self._parse_public_key(request.public_key_pem)
 
-        # Deactivate any existing credential for this voter+device
-        existing = await self.credentials_repo.get_active_by_voter_and_device(
-            self.session, voter_id, request.device_id
+        # Deactivate ALL existing active credentials for this voter so that
+        # stale enrollments (e.g. from a previous key-derivation scheme) are
+        # cleaned up even when the device_id changes between enrollments.
+        existing_credentials = await self.credentials_repo.list_active_by_voter(
+            self.session, voter_id
         )
-        if existing:
+        for existing in existing_credentials:
             await self.credentials_repo.deactivate(self.session, existing.id)
             logger.info(
                 "Deactivated previous credential for re-enrollment",
@@ -185,21 +187,38 @@ class BiometricService:
                 message="Challenge has expired.",
             )
 
-        # 2. Find active credential
-        credential = await self.credentials_repo.get_active_by_voter_and_device(
-            self.session, challenge.voter_id, request.device_id
-        )
+        # 2. Find active credential — prefer voter+device lookup, fall back
+        #    to voter-only when the browser's device_id was lost (e.g. Safari
+        #    purged IndexedDB between enrollment and verification).
+        credential = None
+        if request.device_id:
+            credential = await self.credentials_repo.get_active_by_voter_and_device(
+                self.session, challenge.voter_id, request.device_id
+            )
+        if not credential:
+            credential = await self.credentials_repo.get_active_by_voter(
+                self.session, challenge.voter_id
+            )
         if not credential:
             return VerifyBiometricResponse(
                 verified=False,
-                message="No active device credential found for this voter and device.",
+                message="No active device credential found for this voter.",
             )
 
         # 3. Verify ECDSA signature
         try:
             public_key = self._parse_public_key(credential.public_key_pem)
-            signature_bytes = base64.b64decode(request.signature)
+            raw_sig = base64.b64decode(request.signature)
             challenge_bytes = bytes.fromhex(challenge.challenge)
+
+            # Web Crypto API produces IEEE P1363 signatures (r||s, 64 bytes
+            # for P-256). Python cryptography expects DER encoding, so convert.
+            if len(raw_sig) == 64:
+                r = int.from_bytes(raw_sig[:32], "big")
+                s = int.from_bytes(raw_sig[32:], "big")
+                signature_bytes = asym_utils.encode_dss_signature(r, s)
+            else:
+                signature_bytes = raw_sig
 
             public_key.verify(
                 signature_bytes,

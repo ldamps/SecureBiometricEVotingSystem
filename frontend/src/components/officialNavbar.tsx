@@ -1,13 +1,27 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../styles/ThemeContext";
 import { SecondaryButton } from "../styles/ui";
-import { clearAuthSession } from "../services/api-client.service";
+import { clearAuthSession, getAccessTokenSubject } from "../services/api-client.service";
+import { OfficialApiRepository } from "../features/officials/repositories/official-api.repository";
+import { OfficialRole } from "../features/officials/model/official.model";
+
+const officialApiRepository = new OfficialApiRepository();
 
 const OfficialNavbar: React.FC = () => {
   const { theme, mode, toggleTheme } = useTheme();
   const { colors, spacing, fontWeights } = theme;
   const navigate = useNavigate();
+
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const officialId = getAccessTokenSubject();
+    if (!officialId) return;
+    officialApiRepository.getOfficial(officialId)
+      .then((official) => setIsAdmin(official.role === OfficialRole.ADMIN))
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   const handleLogout = () => {
     clearAuthSession();
@@ -43,8 +57,37 @@ const OfficialNavbar: React.FC = () => {
         Election Official Portal
       </Link>
 
-      {/* Right side: logout, profile, theme toggle */}
+      {/* Right side: admin links, logout, profile, theme toggle */}
       <div style={{ display: "flex", alignItems: "center", gap: spacing.md }}>
+
+        {isAdmin && (
+          <>
+            <Link
+              to="/official/elections"
+              style={{
+                color: colors.navText,
+                textDecoration: "none",
+                fontSize: theme.fontSizes.sm,
+                fontWeight: fontWeights.medium,
+                opacity: 0.9,
+              }}
+            >
+              Elections
+            </Link>
+            <Link
+              to="/official/referendums"
+              style={{
+                color: colors.navText,
+                textDecoration: "none",
+                fontSize: theme.fontSizes.sm,
+                fontWeight: fontWeights.medium,
+                opacity: 0.9,
+              }}
+            >
+              Referendums
+            </Link>
+          </>
+        )}
 
         <SecondaryButton onClick={handleLogout}>Logout</SecondaryButton>
 

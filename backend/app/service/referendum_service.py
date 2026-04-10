@@ -1,6 +1,7 @@
 # referendum_service.py - Service layer for referendum-related operations.
 
 import structlog
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
@@ -26,11 +27,19 @@ from app.service.voting_schedule_status_sync import sync_referendum_status_with_
 logger = structlog.get_logger()
 
 _VALID_REFERENDUM_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    ReferendumStatus.DRAFT.value: {
+        ReferendumStatus.OPEN.value,
+        ReferendumStatus.CANCELLED.value,
+    },
     ReferendumStatus.OPEN.value: {
+        ReferendumStatus.DRAFT.value,
         ReferendumStatus.CLOSED.value,
         ReferendumStatus.CANCELLED.value,
     },
-    ReferendumStatus.CLOSED.value: {ReferendumStatus.CANCELLED.value},
+    ReferendumStatus.CLOSED.value: {
+        ReferendumStatus.OPEN.value,
+        ReferendumStatus.CANCELLED.value,
+    },
 }
 
 
@@ -76,9 +85,11 @@ class ReferendumService(EncryptionUtilsMixin):
                 )
                 await self.session.flush()
 
-            referendum = await sync_referendum_status_with_voting_schedule(
-                self.session, self.referendum_repo, referendum
-            )
+            # Don't auto-sync status for drafts — they stay as DRAFT until published.
+            if referendum.status != ReferendumStatus.DRAFT.value:
+                referendum = await sync_referendum_status_with_voting_schedule(
+                    self.session, self.referendum_repo, referendum
+                )
 
             # Re-fetch with constituencies eagerly loaded
             referendum = await self.referendum_repo.get_referendum_by_id(
@@ -139,30 +150,80 @@ class ReferendumService(EncryptionUtilsMixin):
             raise
 
     async def update_referendum(self, referendum_id: UUID, update_data: dict) -> ReferendumItem:
-        """Update a referendum's mutable fields."""
+        """Update a referendum's mutable fields.
+
+        Title, scope, and constituency_ids are only editable while in DRAFT status.
+        """
         try:
             data = dict(update_data)
+
+            current = await self.referendum_repo.get_referendum_by_id(
+                self.session, referendum_id
+            )
+            is_draft = current.status == ReferendumStatus.DRAFT.value
+
+            # Block draft-only fields when not in DRAFT
+            if not is_draft:
+                draft_only = {"title", "scope", "constituency_ids"}
+                for field in draft_only:
+                    if data.get(field) is not None:
+                        raise ValidationError(
+                            f"Field '{field}' can only be edited while the referendum is in DRAFT status."
+                        )
+
             if data.get("status") is not None:
                 new_status = data["status"]
                 if isinstance(new_status, ReferendumStatus):
                     new_status = new_status.value
                 data["status"] = new_status
-                current = await self.referendum_repo.get_referendum_by_id(
-                    self.session, referendum_id
-                )
                 allowed = _VALID_REFERENDUM_STATUS_TRANSITIONS.get(current.status, set())
                 if new_status not in allowed:
                     raise ValidationError(
                         f"Invalid referendum status transition: {current.status} -> {new_status}"
                     )
 
+                # When manually closing before the voting window ends,
+                # snap voting_closes to now so the schedule-based sync
+                # does not revert the status back to OPEN.
+                if new_status == ReferendumStatus.CLOSED.value:
+                    now = datetime.now(timezone.utc)
+                    if current.voting_closes is not None and current.voting_closes > now:
+                        data["voting_closes"] = now
+
+            # Extract constituency_ids before passing to repo (not a DB column)
+            constituency_ids = data.pop("constituency_ids", None)
+
             updated = await self.referendum_repo.update_referendum(
-                self.session, referendum_id, data
+                self.session, referendum_id, data, is_draft=is_draft,
             )
-            if "status" not in data:
+
+            # Re-link constituencies if provided (draft only)
+            if is_draft and constituency_ids is not None:
+                from sqlalchemy import delete
+                await self.session.execute(
+                    delete(referendum_constituency).where(
+                        referendum_constituency.c.referendum_id == referendum_id
+                    )
+                )
+                if constituency_ids:
+                    await self.session.execute(
+                        insert(referendum_constituency),
+                        [
+                            {"referendum_id": referendum_id, "constituency_id": UUID(cid)}
+                            for cid in constituency_ids
+                        ],
+                    )
+                await self.session.flush()
+
+            if "status" not in data and not is_draft:
                 updated = await sync_referendum_status_with_voting_schedule(
                     self.session, self.referendum_repo, updated
                 )
+
+            # Re-fetch with constituencies eagerly loaded
+            updated = await self.referendum_repo.get_referendum_by_id(
+                self.session, referendum_id
+            )
 
             await self._audit_log_repo.create_audit_log(
                 self.session,

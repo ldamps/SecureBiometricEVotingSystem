@@ -56,6 +56,7 @@ function createElectionBody(body: CreateElectionRequest): Record<string, unknown
     title: body.title,
     election_type: body.election_type,
     scope: body.scope,
+    status: body.status,
     constituency_ids: body.constituency_ids,
     voting_opens: body.voting_opens,
     voting_closes: body.voting_closes,
@@ -65,9 +66,13 @@ function createElectionBody(body: CreateElectionRequest): Record<string, unknown
 
 function updateElectionBody(body: UpdateElectionRequest): Record<string, unknown> {
   return definedPayload({
+    title: body.title,
+    election_type: body.election_type,
+    scope: body.scope,
     status: body.status,
     voting_opens: body.voting_opens,
     voting_closes: body.voting_closes,
+    constituency_ids: body.constituency_ids,
   });
 }
 

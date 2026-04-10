@@ -13,6 +13,16 @@ const MODEL_URL = "/models/face-api";
 
 let modelsLoaded = false;
 
+/** L2-normalise a feature vector to unit length. */
+function l2Normalise(v: Float32Array): Float32Array {
+  let norm = 0;
+  for (let i = 0; i < v.length; i++) norm += v[i] * v[i];
+  norm = Math.sqrt(norm) || 1;
+  const out = new Float32Array(v.length);
+  for (let i = 0; i < v.length; i++) out[i] = v[i] / norm;
+  return out;
+}
+
 export async function loadFaceModels(): Promise<void> {
   if (modelsLoaded) return;
   await Promise.all([
@@ -31,14 +41,19 @@ export async function extractFaceDescriptor(
   video: HTMLVideoElement,
 ): Promise<FeatureExtractionResult | null> {
   const detection = await faceapi
-    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 }))
     .withFaceLandmarks(true)
     .withFaceDescriptor();
 
   if (!detection) return null;
 
+  // L2-normalise the raw descriptor so cosine similarity thresholds
+  // are meaningful and consistent across different lighting/cameras.
+  const raw = detection.descriptor as FeatureDescriptor;
+  const normalised = l2Normalise(raw);
+
   return {
-    descriptor: detection.descriptor as FeatureDescriptor,
+    descriptor: normalised,
     confidence: detection.detection.score,
   };
 }
@@ -68,15 +83,16 @@ export async function extractStableFaceDescriptor(
 
   if (descriptors.length === 0) return null;
 
-  // Average all captured descriptors for stability.
+  // Average all captured descriptors and re-normalise for stability.
   const averaged = new Float32Array(128);
   for (const d of descriptors) {
     for (let j = 0; j < 128; j++) averaged[j] += d[j];
   }
   for (let j = 0; j < 128; j++) averaged[j] /= descriptors.length;
+  const normalised = l2Normalise(averaged);
 
   return {
-    descriptor: averaged,
+    descriptor: normalised,
     confidence: totalConfidence / descriptors.length,
   };
 }

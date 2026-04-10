@@ -73,6 +73,7 @@ export enum ElectionScope {
 }
 
 export enum ElectionStatus {
+  DRAFT = "DRAFT",
   OPEN = "OPEN",
   CLOSED = "CLOSED",
   CANCELLED = "CANCELLED",
@@ -95,6 +96,7 @@ export interface CreateElectionRequest {
   title: string;
   election_type: ElectionType;
   scope: ElectionScope;
+  status?: ElectionStatus;
   constituency_ids?: string[];
   voting_opens?: string;
   voting_closes?: string;
@@ -102,7 +104,11 @@ export interface CreateElectionRequest {
 }
 
 export interface UpdateElectionRequest {
+  title?: string;
+  election_type?: ElectionType;
+  scope?: ElectionScope;
   status?: ElectionStatus;
   voting_opens?: string;
   voting_closes?: string;
+  constituency_ids?: string[];
 }

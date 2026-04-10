@@ -72,7 +72,7 @@ class CreateChallengeResponse(ResponseSchema):
 class VerifyBiometricRequest(RequestSchema):
     """Submitted by the device after a successful on-device biometric match."""
     challenge_id: str = Field(..., description="UUID of the challenge being answered.")
-    device_id: str = Field(..., description="Device that performed the biometric match.")
+    device_id: Optional[str] = Field(None, description="Device that performed the biometric match (optional for web-only flows).")
     signature: str = Field(
         ...,
         description="Base64-encoded ECDSA signature of the challenge bytes.",

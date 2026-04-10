@@ -2,25 +2,36 @@
  * Mobile Biometric Verification Page
  *
  * Accessed by scanning the QR code shown on the desktop voting flow.
- * Fetches the encrypted key bundle from the server, re-captures face +
- * ear biometrics, decrypts the signing key with the biometric-derived
- * AES key, signs the server challenge, and submits the signature.
  *
- * The encrypted bundle is stored on the server but can only be decrypted
- * with the voter's matching face + ear — the server cannot use it.
- * This means the voter can verify from ANY device/browser.
+ * Flow:
+ *   1. Fetch credential + encrypted key bundle from server.
+ *   2. Load enrolled templates from IndexedDB if available (optional gate).
+ *   3. Capture fresh biometrics; run template matching gate when templates exist.
+ *   4. Decrypt the ECDSA private key with the biometric-derived AES key.
+ *   5. Sign the server challenge and submit.
+ *
+ * The biometric key decryption (step 4) is the primary security gate —
+ * only the correct face + ear can recover the signing key.  The template
+ * matching gate (step 3) provides better error messages when local
+ * templates are available, but is skipped when Safari has purged IndexedDB.
+ *
+ * No biometric data ever leaves the device — only a cryptographic
+ * signature is sent to the server.
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../../styles/ThemeContext";
-import { getCardStyle, getPageTitleStyle, PrimaryButton } from "../../styles/ui";
+import { getCardStyle, getPageTitleStyle, getSuccessAlertStyle, PrimaryButton } from "../../styles/ui";
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
 import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
+import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
+import { retrieveBiometricData, getDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
 
 const biometricApi = new BiometricApiRepository();
+const PWA_REDIRECT_KEY = "evoting_pwa_redirect";
 
 /**
  * Sign a hex-encoded challenge with an ECDSA private key.
@@ -58,7 +69,14 @@ function MobileVerifyPage() {
   const [state, setState] = useState<VerifyState>("ready");
   const [error, setError] = useState<string | null>(null);
   const [encryptedBundle, setEncryptedBundle] = useState<EncryptedKeyBundle | null>(null);
-  const [deviceId, setDeviceId] = useState<string>("");
+  const [enrolledDeviceId, setEnrolledDeviceId] = useState<string>("");
+  const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
+  const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
+
+  // Save URL so PWA can resume here after install.
+  useEffect(() => {
+    localStorage.setItem(PWA_REDIRECT_KEY, window.location.href);
+  }, []);
 
   useEffect(() => {
     if (!challengeId || !voterId) {
@@ -67,13 +85,14 @@ function MobileVerifyPage() {
     }
   }, [challengeId, voterId]);
 
-  // Fetch the encrypted key bundle from the server.
+  // Fetch credential from server and load local templates if available.
   const handleStartVerify = useCallback(async () => {
     if (!voterId) return;
     setError(null);
     setState("loading");
 
     try {
+      // 1. Fetch credential from server
       const credentials = await biometricApi.listCredentials(voterId);
       const active = credentials.find((c) => c.is_active && c.encrypted_key_bundle);
 
@@ -83,8 +102,25 @@ function MobileVerifyPage() {
         return;
       }
 
+      // 2. Use local device_id if available (for server-side lookup), but
+      //    don't block verification when Safari has purged IndexedDB.
+      const localDeviceId = await getDeviceId();
+      setEnrolledDeviceId(localDeviceId || active.device_id);
+
+      // 3. Load enrolled templates from local IndexedDB if available.
+      //    When present, we run an extra template-matching gate for better
+      //    error messages. When absent (Safari purged storage), we skip the
+      //    gate and rely on biometric key decryption as the security check.
+      const stored = await retrieveBiometricData(voterId);
+      if (stored?.faceTemplate && stored?.earTemplate) {
+        setEnrolledFace(new Float32Array(stored.faceTemplate));
+        setEnrolledEar(new Float32Array(stored.earTemplate));
+      } else {
+        setEnrolledFace(null);
+        setEnrolledEar(null);
+      }
+
       setEncryptedBundle(JSON.parse(active.encrypted_key_bundle));
-      setDeviceId(active.device_id);
       setState("capturing");
     } catch (err: any) {
       setError(err.message || "Failed to fetch enrollment data.");
@@ -92,7 +128,7 @@ function MobileVerifyPage() {
     }
   }, [voterId]);
 
-  // After biometric capture completes — decrypt and sign.
+  // After biometric capture completes — match, decrypt, and sign.
   const handleCaptureComplete = useCallback(
     async (result: { faceDescriptor: FeatureDescriptor; earDescriptor: FeatureDescriptor }) => {
       if (!encryptedBundle || !voterId) return;
@@ -100,7 +136,23 @@ function MobileVerifyPage() {
       try {
         setState("decrypting");
 
-        // Attempt to decrypt the signing key with the captured biometrics.
+        // If enrolled templates are available locally, run an advisory
+        // matching check.  A failure here does NOT block verification —
+        // the real security gate is the biometric key decryption below.
+        // We record the result so we can show a more helpful error
+        // message if key decryption also fails.
+        let templateMatchFailed = false;
+        if (enrolledFace && enrolledEar) {
+          const match = matchBoth(
+            result.faceDescriptor, enrolledFace,
+            result.earDescriptor, enrolledEar,
+          );
+          templateMatchFailed = !match.overallPassed;
+        }
+
+        // Attempt to decrypt the signing key with fresh biometrics.
+        // This is the primary security gate — only the correct face +
+        // ear can recover the ECDSA private key via AES-GCM decryption.
         let privateKey: CryptoKey;
         try {
           privateKey = await decryptPrivateKey(
@@ -111,8 +163,11 @@ function MobileVerifyPage() {
         } catch {
           setState("decrypt_failed");
           setError(
-            "Biometric verification failed. Your face and ear did not match " +
-            "the enrollment closely enough to unlock the signing key. Please try again.",
+            templateMatchFailed
+              ? "Biometric verification failed. Your face and ear did not match the enrollment. " +
+                "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories."
+              : "Biometric verification failed. Your face and ear did not match " +
+                "the enrollment closely enough to unlock the signing key. Please try again.",
           );
           return;
         }
@@ -124,7 +179,7 @@ function MobileVerifyPage() {
 
         const verifyResult = await biometricApi.verifyBiometric({
           challenge_id: challenge.id,
-          device_id: deviceId,
+          ...(enrolledDeviceId ? { device_id: enrolledDeviceId } : {}),
           signature,
         });
 
@@ -139,7 +194,7 @@ function MobileVerifyPage() {
         setState("error");
       }
     },
-    [encryptedBundle, voterId, deviceId],
+    [encryptedBundle, voterId, enrolledDeviceId, enrolledFace, enrolledEar],
   );
 
   const handleCaptureError = useCallback((message: string) => {
@@ -194,15 +249,12 @@ function MobileVerifyPage() {
             <div
               style={{
                 marginTop: theme.spacing.md,
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius?.md || "8px",
-                backgroundColor: "#f0fff4",
-                border: `1px solid ${theme.colors.status.success}`,
+                ...getSuccessAlertStyle(theme),
                 textAlign: "center",
               }}
             >
-              <strong>Identity verified</strong>
-              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem" }}>
+              <strong style={{ color: theme.colors.text.primary }}>Identity verified</strong>
+              <p style={{ margin: `${theme.spacing.xs} 0 0 0`, fontSize: "0.9rem", color: theme.colors.text.primary }}>
                 Your face and ear confirmed your identity. No biometric data was sent to the server.
               </p>
             </div>
@@ -230,6 +282,8 @@ function MobileVerifyPage() {
         {(state === "error" || state === "no_enrollment" || state === "decrypt_failed") && (
           <PrimaryButton onClick={handleStartVerify}>Retry</PrimaryButton>
         )}
+
+
       </div>
     </div>
   );

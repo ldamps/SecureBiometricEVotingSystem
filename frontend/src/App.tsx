@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 import "./styles/global.css";
 import { ThemeProvider } from './styles/ThemeContext';
@@ -22,18 +22,52 @@ import OfficialLandingPage from './pages/official/officialLandingPage';
 import OfficialHomePage from './pages/official/officialHomePage';
 import OfficialProfilePage from './pages/official/officialProfilePage';
 import OfficialOnboardingPage from './pages/official/officialOnboardingPage';
+import ManageElectionsPage from './pages/official/manageElectionsPage';
+import ManageReferendumsPage from './pages/official/manageReferendumsPage';
 
-// Mobile biometric pages (accessed via QR code from phone/tablet)
-import MobileEnrollPage from './pages/biometric/mobileEnrollPage';
-import MobileVerifyPage from './pages/biometric/mobileVerifyPage';
+// Authenticator PWA layout
+import AuthenticatorLayout from './layouts/authenticatorLayout';
 
-// Shared pages
+// Biometric pages — lazy-loaded so face-api.js / TensorFlow.js
+// are only downloaded when the user navigates to a biometric route.
+/** Redirect legacy /biometric/* URLs to /auth/*, preserving query params. */
+function BiometricRedirect({ to }: { to: string }) {
+  const search = window.location.search;
+  return <Navigate to={to + search} replace />;
+}
+
+// Authenticator PWA pages (built-in QR scanner flow)
+const AuthHomePage = React.lazy(() => import('./pages/auth/authHomePage'));
+const AuthEnrollPage = React.lazy(() => import('./pages/auth/authEnrollPage'));
+const AuthVerifyPage = React.lazy(() => import('./pages/auth/authVerifyPage'));
+
+/**
+ * Check if the PWA was opened from the home screen and a biometric
+ * page saved a redirect URL before install.  If so, navigate there
+ * so the user resumes enrollment/verification without re-scanning.
+ */
+function PwaRedirect() {
+  // If running as an installed PWA, go to the authenticator QR scanner.
+  if (typeof window !== "undefined") {
+    const standalone = (navigator as any).standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+    if (standalone) return <Navigate to="/auth" replace />;
+  }
+  return <Navigate to="/voter/landing" replace />;
+}
 
 const App: React.FC = () => {
   return (
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
+          {/* Authenticator PWA routes — chromeless layout with built-in QR scanner */}
+          <Route element={<AuthenticatorLayout />}>
+            <Route path="/auth" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading…</div>}><AuthHomePage /></Suspense>} />
+            <Route path="/auth/enroll" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading enrollment…</div>}><AuthEnrollPage /></Suspense>} />
+            <Route path="/auth/verify" element={<Suspense fallback={<div style={{padding:"2rem",textAlign:"center"}}>Loading verification…</div>}><AuthVerifyPage /></Suspense>} />
+          </Route>
+
           <Route element={<MainLayout />}>
 
             {/* Voter routes */}
@@ -54,14 +88,18 @@ const App: React.FC = () => {
                 <Route path="home" element={<OfficialHomePage />} />
                 <Route path="profile" element={<OfficialProfilePage />} />
                 <Route path="onboarding" element={<OfficialOnboardingPage />} />
+                <Route path="elections" element={<ManageElectionsPage />} />
+                <Route path="referendums" element={<ManageReferendumsPage />} />
               </Route>
             </Route>
             
-            {/* Mobile biometric routes (accessed via QR code on phone/tablet) */}
-            <Route path="/biometric/enroll" element={<MobileEnrollPage />} />
-            <Route path="/biometric/verify" element={<MobileVerifyPage />} />
+            {/* Legacy biometric routes — redirect to authenticator pages */}
+            <Route path="/biometric/enroll" element={<BiometricRedirect to="/auth/enroll" />} />
+            <Route path="/biometric/verify" element={<BiometricRedirect to="/auth/verify" />} />
 
-            {/* Shared routes */}
+            {/* Default route — resume biometric flow if PWA was installed, else landing */}
+            <Route path="/" element={<PwaRedirect />} />
+            <Route path="*" element={<Navigate to="/voter/landing" replace />} />
 
           </Route>
         </Routes>

@@ -59,6 +59,8 @@ function BiometricVerification({
     const [challengeHex, setChallengeHex] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const voterIdRef = useRef<string>(state.voterId);
+    voterIdRef.current = state.voterId;
 
     useEffect(() => {
         return () => {
@@ -80,43 +82,35 @@ function BiometricVerification({
     const isMobile = isMobileOrTablet();
 
     const handleStartVerification = useCallback(async () => {
+        const voterId = voterIdRef.current;
         setError(null);
         setStatus(BiometricVerificationStatus.CHALLENGE_ISSUED);
 
         try {
             const challenge = await biometricApi.createChallenge({
-                voter_id: state.voterId,
+                voter_id: voterId,
             });
             setChallengeId(challenge.id);
             setChallengeHex(challenge.challenge);
 
             if (isMobile) {
                 // On mobile/tablet — navigate directly to the verification page
-                const verifyUrl = `${window.location.origin}/biometric/verify?challenge_id=${encodeURIComponent(challenge.id)}&voter_id=${encodeURIComponent(state.voterId)}`;
+                const verifyUrl = `${window.location.origin}/auth/verify?challenge_id=${encodeURIComponent(challenge.id)}&voter_id=${encodeURIComponent(voterId)}`;
                 window.location.href = verifyUrl;
                 return;
             }
 
             setStatus(BiometricVerificationStatus.AWAITING_DEVICE);
 
-            // Start polling — the mobile app will call POST /biometric/verify
-            // once the on-device match succeeds.  We detect success by
-            // observing the challenge is consumed (the verify endpoint is
-            // called by the phone, not by us).
-            //
-            // A lightweight approach: we try to verify with a dummy signature
-            // and check the error message.  A proper implementation would use
-            // a dedicated "challenge status" endpoint or WebSocket.  For now
-            // we simply poll the credentials endpoint to check last_used_at
-            // changed — indicating the phone completed verification.
+            // Poll credentials endpoint to detect when the phone completes
+            // verification (last_used_at will change on the active credential).
             if (pollRef.current) clearInterval(pollRef.current);
-            const credentialsBefore = await biometricApi.listCredentials(state.voterId);
+            const credentialsBefore = await biometricApi.listCredentials(voterId);
             const activeBefore = credentialsBefore.find((c) => c.is_active);
             const lastUsedBefore = activeBefore?.last_used_at;
             const pollStarted = Date.now();
 
             pollRef.current = setInterval(async () => {
-                // Timeout — stop polling after 5 minutes
                 if (Date.now() - pollStarted > POLL_TIMEOUT_MS) {
                     if (pollRef.current) clearInterval(pollRef.current);
                     setError("Verification timed out. Please try again.");
@@ -124,12 +118,11 @@ function BiometricVerification({
                     return;
                 }
                 try {
-                    const credentials = await biometricApi.listCredentials(state.voterId);
+                    const credentials = await biometricApi.listCredentials(voterIdRef.current);
                     const active = credentials.find((c) => c.is_active);
                     if (active && active.last_used_at && active.last_used_at !== lastUsedBefore) {
-                        // The phone successfully verified — credential was touched
                         if (pollRef.current) clearInterval(pollRef.current);
-                        setState({ ...state, biometricVerified: true });
+                        setState((prev: any) => ({ ...prev, biometricVerified: true }));
                         setStatus(BiometricVerificationStatus.VERIFIED);
                     }
                 } catch {
@@ -140,7 +133,7 @@ function BiometricVerification({
             setError(err.message || "Failed to create verification challenge.");
             setStatus(BiometricVerificationStatus.FAILED);
         }
-    }, [state, setState, isMobile]);
+    }, [isMobile, setState]);
 
     const handleCancel = () => {
         if (pollRef.current) clearInterval(pollRef.current);
@@ -213,7 +206,7 @@ function BiometricVerification({
                             padding: "12px",
                         }}>
                             <QRCodeSVG
-                                value={`${window.location.origin}/biometric/verify?challenge_id=${encodeURIComponent(challengeId)}&voter_id=${encodeURIComponent(state.voterId)}`}
+                                value={`${window.location.origin}/biometric/verify?challenge_id=${encodeURIComponent(challengeId)}&voter_id=${encodeURIComponent(voterIdRef.current)}`}
                                 size={196}
                                 level="M"
                             />
@@ -226,8 +219,7 @@ function BiometricVerification({
                             textAlign: "center",
                             maxWidth: "320px",
                         }}>
-                            Scan this QR code with your phone or tablet camera.
-                            Complete the face + ear check on your device.
+                            Open the <strong>E-Voting Authenticator</strong> app on your phone and scan this code.
                         </p>
 
                         <p style={{
@@ -289,7 +281,7 @@ function BiometricVerification({
                     accidental exposure in production. */}
                 {process.env.NODE_ENV === "development" && process.env.REACT_APP_ALLOW_BIOMETRIC_SKIP === "true" && status !== BiometricVerificationStatus.VERIFIED && (
                     <SecondaryButton onClick={() => {
-                        setState({ ...state, biometricVerified: true });
+                        setState((prev: any) => ({ ...prev, biometricVerified: true }));
                         setStatus(BiometricVerificationStatus.VERIFIED);
                     }}>
                         Skip (dev only)
