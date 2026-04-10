@@ -16,7 +16,10 @@ import { decryptPrivateKey } from "../../features/biometric/services/biometric-k
 import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
 import { retrieveBiometricData, getDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
-import PwaInstallGate from "../../features/biometric/components/PwaInstallGate";
+// PwaInstallGate is intentionally NOT used for verification — the encrypted
+// key bundle is fetched from the server, so IndexedDB persistence is not
+// required.  Blocking verification behind PWA install would prevent voters
+// who scan the QR code in a regular browser from completing the flow.
 
 const biometricApi = new BiometricApiRepository();
 
@@ -170,7 +173,6 @@ function AuthVerifyPage() {
   };
 
   return (
-    <PwaInstallGate>
     <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem 1rem" }}>
       <h1 style={{ fontSize: "1.3rem", fontWeight: 700, textAlign: "center", color: theme.colors.text.primary }}>
         Biometric Verification
@@ -226,7 +228,6 @@ function AuthVerifyPage() {
         )}
       </div>
     </div>
-    </PwaInstallGate>
   );
 }
 
