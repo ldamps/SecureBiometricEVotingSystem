@@ -41,7 +41,7 @@ export async function extractFaceDescriptor(
   video: HTMLVideoElement,
 ): Promise<FeatureExtractionResult | null> {
   const detection = await faceapi
-    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 }))
     .withFaceLandmarks(true)
     .withFaceDescriptor();
 

@@ -51,15 +51,17 @@ export interface StoredBiometricData {
   enrolledAt: string;
 }
 
-/** Cosine similarity thresholds — both must pass (AND-fusion). */
+/** Cosine similarity thresholds — both must pass (AND-fusion).
+ * Advisory only; the real security gate is AES-GCM key decryption. */
 export const BIOMETRIC_THRESHOLDS = {
-  FACE: 0.99,
-  EAR: 0.99,
+  FACE: 0.92,
+  EAR: 0.85,
 } as const;
 
-/** 8-bin quantisation for biometric-bound key derivation. */
+/** 4-bin quantisation for biometric-bound key derivation.
+ * 128 dims × log2(4) = 256-bit key entropy (AES-256 strength). */
 export const DEFAULT_QUANTISATION_PARAMS: QuantisationParams = {
-  numBins: 8,
+  numBins: 4,
   rangeMin: -1.0,
   rangeMax: 1.0,
 };

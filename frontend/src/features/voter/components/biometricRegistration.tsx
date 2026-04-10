@@ -55,6 +55,8 @@ function BiometricRegistration({
     const [error, setError] = useState<string | null>(null);
     const [qrPayload, setQrPayload] = useState<string | null>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const voterIdRef = useRef<string>(state.voterId);
+    voterIdRef.current = state.voterId;
 
     // Stop polling on unmount or when enrolled
     useEffect(() => {
@@ -80,23 +82,23 @@ function BiometricRegistration({
                 return;
             }
             try {
-                const credentials = await biometricApi.listCredentials(state.voterId);
+                const credentials = await biometricApi.listCredentials(voterIdRef.current);
                 const active = credentials.find((c) => c.is_active);
                 if (active) {
                     if (pollRef.current) clearInterval(pollRef.current);
-                    setState({
-                        ...state,
+                    setState((prev: any) => ({
+                        ...prev,
                         biometricEnrolled: true,
                         credentialId: active.id,
                         deviceId: active.device_id,
-                    });
+                    }));
                     setEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED);
                 }
             } catch {
                 // Polling failure is non-fatal — we just retry next tick.
             }
         }, POLL_INTERVAL);
-    }, [state, setState]);
+    }, [setState]);
 
     /**
      * Generate the QR code payload and start polling.
@@ -109,13 +111,12 @@ function BiometricRegistration({
 
     const handleStartEnrollment = () => {
         setError(null);
-        const enrollUrl = `${window.location.origin}/biometric/enroll?voter_id=${encodeURIComponent(state.voterId)}`;
+        const voterId = voterIdRef.current;
+        const enrollUrl = `${window.location.origin}/biometric/enroll?voter_id=${encodeURIComponent(voterId)}`;
         setQrPayload(enrollUrl);
 
         if (isMobile) {
-            // On mobile/tablet — open enrollment in a new tab so the wizard
-            // state is preserved in this tab.  Polling detects completion.
-            const authEnrollUrl = `${window.location.origin}/auth/enroll?voter_id=${encodeURIComponent(state.voterId)}`;
+            const authEnrollUrl = `${window.location.origin}/auth/enroll?voter_id=${encodeURIComponent(voterId)}`;
             window.open(authEnrollUrl, "_blank");
         }
 

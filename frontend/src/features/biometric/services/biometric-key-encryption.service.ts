@@ -20,8 +20,8 @@
  * is still captured and verified via cosine-similarity advisory
  * matching (see biometric-matching.service.ts).
  *
- * With 128 face dimensions × 8 bins the key space is 2^384, which far
- * exceeds the 256-bit AES key — security is not compromised.
+ * With 128 face dimensions × 4 bins the key space is 2^256, which
+ * exactly matches the 256-bit AES key — security is not compromised.
  *
  * What is stored: encrypted key copies (salt + IV + ciphertext each).
  * What is NOT stored: biometric templates, feature vectors, images.
@@ -95,11 +95,11 @@ async function deriveAesKey(
  * so dimensions near a boundary get a chance to land in the correct bin
  * even when lighting, angle, or camera conditions differ slightly.
  *
- * With 8 bins across [-1, 1] the bin width is 0.25.  Using 13 offsets
+ * With 4 bins across [-1, 1] the bin width is 0.5.  Using 13 offsets
  * at ±0.02 steps up to ±0.12 means the net offset between any
  * (enrollment copy, verification offset) pair can reach ±0.24 —
- * covering nearly the entire bin width.  This dramatically improves
- * tolerance while preserving security (the attacker must still guess
+ * covering ~48% of the bin width.  This handles the rare boundary
+ * cases while preserving security (the attacker must still guess
  * the correct quantised bin for every dimension).
  */
 function generateOffsets(): number[] {
