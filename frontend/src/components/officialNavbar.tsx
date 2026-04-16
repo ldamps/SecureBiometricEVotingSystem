@@ -86,6 +86,18 @@ const OfficialNavbar: React.FC = () => {
             >
               Referendums
             </Link>
+            <Link
+              to="/official/officials"
+              style={{
+                color: colors.navText,
+                textDecoration: "none",
+                fontSize: theme.fontSizes.sm,
+                fontWeight: fontWeights.medium,
+                opacity: 0.9,
+              }}
+            >
+              Officials
+            </Link>
           </>
         )}
 

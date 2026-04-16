@@ -20,7 +20,6 @@ import type { StatusBadgeVariant } from "../../styles/ui";
 import VotesPerConstituencyChart from "../../features/officials/components/votesPerConstituencyChart";
 import SeatAllocationChart from "../../features/officials/components/seatAllocationChart";
 import ReportErrorModal from "../../features/officials/components/reportErrorModal";
-import ManageOfficials from "../../features/officials/components/manageOfficials";
 import { ElectionApiRepository } from "../../features/election/repositories/election-api.repository";
 import { ReferendumApiRepository } from "../../features/referendum/repositories/referendum-api.repository";
 import { ResultApiRepository } from "../../features/results/repositories/result-api.repository";
@@ -123,7 +122,7 @@ const OfficialHomePage: React.FC = () => {
 
   const baseTabs = ["overview", "investigations"] as const;
   const tabs = isAdmin
-    ? (["overview", "audit logs", "investigations", "manage officials"] as const)
+    ? (["overview", "audit logs", "investigations"] as const)
     : baseTabs;
 
   const tabFromUrl = searchParams.get("tab");
@@ -938,10 +937,6 @@ const OfficialHomePage: React.FC = () => {
               </section>
             )}
 
-            {/* ─── MANAGE OFFICIALS TAB (admin only) ─── */}
-            {activeTab === "manage officials" && isAdmin && (
-              <ManageOfficials />
-            )}
           </div>
         </>
       )}

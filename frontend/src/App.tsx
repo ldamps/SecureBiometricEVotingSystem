@@ -24,6 +24,7 @@ import OfficialProfilePage from './pages/official/officialProfilePage';
 import OfficialOnboardingPage from './pages/official/officialOnboardingPage';
 import ManageElectionsPage from './pages/official/manageElectionsPage';
 import ManageReferendumsPage from './pages/official/manageReferendumsPage';
+import ManageOfficialsPage from './pages/official/manageOfficialsPage';
 
 // Authenticator PWA layout
 import AuthenticatorLayout from './layouts/authenticatorLayout';
@@ -90,6 +91,7 @@ const App: React.FC = () => {
                 <Route path="onboarding" element={<OfficialOnboardingPage />} />
                 <Route path="elections" element={<ManageElectionsPage />} />
                 <Route path="referendums" element={<ManageReferendumsPage />} />
+                <Route path="officials" element={<ManageOfficialsPage />} />
               </Route>
             </Route>
             
