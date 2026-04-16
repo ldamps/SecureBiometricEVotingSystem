@@ -401,7 +401,7 @@ const OfficialHomePage: React.FC = () => {
   if (adminLoading) {
     return (
       <div style={pageWrapper}>
-        <h1 style={pageTitle}>Election verification dashboard</h1>
+        <h1 style={pageTitle}>Vote Verification Dashboard</h1>
         <p style={{ paddingLeft: theme.spacing.xl, color: theme.colors.text.secondary }}>Loading…</p>
       </div>
     );
@@ -409,7 +409,7 @@ const OfficialHomePage: React.FC = () => {
 
   return (
     <div style={pageWrapper}>
-      <h1 style={pageTitle}>Election verification dashboard</h1>
+      <h1 style={pageTitle}>Vote Verification Dashboard</h1>
 
       {/* Election / Referendum selector */}
       <section style={{ paddingLeft: theme.spacing.xl, paddingRight: theme.spacing.xl, paddingBottom: theme.spacing.lg }}>
