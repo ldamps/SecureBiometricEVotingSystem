@@ -79,7 +79,6 @@ const ManageOfficials: React.FC = () => {
 
   return (
     <section>
-      <h2 style={sectionH2}>Manage officials</h2>
       <p style={{ ...cardText, marginBottom: theme.spacing.lg }}>
         Add, manage, and deactivate election officials. Use this area to control who has access to the verification dashboard.
       </p>
