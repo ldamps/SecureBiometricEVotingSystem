@@ -90,24 +90,39 @@ export const BIOMETRIC_THRESHOLDS = {
   EAR: 0.85,
 } as const;
 
-/** Default quantisation parameters.
+/** Legacy quantisation parameters (4 bins).
  *
- * 4 bins across [-1, 1] gives a bin width of 0.5.  Face-api.js
- * descriptors are L2-normalised so values cluster in ~[-0.3, 0.3];
- * typical same-person per-dimension drift is 0.02–0.03 — only ~5%
- * of the bin width, making boundary crossings rare.
+ * Kept as the fallback for bundles that pre-date the quantisationParams
+ * field so that old enrollments can still attempt verification.
  *
- * Key entropy: 128 face dimensions × log2(4) = 256 bits, which
- * exactly matches AES-256 key length.  Combined with PBKDF2 (100k
- * iterations) this makes brute-force infeasible.
+ * 4 bins across [-1, 1] places a boundary at 0.0 — right in the
+ * densest part of the L2-normalised descriptor distribution.  ~27% of
+ * dimensions land within drift distance of that boundary, and because
+ * different dimensions need opposite corrections the global-offset
+ * search cannot reliably recover them all.
  *
- * Previous value was 8 bins (bin width 0.25), which caused frequent
- * decryption failures because ~25–40 dimensions would sit within
- * drift distance of a bin boundary on every capture.  The global
- * offset search cannot fix dimensions that need opposite corrections.
+ * Previous value was 8 bins (bin width 0.25), which was even worse.
  */
 export const DEFAULT_QUANTISATION_PARAMS: QuantisationParams = {
   numBins: 4,
+  rangeMin: -1.0,
+  rangeMax: 1.0,
+};
+
+/** Current enrollment quantisation parameters (5 bins).
+ *
+ * 5 bins across [-1, 1] gives a bin width of 0.4.  The nearest
+ * boundaries to zero are at ±0.2 and ±0.6, which sit well outside
+ * the dense centre of the descriptor distribution.  Only ~4.5% of
+ * dimensions fall within drift distance (0.03) of a boundary —
+ * a 6× improvement over the 4-bin layout.
+ *
+ * Key entropy: 128 × log2(5) ≈ 297 bits, more than sufficient for
+ * AES-256.  Combined with PBKDF2 (100k iterations) brute-force
+ * remains infeasible.
+ */
+export const ENROLLMENT_QUANTISATION_PARAMS: QuantisationParams = {
+  numBins: 5,
   rangeMin: -1.0,
   rangeMax: 1.0,
 };

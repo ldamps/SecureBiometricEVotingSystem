@@ -185,11 +185,10 @@ function BiometricCaptureFlow({ mode, onComplete, onError }: BiometricCaptureFlo
       if (!video) return;
 
       try {
-        // Always use multi-sample averaging for a more stable descriptor.
-        // Enrollment uses 5 samples; verification uses 3 for speed.
-        const result = mode === "enroll"
-          ? await extractStableFaceDescriptor(video, 5, 250)
-          : await extractStableFaceDescriptor(video, 3, 200);
+        // Multi-sample averaging for a stable descriptor.
+        // Both enrollment and verification use 5 samples — matching
+        // sample counts reduces descriptor drift between sessions.
+        const result = await extractStableFaceDescriptor(video, 5, 200);
 
         if (cancelled) return;
 
@@ -258,9 +257,8 @@ function BiometricCaptureFlow({ mode, onComplete, onError }: BiometricCaptureFlo
 
       try {
         // Multi-sample averaging for stable ear descriptors.
-        // Enrollment uses 5 samples; verification uses 3 for speed.
-        const earSamples = mode === "enroll" ? 5 : 3;
-        const earResult = await extractStableEarDescriptor(video, earSamples, 300);
+        // Both modes use 5 samples to minimise cross-session drift.
+        const earResult = await extractStableEarDescriptor(video, 5, 300);
         if (cancelled) return;
 
         if (!earResult) {

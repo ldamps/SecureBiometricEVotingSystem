@@ -3,7 +3,7 @@
  *
  * During enrollment the ECDSA private key is encrypted multiple times,
  * each with a slightly different quantisation offset applied to the
- * face feature vector.  This produces 13 encrypted copies that cover
+ * face feature vector.  This produces 19 encrypted copies that cover
  * the natural variation between cameras, lighting, and angles.
  *
  * During verification the system tries to decrypt each copy with the
@@ -20,8 +20,8 @@
  * is still captured and verified via cosine-similarity advisory
  * matching (see biometric-matching.service.ts).
  *
- * With 128 face dimensions × 4 bins the key space is 2^256, which
- * exactly matches the 256-bit AES key — security is not compromised.
+ * With 128 face dimensions × 5 bins the key space is ~2^297, which
+ * exceeds the 256-bit AES key — security is not compromised.
  *
  * What is stored: encrypted key copies (salt + IV + ciphertext each).
  * What is NOT stored: biometric templates, feature vectors, images.
@@ -33,6 +33,7 @@ import {
   EncryptedKeyCopy,
   QuantisationParams,
   DEFAULT_QUANTISATION_PARAMS,
+  ENROLLMENT_QUANTISATION_PARAMS,
 } from "../models/biometric-feature.model";
 
 function toHex(buf: ArrayBuffer): string {
@@ -90,25 +91,37 @@ async function deriveAesKey(
 }
 
 /**
- * Generate quantisation offsets that cover cross-session biometric
- * variation.  Each offset shifts all bin boundaries by a small amount,
- * so dimensions near a boundary get a chance to land in the correct bin
- * even when lighting, angle, or camera conditions differ slightly.
+ * Generate quantisation offsets for ENROLLMENT (stored as encrypted copies).
  *
- * With 4 bins across [-1, 1] the bin width is 0.5.  Using 13 offsets
- * at ±0.02 steps up to ±0.12 means the net offset between any
- * (enrollment copy, verification offset) pair can reach ±0.24 —
- * covering ~48% of the bin width.  This handles the rare boundary
- * cases while preserving security (the attacker must still guess
- * the correct quantised bin for every dimension).
+ * 19 offsets at ±0.02 steps up to ±0.18.  With 5 bins (bin width 0.4)
+ * the net effective offset between any (enrollment copy, verification
+ * offset) pair can reach ±0.42 — more than one full bin width, which
+ * absorbs lighting, camera, and angle variation across sessions.
  */
-function generateOffsets(): number[] {
-  const offsets: number[] = [0]; // always include zero-offset (exact match)
-  for (const delta of [0.02, 0.04, 0.06, 0.08, 0.10, 0.12]) {
-    offsets.push(delta);
-    offsets.push(-delta);
+function generateEnrollmentOffsets(): number[] {
+  const offsets: number[] = [0];
+  for (let d = 0.02; d <= 0.18; d = +(d + 0.02).toFixed(2)) {
+    offsets.push(d);
+    offsets.push(-d);
   }
-  return offsets; // 13 offsets total
+  return offsets; // 19 offsets
+}
+
+/**
+ * Generate quantisation offsets for VERIFICATION (tried at decrypt time).
+ *
+ * Wider range (±0.24) than enrollment offsets to maximise tolerance for
+ * environmental differences.  25 offsets × N copies is still fast
+ * because each AES-GCM trial is sub-millisecond after the PBKDF2
+ * derivation, and WebCrypto PBKDF2 runs in native code (~10-30 ms).
+ */
+function generateVerificationOffsets(): number[] {
+  const offsets: number[] = [0];
+  for (let d = 0.02; d <= 0.24; d = +(d + 0.02).toFixed(2)) {
+    offsets.push(d);
+    offsets.push(-d);
+  }
+  return offsets; // 25 offsets
 }
 
 /**
@@ -143,7 +156,7 @@ async function encryptOneCopy(
 export async function generateAndEncryptKeyPair(
   faceDescriptor: FeatureDescriptor,
   _earDescriptor: FeatureDescriptor,
-  params: QuantisationParams = DEFAULT_QUANTISATION_PARAMS,
+  params: QuantisationParams = ENROLLMENT_QUANTISATION_PARAMS,
 ): Promise<{ publicKeyPem: string; encryptedBundle: EncryptedKeyBundle }> {
   // Use only the face descriptor for key derivation — see module doc
   // for rationale.  The ear descriptor is verified separately via
@@ -162,7 +175,7 @@ export async function generateAndEncryptKeyPair(
   const privateKeyDer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
 
   // Encrypt with each offset.
-  const offsets = generateOffsets();
+  const offsets = generateEnrollmentOffsets();
   const copies: EncryptedKeyCopy[] = [];
   for (const offset of offsets) {
     copies.push(await encryptOneCopy(combined, params, offset, privateKeyDer));
@@ -218,8 +231,9 @@ export async function decryptPrivateKey(
     throw new Error("Invalid encrypted key bundle.");
   }
 
-  // Generate the same offsets used during enrollment.
-  const offsets = generateOffsets();
+  // Use wider verification offsets to maximise tolerance for
+  // environmental variation between enrollment and verification.
+  const offsets = generateVerificationOffsets();
 
   // Try every (copy, offset) combination.
   // The copy at index i was encrypted with offset[i], but due to
