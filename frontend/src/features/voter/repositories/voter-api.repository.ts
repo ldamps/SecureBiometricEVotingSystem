@@ -166,7 +166,7 @@ function dateToISO(dob: string): string {
 
 function registrationBody(req: VoterCreateRequest): Record<string, unknown> {
     return {
-        kyc_session_id: req.kyc_session_id,
+        ...(req.kyc_session_id ? { kyc_session_id: req.kyc_session_id } : {}),
         first_name: req.first_name,
         surname: req.surname,
         previous_first_name: req.previous_first_name,

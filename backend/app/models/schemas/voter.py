@@ -64,7 +64,7 @@ class VoterRegistrationRequest(RequestSchema):
     number or at least one passport entry (or both).  The NI number is the
     preferred anchor identifier.
     """
-    kyc_session_id: str = Field(..., description="The Stripe Identity verification session ID. Must be 'verified' status.")
+    kyc_session_id: Optional[str] = Field(None, description="The Stripe Identity verification session ID. Required for passport-based registration only.")
     first_name: str = Field(..., description="The first name of the voter.")
     surname: str = Field(..., description="The surname of the voter.")
     previous_first_name: Optional[str] = Field(None, description="The previous first name of the voter.")
@@ -89,6 +89,14 @@ class VoterRegistrationRequest(RequestSchema):
                 "At least one form of identity is required: "
                 "provide a national insurance number or at least one passport entry."
             )
+
+        # --- KYC required for passport-based registration (no NI) ---
+        if not has_ni and has_passport:
+            if not self.kyc_session_id or not self.kyc_session_id.strip():
+                raise ValueError(
+                    "KYC identity verification is required when registering with a passport. "
+                    "Please complete the Stripe Identity verification."
+                )
 
         # --- NI format validation ---
         if has_ni and not _NI_RE.match(ni.strip().replace(" ", "")):

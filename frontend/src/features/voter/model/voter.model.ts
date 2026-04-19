@@ -94,7 +94,7 @@ export interface Voter {
 
 // Voter create request model - Represents a request to create a new voter
 export interface VoterCreateRequest {
-    kyc_session_id: string
+    kyc_session_id?: string
     first_name: string
     surname: string
     previous_first_name?: string

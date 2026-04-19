@@ -105,10 +105,9 @@ function RegistrationDetails({
     const idMethod: string = state.identificationMethod || "";
     const kycStatus: string = state.kycStatus || "";
 
-    // In update mode, KYC is only required when adding a new NI or changing passport
-    const isAddingNI = isUpdate && !existingNI && idMethod === "ni" && !!state.nationalInsuranceNumber?.trim();
+    // In update mode, KYC is only required when changing passport (NI is verified separately)
     const isChangingPassport = isUpdate && idMethod === "passport" && !!state.passportNumber?.trim() && state.passportNumber.trim() !== existingPassportNumber;
-    const updateRequiresKyc = isAddingNI || isChangingPassport;
+    const updateRequiresKyc = isChangingPassport;
     const niIsReadOnly = isUpdate && !!existingNI;
 
     /** Compare form inputs against Stripe-extracted data and return mismatches. */
@@ -428,17 +427,15 @@ function RegistrationDetails({
                             );
                         })}
 
-                        {/* Stripe Identity verification – always for registration, only when needed for update */}
-                        {(!isUpdate || updateRequiresKyc) && (
+                        {/* Stripe Identity KYC – only for passport-based registration (NI is verified separately) */}
+                        {(idMethod === "passport") && (!isUpdate || updateRequiresKyc) && (
                         <div style={{ marginTop: "1rem", paddingTop: "0.75rem", borderTop: `1px solid ${theme.colors.border}` }}>
                             <p style={{ ...getStepLabelStyle(theme), marginBottom: "0.5rem" }}>
                                 Verify your identity{!isUpdate && <span style={{ color: theme.colors.status.error }}> *</span>}
                             </p>
                             {isUpdate && (
                                 <p style={{ fontSize: "0.85rem", color: theme.colors.text.secondary, marginBottom: "0.5rem" }}>
-                                    {isAddingNI
-                                        ? "Adding a National Insurance Number requires identity verification."
-                                        : "Changing your passport details requires identity verification."}
+                                    Changing your passport details requires identity verification.
                                 </p>
                             )}
                             {validationErrors.kyc && (
@@ -447,11 +444,8 @@ function RegistrationDetails({
                                 </p>
                             )}
                             <p style={{ fontSize: "0.85rem", color: theme.colors.text.secondary, marginBottom: "0.75rem" }}>
-                                {idMethod === "passport"
-                                    ? "You will be asked to provide a photo of your passport or driving licence and take a selfie."
-                                    : "You will be asked to provide any valid UK photo ID (passport, driving licence, biometric residence permit, or national ID card) and take a selfie."}
+                                You will be asked to provide a photo of your passport or driving licence and take a selfie to verify your identity.
                             </p>
-                            {/* TODO: Verify NI number against HMRC/DWP records once API access is available */}
 
                             {kycStatus === "verified" ? (
                                 <>
@@ -688,8 +682,8 @@ function RegistrationDetails({
                             if (!state.passportExpiryDate?.trim()) errors.passportExpiryDate = "Passport expiry date is required.";
                         }
 
-                        // Identity verification required (registration only)
-                        if (kycStatus !== "verified") {
+                        // KYC verification required for passport-based registration only
+                        if (idMethod === "passport" && kycStatus !== "verified") {
                             errors.kyc = "Please verify your identity before continuing.";
                         }
 
@@ -710,11 +704,9 @@ function RegistrationDetails({
                             errors.otherCountries = "Please select at least one country.";
                         }
                     } else {
-                        // Update mode: KYC required only if adding NI or changing passport
+                        // Update mode: KYC required only if changing passport
                         if (updateRequiresKyc && kycStatus !== "verified") {
-                            errors.kyc = isAddingNI
-                                ? "Please verify your identity before adding a National Insurance Number."
-                                : "Please verify your identity before changing your passport details.";
+                            errors.kyc = "Please verify your identity before changing your passport details.";
                         }
                     }
 
@@ -745,7 +737,7 @@ function RegistrationDetails({
                             else if (state.nationalityIrish) natCat = NationalityCategory.IRISH_CITIZEN;
 
                             const result = await voterApi.registerVoter({
-                                kyc_session_id: state.kycSessionId,
+                                kyc_session_id: idMethod === "passport" ? state.kycSessionId : undefined,
                                 first_name: state.firstName,
                                 surname: state.lastName,
                                 previous_first_name: state.nameChanged ? state.previousFirstName : undefined,

@@ -87,28 +87,36 @@ class VoterService(EncryptionUtilsMixin):
         Requires a verified KYC session. The voter is created in PENDING status;
         they must complete address verification and biometric enrollment to become ACTIVE.
         """
-        if not kyc_session_id:
-            raise ValidationError("A verified KYC session ID is required to register.")
+        # Determine verification pathway: NI-based or passport-based (KYC)
+        has_ni = dto.national_insurance_number and dto.national_insurance_number.strip()
+        has_passport = bool(passport_entries)
 
-        # Validate KYC — session must be verified and data must match
-        dob_str = None
-        if dto.date_of_birth:
-            from datetime import datetime as dt
+        # KYC is only required for passport-based registration (no NI number)
+        if not has_ni and has_passport:
+            if not kyc_session_id:
+                raise ValidationError(
+                    "A verified KYC session ID is required for passport-based registration."
+                )
+
+            # Validate KYC — session must be verified and data must match
+            dob_str = None
+            if dto.date_of_birth:
+                from datetime import datetime as dt
+                try:
+                    parsed = dt.fromisoformat(str(dto.date_of_birth).replace("Z", "+00:00"))
+                    dob_str = parsed.strftime("%d/%m/%Y")
+                except (ValueError, TypeError):
+                    pass
+
             try:
-                parsed = dt.fromisoformat(str(dto.date_of_birth).replace("Z", "+00:00"))
-                dob_str = parsed.strftime("%d/%m/%Y")
-            except (ValueError, TypeError):
-                pass
-
-        try:
-            await self._kyc_service.validate_kyc_for_registration(
-                session_id=kyc_session_id,
-                first_name=dto.first_name,
-                surname=dto.surname,
-                date_of_birth=dob_str,
-            )
-        except ValueError as exc:
-            raise ValidationError(str(exc)) from exc
+                await self._kyc_service.validate_kyc_for_registration(
+                    session_id=kyc_session_id,
+                    first_name=dto.first_name,
+                    surname=dto.surname,
+                    date_of_birth=dob_str,
+                )
+            except ValueError as exc:
+                raise ValidationError(str(exc)) from exc
 
         # Enforce PENDING status — voter must complete all steps before activation
         dto.registration_status = "pending"
