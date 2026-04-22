@@ -7,10 +7,10 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 from uuid import UUID
 
-# UK NI number: 2 prefix letters, 6 digits, 1 suffix letter (A-D)
-# Certain prefixes are invalid: BG, GB, NK, KN, TN, NT, ZZ and temp prefixes.
+# UK NI number (HMRC full rules): first letter excludes D,F,I,Q,U,V;
+# second letter excludes D,F,I,O,Q,U,V; then 6 digits and a suffix A-D.
 _NI_RE = re.compile(
-    r"^(?!BG|GB|NK|KN|TN|NT|ZZ)[A-Z]{2}\d{6}[A-D]$",
+    r"^(?![DFIQUV])[A-CEGHJ-PR-TW-Z](?![DFIOQUV])[A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$",
     re.IGNORECASE,
 )
 

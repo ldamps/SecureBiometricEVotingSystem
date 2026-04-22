@@ -671,9 +671,10 @@ function RegistrationDetails({
                             errors.identificationMethod = "Please select an identification method.";
                         } else if (idMethod === "ni") {
                             const ni = (state.nationalInsuranceNumber || "").trim();
+                            const niCompact = ni.replace(/\s+/g, "").toUpperCase();
                             if (!ni) {
                                 errors.nationalInsuranceNumber = "National Insurance Number is required.";
-                            } else if (!/^[A-Za-z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-Za-z]$/i.test(ni)) {
+                            } else if (!/^(?![DFIQUV])[A-CEGHJ-PR-TW-Z](?![DFIOQUV])[A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/.test(niCompact)) {
                                 errors.nationalInsuranceNumber = "National Insurance Number must be in the format QQ 12 34 56 C (2 letters, 6 digits, 1 letter).";
                             }
                         } else if (idMethod === "passport") {
