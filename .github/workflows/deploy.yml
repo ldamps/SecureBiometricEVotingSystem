@@ -68,8 +68,9 @@ jobs:
             export CORS_ALLOWED_ORIGINS="https://${DOMAIN},https://${DOMAIN}:443,http://${DOMAIN},http://${DOMAIN}:80,https://${{ secrets.EC2_HOST }},https://${{ secrets.EC2_HOST }}:443,http://${{ secrets.EC2_HOST }},http://${{ secrets.EC2_HOST }}:80,https://localhost,http://localhost,https://frontend,http://frontend"
 
             # ── Force fresh build (remove old images so nothing is cached)
-            echo "==> Removing old images to force fresh build..."
-            docker compose down --rmi local
+            echo "==> Stopping old containers and cleaning up..."
+            docker compose down --remove-orphans --rmi local || true
+            docker ps -a --format '{{.Names}}' | grep '^securebiometricevotingsystem-' | xargs -r docker rm -f
             echo "==> Building new images..."
             docker compose build --no-cache
 

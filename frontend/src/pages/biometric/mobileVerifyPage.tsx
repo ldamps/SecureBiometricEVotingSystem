@@ -28,7 +28,7 @@ import BiometricCaptureFlow from "../../features/biometric/components/BiometricC
 import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
 import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
 import { retrieveBiometricData, getDeviceId } from "../../features/biometric/services/biometric-storage.service";
-import { FeatureDescriptor, EncryptedKeyBundle, ENROLLMENT_QUANTISATION_PARAMS } from "../../features/biometric/models/biometric-feature.model";
+import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
 
 const biometricApi = new BiometricApiRepository();
 const PWA_REDIRECT_KEY = "evoting_pwa_redirect";
@@ -162,19 +162,23 @@ function MobileVerifyPage() {
           );
         } catch {
           setState("decrypt_failed");
+          // Any bundle missing the v2 fuzzy-extractor fields was created
+          // before the durability upgrade and needs a one-time re-enrollment
+          // to migrate. After migration, drift up to ~33% byte-level is
+          // transparently corrected and re-enrollment is never needed.
           const isLegacyEnrollment =
-            !encryptedBundle.quantisationParams ||
-            encryptedBundle.quantisationParams.numBins !== ENROLLMENT_QUANTISATION_PARAMS.numBins;
+            encryptedBundle.format !== "fuzzy-extractor-rs-v2" ||
+            !encryptedBundle.helper;
           setError(
             isLegacyEnrollment
-              ? "Biometric verification failed. Your enrollment uses an older format that is less tolerant " +
-                "of lighting and environmental changes. Please re-enroll your biometrics from the registration page for improved reliability."
+              ? "Biometric verification failed. Your enrollment was created with an older format. " +
+                "Please re-enroll once from the registration page — the new format will then " +
+                "work indefinitely across lighting and environmental changes."
               : templateMatchFailed
-                ? "Biometric verification failed. Your face and ear did not match the enrollment. " +
-                  "Please ensure good lighting, face the camera directly, and make sure your ear is not covered by hair or accessories."
-                : "Biometric verification failed. Your biometrics did not match " +
-                  "the enrollment closely enough to unlock the signing key. " +
-                  "Please try again in similar lighting to when you enrolled.",
+                ? "Biometric verification failed. Your face did not match the enrollment closely " +
+                  "enough. Please ensure good lighting and face the camera directly."
+                : "Biometric verification failed. Please try again in similar lighting to when " +
+                  "you enrolled.",
           );
           return;
         }

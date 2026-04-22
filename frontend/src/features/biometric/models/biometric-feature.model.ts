@@ -43,24 +43,43 @@ export interface EncryptedKeyCopy {
 }
 
 /**
- * Encrypted ECDSA private key bundle.
+ * Encrypted ECDSA private key bundle — two formats coexist.
  *
- * Contains multiple encrypted copies of the SAME private key, each
- * encrypted with a slightly different quantisation offset.  This covers
- * the natural biometric variation between devices/conditions.  During
- * verification, the system tries each copy — if ANY one decrypts
- * (AES-GCM tag validates), the private key is recovered.
+ * **v2 — fuzzy extractor (current):** a single `helper` string regenerates
+ * a stable AES key from a noisy fresh biometric via Reed-Solomon error
+ * correction. One-time enrollment survives cross-session drift (lighting,
+ * angle, aging) for years. Identified by the presence of `helper`.
  *
- * No biometric data is stored — only encrypted key material.
+ * **v1 — multi-copy offset search (legacy):** many encrypted copies of the
+ * same private key under different quantisation offsets. Verification
+ * tries each (copy, offset) pair. Less robust — drift on boundary-adjacent
+ * dimensions causes uncorrectable failures. Identified by `copies`.
+ *
+ * No biometric data is stored in either format — only encrypted key
+ * material (v1) or an information-theoretically hiding `helper` (v2).
  */
 export interface EncryptedKeyBundle {
-  copies: EncryptedKeyCopy[];
-  quantisationParams: QuantisationParams;
+  /** Format discriminator. "fuzzy-extractor-rs-v2" for the new format;
+   *  absent for legacy bundles. */
+  format?: "fuzzy-extractor-rs-v2";
 
-  /** @deprecated Single-copy fields kept for backward compatibility. */
+  // --- v2 fuzzy-extractor fields ---
+  /** Hex-encoded RS codeword XOR quantised biometric (48 bytes). */
+  helper?: string;
+  /** Hex-encoded PBKDF2 salt (32 bytes). */
   salt?: string;
+  /** Hex-encoded AES-GCM IV (12 bytes). */
   iv?: string;
+  /** Hex-encoded AES-GCM ciphertext of the ECDSA private key. */
   encryptedPrivateKey?: string;
+
+  // --- v1 legacy fields ---
+  /** Legacy multi-copy offset scheme. */
+  copies?: EncryptedKeyCopy[];
+
+  /** Quantisation parameters used for feature binning. Shared by both
+   *  formats (shape is identical). */
+  quantisationParams?: QuantisationParams;
 }
 
 /** Full biometric enrollment data persisted on the device. */
