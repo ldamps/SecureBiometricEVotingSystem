@@ -102,7 +102,7 @@ class VoterRegistrationRequest(RequestSchema):
         if has_ni and not _NI_RE.match(ni.strip().replace(" ", "")):
             raise ValueError(
                 "National Insurance number format is invalid. "
-                "Expected format: two letters, six digits, one letter (A–D), e.g. QQ123456C."
+                "Expected format: two letters, six digits, one letter (A–D), e.g. AB123456C."
             )
 
         # --- Age validation (minimum 14 to register) ---

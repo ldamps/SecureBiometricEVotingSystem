@@ -16,8 +16,8 @@ const voterApi = new VoterApiRepository();
 function checkEligibility(state: any): string[] {
     const issues: string[] = [];
 
-    // Step 2: Identity verification (KYC)
-    if (state.kycStatus !== "verified") {
+    // Step 2: Identity verification (KYC) — only required for passport-based registration
+    if (state.identificationMethod === "passport" && state.kycStatus !== "verified") {
         issues.push("Identity verification (KYC) has not been completed.");
     }
 
