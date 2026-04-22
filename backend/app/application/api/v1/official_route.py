@@ -68,7 +68,7 @@ async def update_official(
     Only admins can update official details including role and active status.
     """
     dto = UpdateOfficialPlainDTO.create_dto(body, official_id)
-    return await service.update_official(official_id, dto)
+    return await service.update_official(official_id, dto, actor_id=UUID(current_user.sub))
 
 
 # Get all election officials (any official)
@@ -122,7 +122,7 @@ async def deactivate_official(
     The official's account is disabled but not deleted, preserving
     audit trail integrity.
     """
-    return await service.deactivate_official(official_id)
+    return await service.deactivate_official(official_id, actor_id=UUID(current_user.sub))
 
 
 # Reactivate an election official (admin-only)
@@ -138,4 +138,4 @@ async def activate_official(
     current_user: TokenPayload = Depends(require_role("ADMIN")),
 ):
     """Reactivate a previously deactivated election official (admin-only)."""
-    return await service.activate_official(official_id)
+    return await service.activate_official(official_id, actor_id=UUID(current_user.sub))

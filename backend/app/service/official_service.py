@@ -184,7 +184,10 @@ class OfficialService:
     # ── Update ──
 
     async def update_official(
-        self, official_id: UUID, dto: UpdateOfficialPlainDTO,
+        self,
+        official_id: UUID,
+        dto: UpdateOfficialPlainDTO,
+        actor_id: UUID | None = None,
     ) -> OfficialItem:
         """Update an official's mutable fields."""
         try:
@@ -207,6 +210,21 @@ class OfficialService:
             updated = await self.official_repo.update_official(
                 self.session, official_id, update_data,
             )
+
+            # Audit: official updated
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="OFFICIAL_UPDATED",
+                    action="UPDATE",
+                    summary=f"Election official {official_id} updated ({', '.join(update_data.keys())})",
+                    resource_type="official",
+                    resource_id=official_id,
+                    actor_type="OFFICIAL",
+                    actor_id=actor_id,
+                ),
+            )
+
             return official_orm_to_dto_unencrypted_row(updated).to_schema()
 
         except (ValidationError, NotFoundError):
@@ -217,23 +235,57 @@ class OfficialService:
 
     # ── Activate / Deactivate ──
 
-    async def deactivate_official(self, official_id: UUID) -> OfficialItem:
+    async def deactivate_official(
+        self, official_id: UUID, actor_id: UUID | None = None,
+    ) -> OfficialItem:
         """Deactivate an election official (admin-only)."""
         try:
             updated = await self.official_repo.deactivate_official(
                 self.session, official_id,
             )
+
+            # Audit: official deactivated
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="OFFICIAL_DEACTIVATED",
+                    action="UPDATE",
+                    summary=f"Election official {official_id} deactivated",
+                    resource_type="official",
+                    resource_id=official_id,
+                    actor_type="OFFICIAL",
+                    actor_id=actor_id,
+                ),
+            )
+
             return official_orm_to_dto_unencrypted_row(updated).to_schema()
         except Exception:
             logger.exception("Failed to deactivate official", official_id=official_id)
             raise
 
-    async def activate_official(self, official_id: UUID) -> OfficialItem:
+    async def activate_official(
+        self, official_id: UUID, actor_id: UUID | None = None,
+    ) -> OfficialItem:
         """Reactivate an election official (admin-only)."""
         try:
             updated = await self.official_repo.activate_official(
                 self.session, official_id,
             )
+
+            # Audit: official reactivated
+            await self._audit_log_repo.create_audit_log(
+                self.session,
+                AuditLog(
+                    event_type="OFFICIAL_ACTIVATED",
+                    action="UPDATE",
+                    summary=f"Election official {official_id} reactivated",
+                    resource_type="official",
+                    resource_id=official_id,
+                    actor_type="OFFICIAL",
+                    actor_id=actor_id,
+                ),
+            )
+
             return official_orm_to_dto_unencrypted_row(updated).to_schema()
         except Exception:
             logger.exception("Failed to activate official", official_id=official_id)
