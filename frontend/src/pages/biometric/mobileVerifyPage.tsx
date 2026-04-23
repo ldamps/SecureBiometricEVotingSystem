@@ -5,15 +5,18 @@
  *
  * Flow:
  *   1. Fetch credential + encrypted key bundle from server.
- *   2. Load enrolled templates from IndexedDB if available (optional gate).
- *   3. Capture fresh biometrics; run template matching gate when templates exist.
+ *   2. Load enrolled templates from IndexedDB — REQUIRED. If missing,
+ *      force re-enrollment rather than fall through.
+ *   3. Capture fresh biometrics; run the cosine-similarity gate against
+ *      the enrolled templates. Reject impostors here before touching the key.
  *   4. Decrypt the ECDSA private key with the biometric-derived AES key.
  *   5. Sign the server challenge and submit.
  *
- * The biometric key decryption (step 4) is the primary security gate —
- * only the correct face + ear can recover the signing key.  The template
- * matching gate (step 3) provides better error messages when local
- * templates are available, but is skipped when Safari has purged IndexedDB.
+ * Both gates are blocking: the cosine-similarity check runs first and
+ * rejects impostors, then the fuzzy-extractor decryption confirms the
+ * capture is close enough to the enrolled biometric to recover the key.
+ * The fuzzy extractor alone is too permissive against impostors on a
+ * shared device, so the template gate is no longer advisory.
  *
  * No biometric data ever leaves the device — only a cryptographic
  * signature is sent to the server.
@@ -58,6 +61,7 @@ type VerifyState =
   | "success"
   | "error"
   | "no_enrollment"
+  | "no_templates"
   | "decrypt_failed";
 
 function MobileVerifyPage() {
@@ -98,7 +102,11 @@ function MobileVerifyPage() {
 
       if (!active || !active.encrypted_key_bundle) {
         setState("no_enrollment");
-        setError("No biometric enrollment found. Please complete enrollment first.");
+        setError(
+          "No active biometric enrollment was found for your account. Please " +
+          "complete biometric enrollment from the registration page before " +
+          "attempting to verify.",
+        );
         return;
       }
 
@@ -107,23 +115,33 @@ function MobileVerifyPage() {
       const localDeviceId = await getDeviceId();
       setEnrolledDeviceId(localDeviceId || active.device_id);
 
-      // 3. Load enrolled templates from local IndexedDB if available.
-      //    When present, we run an extra template-matching gate for better
-      //    error messages. When absent (Safari purged storage), we skip the
-      //    gate and rely on biometric key decryption as the security check.
+      // 3. Load enrolled templates from local IndexedDB — REQUIRED. The
+      //    fuzzy extractor alone cannot reliably reject impostors on a
+      //    shared device, so verification must run the cosine-similarity
+      //    gate against enrolled templates. If they're missing (e.g. Safari
+      //    purged IndexedDB), force re-enrollment rather than fall through.
       const stored = await retrieveBiometricData(voterId);
-      if (stored?.faceTemplate && stored?.earTemplate) {
-        setEnrolledFace(new Float32Array(stored.faceTemplate));
-        setEnrolledEar(new Float32Array(stored.earTemplate));
-      } else {
-        setEnrolledFace(null);
-        setEnrolledEar(null);
+      if (!stored?.faceTemplate || !stored?.earTemplate) {
+        setState("no_templates");
+        setError(
+          "This device is not enrolled for your account. Biometric verification " +
+          "can only be performed on a device where you have previously enrolled. " +
+          "Please re-enroll from the registration page on this device, or use " +
+          "the device where you originally enrolled.",
+        );
+        return;
       }
+      setEnrolledFace(new Float32Array(stored.faceTemplate));
+      setEnrolledEar(new Float32Array(stored.earTemplate));
 
       setEncryptedBundle(JSON.parse(active.encrypted_key_bundle));
       setState("capturing");
     } catch (err: any) {
-      setError(err.message || "Failed to fetch enrollment data.");
+      setError(
+        err?.message ||
+          "Could not load your enrollment data from the server. Please check " +
+          "your connection and try again.",
+      );
       setState("error");
     }
   }, [voterId]);
@@ -138,16 +156,41 @@ function MobileVerifyPage() {
       try {
         setState("decrypting");
 
-        let templateMatchFailed = false;
-        if (enrolledFace && enrolledEar) {
-          const match = matchBoth(
-            freshFace, enrolledFace,
-            result.earDescriptor, enrolledEar,
+        // Blocking cosine-similarity gate — rejects impostors before the
+        // key is ever touched. `handleStartVerify` guarantees templates
+        // are loaded by the time we reach "capturing".
+        if (!enrolledFace || !enrolledEar) {
+          setState("no_templates");
+          setError(
+            "This device is not enrolled for your account. Biometric verification " +
+            "can only be performed on a device where you have previously enrolled. " +
+            "Please re-enroll from the registration page on this device, or use " +
+            "the device where you originally enrolled.",
           );
-          templateMatchFailed = !match.overallPassed;
+          return;
+        }
+        const match = matchBoth(
+          freshFace, enrolledFace,
+          result.earDescriptor, enrolledEar,
+        );
+        if (!match.overallPassed) {
+          setState("decrypt_failed");
+          const failedModality =
+            !match.face.passed && !match.ear.passed
+              ? "face and ear did"
+              : !match.face.passed
+                ? "face did"
+                : "ear did";
+          setError(
+            `Identity mismatch. Your ${failedModality} not match the enrolled ` +
+            "biometric on this device. If this is your phone, ensure good " +
+            "lighting, face the camera directly, and keep your ear unobstructed. " +
+            "If verification keeps failing, re-enroll from the registration page.",
+          );
+          return;
         }
 
-        // Primary security gate: biometric key decryption (AES-GCM).
+        // Second gate: biometric-bound key decryption (AES-GCM).
         let privateKey: CryptoKey;
         let recoveredMessage: Uint8Array;
         try {
@@ -166,20 +209,20 @@ function MobileVerifyPage() {
             encryptedBundle.format !== "fuzzy-extractor-rs-v2";
           setError(
             isLegacyEnrollment
-              ? "Biometric verification failed. Your enrollment was created with an older format. " +
-                "Please re-enroll once from the registration page — the new format will then " +
-                "work indefinitely across lighting and environmental changes."
-              : templateMatchFailed
-                ? "Biometric verification failed. Your face did not match the enrollment closely " +
-                  "enough. Please ensure good lighting and face the camera directly."
-                : "Biometric verification failed. Please try again in similar lighting to when " +
-                  "you enrolled.",
+              ? "Your enrollment was created with an older format that this device no " +
+                "longer supports. Please re-enroll once from the registration page — " +
+                "the new format works across lighting and environmental changes."
+              : "Could not unlock your signing key from this capture. Your face passed " +
+                "the initial match but drifted too far from the enrolled template to " +
+                "recover the key. Please retry in similar lighting and pose to your " +
+                "enrollment. If this persists, re-enroll from the registration page.",
           );
           return;
         }
 
-        // Fold this verified capture into the bundle — next verification
-        // gets an even tighter match under current conditions.
+        // Cosine gate passed — safe to fold this capture into the helper
+        // set. Without the gate, an impostor near-miss that happened to
+        // decrypt would poison the bundle for future verifications.
         const rotatedBundle = appendAdaptiveHelper(
           encryptedBundle, recoveredMessage, freshFace,
         );
@@ -198,11 +241,20 @@ function MobileVerifyPage() {
         if (verifyResult.verified) {
           setState("success");
         } else {
-          setError(verifyResult.message || "Server rejected the signature.");
+          setError(
+            verifyResult.message ||
+              "The server rejected the verification signature. This can happen if " +
+              "your enrollment on this device is out of sync with the server. " +
+              "Please re-enroll from the registration page and try again.",
+          );
           setState("error");
         }
       } catch (err: any) {
-        setError(err.message || "Verification failed. Please try again.");
+        setError(
+          err?.message ||
+            "Verification could not be completed due to a network or server error. " +
+            "Please check your connection and try again.",
+        );
         setState("error");
       }
     },
@@ -227,9 +279,10 @@ function MobileVerifyPage() {
       "Identity verified successfully! " +
       "You can now close this page and return to the voting screen. " +
       "It will update automatically.",
-    error: "Verification encountered a problem.",
-    no_enrollment: "No biometric enrollment found for your account.",
-    decrypt_failed: "Biometric verification failed.",
+    error: "Verification could not be completed.",
+    no_enrollment: "No biometric enrollment is active for your account.",
+    no_templates: "This device is not enrolled for your account.",
+    decrypt_failed: "Biometric verification failed — identity not confirmed.",
   };
 
   return (
@@ -291,7 +344,10 @@ function MobileVerifyPage() {
           <PrimaryButton disabled>Verifying\u2026</PrimaryButton>
         )}
 
-        {(state === "error" || state === "no_enrollment" || state === "decrypt_failed") && (
+        {(state === "error" ||
+          state === "no_enrollment" ||
+          state === "no_templates" ||
+          state === "decrypt_failed") && (
           <PrimaryButton onClick={handleStartVerify}>Retry</PrimaryButton>
         )}
 
