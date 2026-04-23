@@ -25,7 +25,7 @@ import { useTheme } from "../../styles/ThemeContext";
 import { getCardStyle, getPageTitleStyle, getSuccessAlertStyle, PrimaryButton } from "../../styles/ui";
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
-import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
+import { decryptPrivateKey, appendAdaptiveHelper } from "../../features/biometric/services/biometric-key-encryption.service";
 import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
 import { retrieveBiometricData, getDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
@@ -128,47 +128,42 @@ function MobileVerifyPage() {
     }
   }, [voterId]);
 
-  // After biometric capture completes — match, decrypt, and sign.
+  // After biometric capture completes — match, decrypt, sign, adapt.
   const handleCaptureComplete = useCallback(
-    async (result: { faceDescriptor: FeatureDescriptor; earDescriptor: FeatureDescriptor }) => {
+    async (result: { faceDescriptors: FeatureDescriptor[]; earDescriptor: FeatureDescriptor }) => {
       if (!encryptedBundle || !voterId) return;
+
+      const freshFace = result.faceDescriptors[0];
 
       try {
         setState("decrypting");
 
-        // If enrolled templates are available locally, run an advisory
-        // matching check.  A failure here does NOT block verification —
-        // the real security gate is the biometric key decryption below.
-        // We record the result so we can show a more helpful error
-        // message if key decryption also fails.
         let templateMatchFailed = false;
         if (enrolledFace && enrolledEar) {
           const match = matchBoth(
-            result.faceDescriptor, enrolledFace,
+            freshFace, enrolledFace,
             result.earDescriptor, enrolledEar,
           );
           templateMatchFailed = !match.overallPassed;
         }
 
-        // Attempt to decrypt the signing key with fresh biometrics.
-        // This is the primary security gate — only the correct face +
-        // ear can recover the ECDSA private key via AES-GCM decryption.
+        // Primary security gate: biometric key decryption (AES-GCM).
         let privateKey: CryptoKey;
+        let recoveredMessage: Uint8Array;
         try {
-          privateKey = await decryptPrivateKey(
-            result.faceDescriptor,
+          ({ privateKey, recoveredMessage } = await decryptPrivateKey(
+            freshFace,
             result.earDescriptor,
             encryptedBundle,
-          );
+          ));
         } catch {
           setState("decrypt_failed");
-          // Any bundle missing the v2 fuzzy-extractor fields was created
-          // before the durability upgrade and needs a one-time re-enrollment
-          // to migrate. After migration, drift up to ~33% byte-level is
-          // transparently corrected and re-enrollment is never needed.
+          // Bundles lacking both v2 and v3 fuzzy-extractor fields are from
+          // the pre-fuzzy-extractor era and need a one-time re-enrolment
+          // to migrate.
           const isLegacyEnrollment =
-            encryptedBundle.format !== "fuzzy-extractor-rs-v2" ||
-            !encryptedBundle.helper;
+            encryptedBundle.format !== "fuzzy-extractor-rs-v3" &&
+            encryptedBundle.format !== "fuzzy-extractor-rs-v2";
           setError(
             isLegacyEnrollment
               ? "Biometric verification failed. Your enrollment was created with an older format. " +
@@ -183,7 +178,12 @@ function MobileVerifyPage() {
           return;
         }
 
-        // Request a fresh challenge and sign it.
+        // Fold this verified capture into the bundle — next verification
+        // gets an even tighter match under current conditions.
+        const rotatedBundle = appendAdaptiveHelper(
+          encryptedBundle, recoveredMessage, freshFace,
+        );
+
         setState("submitting");
         const challenge = await biometricApi.createChallenge({ voter_id: voterId });
         const signature = await signChallenge(privateKey, challenge.challenge);
@@ -192,6 +192,7 @@ function MobileVerifyPage() {
           challenge_id: challenge.id,
           ...(enrolledDeviceId ? { device_id: enrolledDeviceId } : {}),
           signature,
+          encrypted_key_bundle: JSON.stringify(rotatedBundle),
         });
 
         if (verifyResult.verified) {

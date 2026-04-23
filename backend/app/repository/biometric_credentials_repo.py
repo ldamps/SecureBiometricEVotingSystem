@@ -112,3 +112,22 @@ class BiometricCredentialsRepository:
             .values(last_used_at=datetime.now(timezone.utc))
         )
         await session.execute(stmt)
+
+    async def update_encrypted_key_bundle(
+        self,
+        session: AsyncSession,
+        credential_id: UUID,
+        encrypted_key_bundle: str,
+    ) -> None:
+        """Rotate the opaque encrypted key bundle. The server cannot decrypt
+        or parse the bundle — it stores whatever the device posted after a
+        verified biometric decryption. The public key (the actual auth
+        secret) is unchanged."""
+        stmt = (
+            update(DeviceCredential)
+            .where(DeviceCredential.id == credential_id)
+            .values(encrypted_key_bundle=encrypted_key_bundle)
+        )
+        result = await session.execute(stmt)
+        if result.rowcount == 0:
+            raise NotFoundError("Device credential not found")

@@ -43,19 +43,22 @@ function AuthEnrollPage() {
   }, []);
 
   const handleCaptureComplete = useCallback(
-    async (result: { faceDescriptor: FeatureDescriptor; earDescriptor: FeatureDescriptor }) => {
+    async (result: { faceDescriptors: FeatureDescriptor[]; earDescriptor: FeatureDescriptor }) => {
       if (!voterId) return;
       try {
         setState("generating_keys");
 
         const { publicKeyPem, encryptedBundle } = await generateAndEncryptKeyPair(
-          result.faceDescriptor,
+          result.faceDescriptors,
           result.earDescriptor,
         );
 
+        // The locally stored face template is used only for the advisory
+        // similarity gate on this device — it's not a security boundary.
+        // Use the first enrolment descriptor.
         await storeBiometricData({
           voterId,
-          faceTemplate: Array.from(result.faceDescriptor),
+          faceTemplate: Array.from(result.faceDescriptors[0]),
           earTemplate: Array.from(result.earDescriptor),
           encryptedKeyBundle: encryptedBundle,
           enrolledAt: new Date().toISOString(),

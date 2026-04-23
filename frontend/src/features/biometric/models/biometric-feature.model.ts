@@ -43,29 +43,40 @@ export interface EncryptedKeyCopy {
 }
 
 /**
- * Encrypted ECDSA private key bundle — two formats coexist.
+ * Encrypted ECDSA private key bundle — three formats coexist.
  *
- * **v2 — fuzzy extractor (current):** a single `helper` string regenerates
- * a stable AES key from a noisy fresh biometric via Reed-Solomon error
- * correction. One-time enrollment survives cross-session drift (lighting,
- * angle, aging) for years. Identified by the presence of `helper`.
+ * **v3 — multi-helper fuzzy extractor (current):** an array of `helpers`,
+ * each encoding the SAME random message `m` (and therefore the same AES
+ * key) XOR a different enrollment descriptor. Verification tries each
+ * helper; first that decodes wins. After every successful verification a
+ * fresh helper is appended (oldest dropped at capacity), so the system
+ * continuously learns the voter's cross-session variation — lighting,
+ * angle, mild aging — without ever requiring re-enrollment.
+ *
+ * **v2 — single-helper fuzzy extractor:** a single `helper` string. Read
+ * for back-compat; any successful v2 verification upgrades the bundle to
+ * v3 in place.
  *
  * **v1 — multi-copy offset search (legacy):** many encrypted copies of the
- * same private key under different quantisation offsets. Verification
- * tries each (copy, offset) pair. Less robust — drift on boundary-adjacent
- * dimensions causes uncorrectable failures. Identified by `copies`.
- *
- * No biometric data is stored in either format — only encrypted key
- * material (v1) or an information-theoretically hiding `helper` (v2).
+ * same private key under different quantisation offsets. Cannot handle
+ * drift across independent dimensions. Must be re-enrolled.
  */
 export interface EncryptedKeyBundle {
-  /** Format discriminator. "fuzzy-extractor-rs-v2" for the new format;
-   *  absent for legacy bundles. */
-  format?: "fuzzy-extractor-rs-v2";
+  /** Format discriminator.
+   *   "fuzzy-extractor-rs-v3" — multi-helper + adaptive update.
+   *   "fuzzy-extractor-rs-v2" — single-helper (legacy, auto-upgrades on verify).
+   *   absent — v1 legacy multi-copy format. */
+  format?: "fuzzy-extractor-rs-v3" | "fuzzy-extractor-rs-v2";
 
-  // --- v2 fuzzy-extractor fields ---
+  // --- v3 multi-helper fields ---
+  /** Hex-encoded RS codewords XOR quantised biometrics (each 48 bytes). */
+  helpers?: string[];
+
+  // --- v2 single-helper field (legacy, read-only) ---
   /** Hex-encoded RS codeword XOR quantised biometric (48 bytes). */
   helper?: string;
+
+  // --- Shared v2/v3 fields ---
   /** Hex-encoded PBKDF2 salt (32 bytes). */
   salt?: string;
   /** Hex-encoded AES-GCM IV (12 bytes). */
@@ -77,10 +88,19 @@ export interface EncryptedKeyBundle {
   /** Legacy multi-copy offset scheme. */
   copies?: EncryptedKeyCopy[];
 
-  /** Quantisation parameters used for feature binning. Shared by both
+  /** Quantisation parameters used for feature binning. Shared by all
    *  formats (shape is identical). */
   quantisationParams?: QuantisationParams;
 }
+
+/** Maximum number of helpers retained in a v3 bundle. Older helpers are
+ *  dropped when adaptive update appends a new one at capacity — this keeps
+ *  bundle size bounded while letting the helper set track current biometric
+ *  variation over time. */
+export const MAX_HELPERS = 8;
+
+/** Number of pose/lighting captures taken during initial enrollment. */
+export const ENROLLMENT_CAPTURES = 3;
 
 /** Full biometric enrollment data persisted on the device. */
 export interface StoredBiometricData {

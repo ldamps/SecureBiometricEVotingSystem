@@ -254,6 +254,17 @@ class BiometricService:
         await self.challenge_repo.mark_used(self.session, challenge_id)
         await self.credentials_repo.touch_last_used(self.session, credential.id)
 
+        # 5. Adaptive bundle rotation. The device includes an updated
+        #    encrypted_key_bundle when it has folded this verified capture
+        #    into a new helper for drift tolerance. The server only
+        #    persists it because the signature verified above — without
+        #    that proof, a malicious client could overwrite the bundle
+        #    with junk. The public key (the real credential) is untouched.
+        if request.encrypted_key_bundle:
+            await self.credentials_repo.update_encrypted_key_bundle(
+                self.session, credential.id, request.encrypted_key_bundle,
+            )
+
         # Audit: biometric verification succeeded
         await self._audit_log_repo.create_audit_log(
             self.session,

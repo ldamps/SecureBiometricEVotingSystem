@@ -12,7 +12,7 @@ import { useTheme } from "../../styles/ThemeContext";
 import { getCardStyle, getSuccessAlertStyle, PrimaryButton, SecondaryButton } from "../../styles/ui";
 import { BiometricApiRepository } from "../../features/voter/repositories/biometric-api.repository";
 import BiometricCaptureFlow from "../../features/biometric/components/BiometricCaptureFlow";
-import { decryptPrivateKey } from "../../features/biometric/services/biometric-key-encryption.service";
+import { decryptPrivateKey, appendAdaptiveHelper } from "../../features/biometric/services/biometric-key-encryption.service";
 import { matchBoth } from "../../features/biometric/services/biometric-matching.service";
 import { retrieveBiometricData, getDeviceId } from "../../features/biometric/services/biometric-storage.service";
 import { FeatureDescriptor, EncryptedKeyBundle } from "../../features/biometric/models/biometric-feature.model";
@@ -96,8 +96,10 @@ function AuthVerifyPage() {
   }, [voterId]);
 
   const handleCaptureComplete = useCallback(
-    async (result: { faceDescriptor: FeatureDescriptor; earDescriptor: FeatureDescriptor }) => {
+    async (result: { faceDescriptors: FeatureDescriptor[]; earDescriptor: FeatureDescriptor }) => {
       if (!encryptedBundle || !voterId) return;
+
+      const freshFace = result.faceDescriptors[0];
 
       try {
         setState("decrypting");
@@ -106,7 +108,7 @@ function AuthVerifyPage() {
         let templateMatchFailed = false;
         if (enrolledFace && enrolledEar) {
           const match = matchBoth(
-            result.faceDescriptor, enrolledFace,
+            freshFace, enrolledFace,
             result.earDescriptor, enrolledEar,
           );
           templateMatchFailed = !match.overallPassed;
@@ -114,12 +116,13 @@ function AuthVerifyPage() {
 
         // Primary security gate: biometric key decryption (AES-GCM).
         let privateKey: CryptoKey;
+        let recoveredMessage: Uint8Array;
         try {
-          privateKey = await decryptPrivateKey(
-            result.faceDescriptor,
+          ({ privateKey, recoveredMessage } = await decryptPrivateKey(
+            freshFace,
             result.earDescriptor,
             encryptedBundle,
-          );
+          ));
         } catch {
           setState("decrypt_failed");
           setError(
@@ -131,6 +134,12 @@ function AuthVerifyPage() {
           return;
         }
 
+        // Fold this verified capture into the bundle so the next verification
+        // has an even tighter match. Same private key — no re-enrolment.
+        const rotatedBundle = appendAdaptiveHelper(
+          encryptedBundle, recoveredMessage, freshFace,
+        );
+
         setState("submitting");
         const challenge = await biometricApi.createChallenge({ voter_id: voterId });
         const signature = await signChallenge(privateKey, challenge.challenge);
@@ -139,6 +148,7 @@ function AuthVerifyPage() {
           challenge_id: challenge.id,
           ...(enrolledDeviceId ? { device_id: enrolledDeviceId } : {}),
           signature,
+          encrypted_key_bundle: JSON.stringify(rotatedBundle),
         });
 
         if (verifyResult.verified) {

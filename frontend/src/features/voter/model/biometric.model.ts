@@ -39,6 +39,12 @@ export interface VerifyBiometricRequest {
     challenge_id: string;
     device_id?: string;
     signature: string;
+    /** Adaptive-update payload: an updated encrypted key bundle produced
+     *  post-decryption on the device. The server persists it only after
+     *  the signature verifies, so untrusted clients cannot rotate the
+     *  bundle without proving biometric possession. Same public key — no
+     *  re-enrolment. */
+    encrypted_key_bundle?: string;
 }
 
 export interface VerifyBiometricResponse {

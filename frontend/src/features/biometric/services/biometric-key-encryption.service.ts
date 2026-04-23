@@ -1,38 +1,48 @@
 /**
- * Biometric-bound key encryption using a fuzzy extractor with Reed-Solomon
- * error correction.
+ * Biometric-bound key encryption using a multi-helper fuzzy extractor with
+ * Reed-Solomon error correction.
  *
- * Design — code-offset fuzzy extractor (Dodis, Reyzin, Smith 2004):
+ * Design — multi-helper code-offset fuzzy extractor (Dodis, Reyzin, Smith
+ * 2004 extended with per-capture helpers and adaptive update):
  *
- *   Enrollment:
- *     1. Quantise the face descriptor into 128 Gray-coded 3-bit bin values,
- *        packed into a 48-byte vector b.
- *     2. Pick a uniformly random 16-byte message m.
- *     3. Encode m with Reed-Solomon (n=48, k=16) to a 48-byte codeword c.
- *     4. Store helper = c XOR b. Helper is information-theoretically
- *        decoupled from b under standard fuzzy-extractor assumptions.
- *     5. Derive an AES-256 key K = PBKDF2(m, salt, 100k iterations).
- *     6. Encrypt the ECDSA signing key under K with AES-GCM.
+ *   Enrollment (N captures under deliberately varied lighting/pose):
+ *     1. Pick ONE uniformly random 16-byte message m.
+ *     2. Encode m with Reed-Solomon (n=48, k=16) → 48-byte codeword c.
+ *     3. For each capture i ∈ [0, N): quantise descriptor → b_i; store
+ *        helper_i = c XOR b_i. All helpers encode the same m, so any one
+ *        of them that decodes recovers the same AES key.
+ *     4. Derive AES-256 key K = PBKDF2(m, salt, 100k iterations).
+ *     5. Encrypt the ECDSA signing key under K with AES-GCM.
  *
  *   Verification:
  *     1. Capture a fresh face descriptor, quantise → b'.
- *     2. noisy_c = helper XOR b' = c XOR (b XOR b'). The noise is exactly
- *        the biometric drift, and shows up as byte errors in noisy_c.
- *     3. Reed-Solomon decodes noisy_c, correcting up to 16 byte errors
- *        (≈ 33% byte-level drift tolerance — observed drift per session
- *        is 3-8%, giving wide margin).
- *     4. Recovered c yields m, which derives K, which decrypts the private
- *        key. AES-GCM tag validation confirms the recovery was correct.
+ *     2. For each stored helper_i: try noisy_c = helper_i XOR b';
+ *        RS-decode. First helper that decodes recovers m → K → private key.
+ *     3. AES-GCM tag validates recovery was correct.
  *
- * Key property vs. the previous multi-copy offset-search scheme: different
- * dimensions can drift in DIFFERENT directions and all still be corrected,
- * because each byte is corrected independently. The old global-offset
- * search fundamentally couldn't handle that case — a single bundle now
- * survives cross-session drift indefinitely without re-enrollment.
+ *   Adaptive update (after successful verification):
+ *     1. Recompute c = rsEncode(m) (deterministic from m).
+ *     2. Build new_helper = c XOR b' (fresh descriptor).
+ *     3. Append to helpers array; drop oldest if at capacity. No
+ *        re-enrollment required.
  *
- * Nothing biometric is stored: helper, salt, iv, and the AES-GCM
- * ciphertext are all that is written to the server. No templates,
- * descriptors, or images ever leave the device.
+ * Why multiple helpers:
+ *   A single enrollment snapshot locks in one lighting/pose configuration.
+ *   Cross-session drift under different conditions can exceed the per-byte
+ *   RS correction budget (≤ 16 of 48 bytes), causing hard failure days
+ *   later. Multiple helpers cover a wider variation envelope; adaptive
+ *   update continuously folds in new conditions as the user experiences
+ *   them, so the system grows more robust with use — not less.
+ *
+ * Security:
+ *   - helpers are information-theoretically hiding under standard
+ *     fuzzy-extractor assumptions (each helper is c XOR b_i where b_i has
+ *     high min-entropy; c is pseudorandom under m).
+ *   - Adding helpers does not reduce entropy of m — they all mask the SAME
+ *     codeword, so an attacker with k helpers learns at most k quantised
+ *     descriptor regions, not m itself.
+ *   - Nothing biometric is stored: helpers, salt, iv, and the AES-GCM
+ *     ciphertext are all that is written to the server.
  */
 
 import {
@@ -40,6 +50,7 @@ import {
   EncryptedKeyBundle,
   QuantisationParams,
   ENROLLMENT_QUANTISATION_PARAMS,
+  MAX_HELPERS,
 } from "../models/biometric-feature.model";
 import { rsEncode, rsDecode, RS_PARAMS } from "./reed-solomon.service";
 
@@ -67,18 +78,11 @@ function fromHex(hex: string): Uint8Array {
 
 // ----- Quantisation + bit packing -----
 
-/**
- * Quantise a 128-dim descriptor into 128 bin indices in [0, numBins) and
- * map through the Gray-code table so that a single-bin boundary crossing
- * causes exactly one bit flip.
- */
 function quantiseGrayCoded(
   descriptor: FeatureDescriptor,
   params: QuantisationParams,
 ): number[] {
   if (params.numBins !== 5) {
-    // Only 5-bin Gray coding is supported (matches ENROLLMENT params).
-    // Any other bin count would require a different Gray table.
     throw new Error(
       `Quantisation must use 5 bins for fuzzy extractor (got ${params.numBins}).`,
     );
@@ -96,7 +100,6 @@ function quantiseGrayCoded(
   return out;
 }
 
-/** Pack 128 3-bit values into 48 bytes, LSB-first. */
 function packBits3(values: number[]): Uint8Array {
   if (values.length !== FACE_DESCRIPTOR_LEN) {
     throw new Error(`Expected ${FACE_DESCRIPTOR_LEN} values, got ${values.length}.`);
@@ -115,8 +118,6 @@ function packBits3(values: number[]): Uint8Array {
   return out;
 }
 
-/** Full quantise + pack pipeline — convert a face descriptor into the
- *  48-byte bit vector used by the fuzzy extractor. */
 function descriptorToBytes(
   descriptor: FeatureDescriptor,
   params: QuantisationParams,
@@ -159,37 +160,41 @@ async function deriveAesKey(
 // ----- Public enrollment + verification API -----
 
 /**
- * Generate an ECDSA P-256 keypair and encrypt the private key under a
- * biometric-bound AES key derived via the fuzzy-extractor construction.
- *
- * Returns a one-shot bundle that will continue to decrypt correctly for
- * any fresh face descriptor within ~33% byte-level drift of the enrollment
- * descriptor — i.e., for as long as the voter's face remains within normal
- * cross-session variation, indefinitely. No re-enrollment required.
+ * Generate an ECDSA keypair and encrypt the private key under a biometric-
+ * bound AES key. Accepts N enrolment face descriptors captured under
+ * different conditions; stores one helper per descriptor, all encoding the
+ * same random message. Any future capture that's close to ANY enrolled
+ * descriptor decrypts the key.
  */
 export async function generateAndEncryptKeyPair(
-  faceDescriptor: FeatureDescriptor,
+  faceDescriptors: FeatureDescriptor[],
   _earDescriptor: FeatureDescriptor,
   params: QuantisationParams = ENROLLMENT_QUANTISATION_PARAMS,
 ): Promise<{ publicKeyPem: string; encryptedBundle: EncryptedKeyBundle }> {
-  // 1. Quantise the face descriptor to bytes.
-  const b = descriptorToBytes(faceDescriptor, params);
+  if (faceDescriptors.length === 0) {
+    throw new Error("At least one enrolment face descriptor is required.");
+  }
 
-  // 2. Pick a uniform random message.
+  // 1. One random message shared across all helpers.
   const m = crypto.getRandomValues(new Uint8Array(RS_PARAMS.k));
 
-  // 3. Reed-Solomon encode.
+  // 2. RS-encode once — every helper masks the same codeword.
   const c = rsEncode(m, RS_PARAMS.nsym);
 
-  // 4. Helper = c XOR b.
-  const helper = new Uint8Array(RS_PARAMS.n);
-  for (let i = 0; i < RS_PARAMS.n; i++) helper[i] = c[i] ^ b[i];
+  // 3. Build one helper per enrolment descriptor.
+  const helpers: string[] = [];
+  for (const descriptor of faceDescriptors) {
+    const b = descriptorToBytes(descriptor, params);
+    const helper = new Uint8Array(RS_PARAMS.n);
+    for (let i = 0; i < RS_PARAMS.n; i++) helper[i] = c[i] ^ b[i];
+    helpers.push(toHex(helper.buffer as ArrayBuffer));
+  }
 
-  // 5. Derive AES key from the random message.
+  // 4. Derive AES key from the random message.
   const salt = crypto.getRandomValues(new Uint8Array(32));
   const aesKey = await deriveAesKey(m, salt);
 
-  // 6. Generate the ECDSA keypair and export the private key.
+  // 5. Generate the ECDSA keypair and encrypt the private key.
   const keyPair = await crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
     true,
@@ -197,7 +202,6 @@ export async function generateAndEncryptKeyPair(
   );
   const privateKeyDer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
 
-  // 7. Encrypt the private key.
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
@@ -205,7 +209,6 @@ export async function generateAndEncryptKeyPair(
     privateKeyDer,
   );
 
-  // 8. Export the public key as PEM.
   const publicKeyDer = await crypto.subtle.exportKey("spki", keyPair.publicKey);
   const publicKeyBase64 = btoa(
     String.fromCharCode.apply(null, Array.from(new Uint8Array(publicKeyDer))),
@@ -218,8 +221,8 @@ export async function generateAndEncryptKeyPair(
   return {
     publicKeyPem,
     encryptedBundle: {
-      format: "fuzzy-extractor-rs-v2",
-      helper: toHex(helper.buffer as ArrayBuffer),
+      format: "fuzzy-extractor-rs-v3",
+      helpers,
       salt: toHex(salt.buffer as ArrayBuffer),
       iv: toHex(iv.buffer as ArrayBuffer),
       encryptedPrivateKey: toHex(ciphertext),
@@ -229,59 +232,64 @@ export async function generateAndEncryptKeyPair(
 }
 
 /**
- * Recover the ECDSA private key from a fresh biometric capture using the
- * fuzzy-extractor construction. Throws if the bundle is in the legacy
- * (multi-copy) format, or if biometric drift exceeds the RS correction
- * bound.
+ * Recover the ECDSA private key from a fresh biometric capture. Tries each
+ * stored helper (v3) or the single legacy helper (v2) and returns the
+ * decrypted key along with the recovered message — the message is needed
+ * by `appendAdaptiveHelper` to rotate the bundle post-verification.
  */
 export async function decryptPrivateKey(
   faceDescriptor: FeatureDescriptor,
   _earDescriptor: FeatureDescriptor,
   bundle: EncryptedKeyBundle,
-): Promise<CryptoKey> {
-  // Legacy-format rejection. Old bundles must be re-enrolled once to move
-  // to the fuzzy-extractor format; thereafter no further re-enrollment is
-  // needed for the life of the credential.
+): Promise<{ privateKey: CryptoKey; recoveredMessage: Uint8Array }> {
   if (
-    bundle.format !== "fuzzy-extractor-rs-v2" ||
-    !bundle.helper ||
+    (bundle.format !== "fuzzy-extractor-rs-v3" &&
+      bundle.format !== "fuzzy-extractor-rs-v2") ||
     !bundle.salt ||
     !bundle.iv ||
     !bundle.encryptedPrivateKey
   ) {
     throw new Error(
       "Legacy enrollment format. Please re-enroll once to migrate to the " +
-        "durable fuzzy-extractor scheme.",
+        "durable multi-helper scheme.",
     );
+  }
+
+  // v3 holds an array; v2 a single helper. Normalise to a list to try.
+  const helperHexes: string[] = bundle.helpers && bundle.helpers.length > 0
+    ? bundle.helpers
+    : bundle.helper
+      ? [bundle.helper]
+      : [];
+  if (helperHexes.length === 0) {
+    throw new Error("Enrollment bundle has no helpers.");
   }
 
   const params = bundle.quantisationParams ?? ENROLLMENT_QUANTISATION_PARAMS;
-
-  // 1. Quantise fresh descriptor.
   const bPrime = descriptorToBytes(faceDescriptor, params);
 
-  // 2. noisy_c = helper XOR b'.
-  const helper = fromHex(bundle.helper);
-  if (helper.length !== RS_PARAMS.n) {
-    throw new Error(`Helper has wrong length: ${helper.length} != ${RS_PARAMS.n}.`);
+  // Try each helper; first one that RS-decodes wins.
+  let recovered: Uint8Array | null = null;
+  for (const helperHex of helperHexes) {
+    const helper = fromHex(helperHex);
+    if (helper.length !== RS_PARAMS.n) continue;
+    const noisyC = new Uint8Array(RS_PARAMS.n);
+    for (let i = 0; i < RS_PARAMS.n; i++) noisyC[i] = helper[i] ^ bPrime[i];
+    const corrected = rsDecode(noisyC, RS_PARAMS.nsym);
+    if (corrected !== null) {
+      recovered = corrected;
+      break;
+    }
   }
-  const noisyC = new Uint8Array(RS_PARAMS.n);
-  for (let i = 0; i < RS_PARAMS.n; i++) noisyC[i] = helper[i] ^ bPrime[i];
-
-  // 3. Reed-Solomon decode.
-  const corrected = rsDecode(noisyC, RS_PARAMS.nsym);
-  if (corrected === null) {
+  if (recovered === null) {
     throw new Error(
-      "Biometric drift exceeds error-correction capacity (face too different " +
-        "from enrollment — check lighting, angle, and camera).",
+      "Biometric drift exceeds error-correction capacity for every " +
+        "stored helper (face too different from any enrollment — check " +
+        "lighting, angle, and camera).",
     );
   }
 
-  // 4. Recover the random message m from the systematic codeword (first k
-  //    bytes).
-  const m = corrected.slice(0, RS_PARAMS.k);
-
-  // 5. Derive the AES key and decrypt.
+  const m = recovered.slice(0, RS_PARAMS.k);
   const salt = fromHex(bundle.salt);
   const iv = fromHex(bundle.iv);
   const ciphertext = fromHex(bundle.encryptedPrivateKey);
@@ -293,13 +301,67 @@ export async function decryptPrivateKey(
     ciphertext.buffer as ArrayBuffer,
   );
 
-  // 6. Import as ECDSA signing key. AES-GCM tag validation above already
-  //    proved we recovered the right key — no extra check needed.
-  return crypto.subtle.importKey(
+  const privateKey = await crypto.subtle.importKey(
     "pkcs8",
     privateKeyDer,
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"],
   );
+
+  return { privateKey, recoveredMessage: m };
+}
+
+/**
+ * Append a fresh helper derived from a successfully-verified descriptor.
+ *
+ * Called after `decryptPrivateKey` succeeds: rebuilds the RS codeword from
+ * the recovered message, XORs against the quantised fresh descriptor, and
+ * appends the result to the bundle's helpers. The oldest helper is dropped
+ * if the bundle has reached `MAX_HELPERS`, keeping size bounded while the
+ * helper set tracks current biometric conditions.
+ *
+ * This is what makes the scheme sustainable: every successful verification
+ * folds the latest lighting/pose/aging state into the bundle, so the next
+ * verification has an even closer match to pick from.
+ */
+export function appendAdaptiveHelper(
+  bundle: EncryptedKeyBundle,
+  recoveredMessage: Uint8Array,
+  faceDescriptor: FeatureDescriptor,
+): EncryptedKeyBundle {
+  const params = bundle.quantisationParams ?? ENROLLMENT_QUANTISATION_PARAMS;
+  const bNew = descriptorToBytes(faceDescriptor, params);
+
+  // Rebuild the codeword deterministically from m; XOR with new biometric.
+  const c = rsEncode(recoveredMessage, RS_PARAMS.nsym);
+  const helper = new Uint8Array(RS_PARAMS.n);
+  for (let i = 0; i < RS_PARAMS.n; i++) helper[i] = c[i] ^ bNew[i];
+  const newHelperHex = toHex(helper.buffer as ArrayBuffer);
+
+  // Collect existing helpers (normalising v2 → v3 on the fly).
+  const existing: string[] = bundle.helpers && bundle.helpers.length > 0
+    ? [...bundle.helpers]
+    : bundle.helper
+      ? [bundle.helper]
+      : [];
+
+  // Skip if this exact helper is already the most recent — avoids bloating
+  // the bundle on repeated verifications under identical conditions.
+  if (existing[existing.length - 1] === newHelperHex) {
+    return { ...bundle, format: "fuzzy-extractor-rs-v3", helpers: existing };
+  }
+
+  existing.push(newHelperHex);
+  while (existing.length > MAX_HELPERS) existing.shift();
+
+  const updated: EncryptedKeyBundle = {
+    ...bundle,
+    format: "fuzzy-extractor-rs-v3",
+    helpers: existing,
+  };
+  // v3 stores only `helpers`; drop the legacy single-helper field once
+  // we've upgraded so the bundle doesn't carry dead weight.
+  delete updated.helper;
+  return updated;
 }

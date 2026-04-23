@@ -77,6 +77,17 @@ class VerifyBiometricRequest(RequestSchema):
         ...,
         description="Base64-encoded ECDSA signature of the challenge bytes.",
     )
+    encrypted_key_bundle: Optional[str] = Field(
+        None,
+        description=(
+            "Optional rotated encrypted key bundle for adaptive drift "
+            "tolerance. Produced on-device after the fresh biometric "
+            "decrypts the current bundle, and folds the verified capture "
+            "into a new helper. Persisted only after signature verification "
+            "succeeds — untrusted clients cannot rotate the bundle without "
+            "proving biometric possession. The public key is unchanged."
+        ),
+    )
 
 
 class VerifyBiometricResponse(ResponseSchema):
