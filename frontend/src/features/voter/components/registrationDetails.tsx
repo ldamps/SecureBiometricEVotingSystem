@@ -212,7 +212,7 @@ function RegistrationDetails({
     ];
 
     const niFields = [
-        { key: "nationalInsuranceNumber", label: "National Insurance Number", placeholder: "e.g. QQ 12 34 56 C", type: "text" },
+        { key: "nationalInsuranceNumber", label: "National Insurance Number", placeholder: "e.g. AB 12 34 56 C", type: "text" },
     ];
 
     const passportFields = [
@@ -675,7 +675,7 @@ function RegistrationDetails({
                             if (!ni) {
                                 errors.nationalInsuranceNumber = "National Insurance Number is required.";
                             } else if (!/^(?![DFIQUV])[A-CEGHJ-PR-TW-Z](?![DFIOQUV])[A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/.test(niCompact)) {
-                                errors.nationalInsuranceNumber = "National Insurance Number must be in the format QQ 12 34 56 C (2 letters, 6 digits, 1 letter).";
+                                errors.nationalInsuranceNumber = "National Insurance Number must be in the format AB 12 34 56 C (2 letters, 6 digits, 1 letter).";
                             }
                         } else if (idMethod === "passport") {
                             if (!state.passportNumber?.trim()) errors.passportNumber = "Passport number is required.";
