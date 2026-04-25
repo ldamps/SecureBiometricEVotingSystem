@@ -840,40 +840,40 @@ const OfficialHomePage: React.FC = () => {
             )}
 
             {/* ─── INVESTIGATIONS TAB ─── */}
-            {activeTab === "investigations" && (
+            {activeTab === "investigations" && (() => {
+              const scopedInvestigations = investigations.filter((inv) =>
+                selectedItem.kind === "election"
+                  ? inv.election_id === selectedItem.id
+                  : inv.referendum_id === selectedItem.id,
+              );
+              return (
               <section>
                 <h2 style={sectionH2}>Investigations</h2>
                 <p style={{ ...cardText, marginBottom: theme.spacing.lg }}>
                   All investigations for this {selectedItem.kind} — past and current.
                 </p>
 
-                {selectedItem.kind === "referendum" && (
-                  <p style={{ ...cardText, fontStyle: "italic", color: theme.colors.text.secondary }}>
-                    Investigations are available for elections only.
-                  </p>
-                )}
-
-                {selectedItem.kind === "election" && investigationsLoading && (
+                {investigationsLoading && (
                   <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading investigations…</p>
                 )}
 
-                {selectedItem.kind === "election" && investigationsError && (
+                {investigationsError && (
                   <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}`, marginBottom: theme.spacing.md }}>
                     <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>{investigationsError}</p>
                   </div>
                 )}
 
-                {selectedItem.kind === "election" && !investigationsLoading && !investigationsError && (
+                {!investigationsLoading && !investigationsError && (
                   <>
-                    {investigations.length === 0 ? (
+                    {scopedInvestigations.length === 0 ? (
                       <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl }}>
                         <p style={{ ...cardText, margin: 0, color: theme.colors.text.secondary }}>
-                          No investigations found for this election.
+                          No investigations found for this {selectedItem.kind}.
                         </p>
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing.md }}>
-                        {investigations.map((inv) => {
+                        {scopedInvestigations.map((inv) => {
                           const assignee = inv.assigned_to
                             ? officialsList.find((o) => o.id === inv.assigned_to)
                             : null;
@@ -938,7 +938,8 @@ const OfficialHomePage: React.FC = () => {
                   </>
                 )}
               </section>
-            )}
+              );
+            })()}
 
           </div>
         </>
