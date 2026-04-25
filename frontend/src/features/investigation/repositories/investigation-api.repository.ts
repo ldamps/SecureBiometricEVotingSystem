@@ -15,6 +15,7 @@ interface BackendInvestigationItem {
     id: string;
     error_id?: string | null;
     election_id?: string | null;
+    referendum_id?: string | null;
     raised_by?: string | null;
     title: string;
     description?: string | null;
@@ -32,6 +33,7 @@ interface BackendInvestigationItem {
 interface BackendErrorReportItem {
     id: string;
     election_id?: string | null;
+    referendum_id?: string | null;
     reported_by?: string | null;
     title: string;
     description?: string | null;
@@ -49,6 +51,7 @@ function mapInvestigation(b: BackendInvestigationItem): Investigation {
         id: b.id,
         error_id: b.error_id ?? "",
         election_id: b.election_id ?? "",
+        referendum_id: b.referendum_id ?? "",
         raised_by: b.raised_by ?? "",
         title: b.title,
         description: b.description ?? "",
@@ -68,6 +71,7 @@ function mapErrorReport(b: BackendErrorReportItem): ErrorReport {
     return {
         id: b.id,
         election_id: b.election_id ?? "",
+        referendum_id: b.referendum_id ?? "",
         reported_by: b.reported_by ?? "",
         title: b.title,
         description: b.description ?? "",
@@ -98,6 +102,11 @@ export class InvestigationApiRepository {
         return rows.map(mapErrorReport);
     }
 
+    async getReportsByReferendum(referendumId: string): Promise<ErrorReport[]> {
+        const rows = await ApiClient.get<BackendErrorReportItem[]>(`${ROOT}/report/referendum/${referendumId}`);
+        return rows.map(mapErrorReport);
+    }
+
     async getInvestigation(investigationId: string): Promise<Investigation> {
         const raw = await ApiClient.get<BackendInvestigationItem>(`${ROOT}/${investigationId}`);
         return mapInvestigation(raw);
@@ -105,6 +114,11 @@ export class InvestigationApiRepository {
 
     async getInvestigationsByElection(electionId: string): Promise<Investigation[]> {
         const rows = await ApiClient.get<BackendInvestigationItem[]>(`${ROOT}/investigations/${electionId}`);
+        return rows.map(mapInvestigation);
+    }
+
+    async getInvestigationsByReferendum(referendumId: string): Promise<Investigation[]> {
+        const rows = await ApiClient.get<BackendInvestigationItem[]>(`${ROOT}/investigations/referendum/${referendumId}`);
         return rows.map(mapInvestigation);
     }
 

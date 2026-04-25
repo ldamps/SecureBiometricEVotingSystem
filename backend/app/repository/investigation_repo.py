@@ -66,6 +66,21 @@ class InvestigationRepository:
             logger.exception("Failed to get investigations by election", election_id=election_id)
             raise
 
+    async def get_investigations_by_referendum(
+        self, session: AsyncSession, referendum_id: UUID,
+    ) -> list[Investigation]:
+        """Get all investigations for a referendum."""
+        try:
+            result = await session.execute(
+                select(self._model)
+                .where(self._model.referendum_id == referendum_id)
+                .order_by(self._model.raised_at.desc())
+            )
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception("Failed to get investigations by referendum", referendum_id=referendum_id)
+            raise
+
     async def get_investigations_by_error(
         self, session: AsyncSession, error_id: UUID,
     ) -> list[Investigation]:

@@ -91,6 +91,22 @@ async def get_reports_by_election(
     return await service.get_reports_by_election(election_id)
 
 
+# List error reports for a referendum (any official)
+@router.get(
+    "/report/referendum/{referendum_id}",
+    responses=error_report_responses,
+    response_model=List[ErrorReportItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_reports_by_referendum(
+    referendum_id: UUID = Path(..., description="The referendum ID."),
+    service: ErrorReportService = Depends(get_error_report_service),
+    current_user: TokenPayload = Depends(get_current_user),
+) -> List[ErrorReportItem]:
+    """List all error reports for a referendum."""
+    return await service.get_reports_by_referendum(referendum_id)
+
+
 # List error reports filed by an official (any official)
 @router.get(
     "/report/official/{official_id}",
@@ -140,6 +156,22 @@ async def get_investigations_by_election(
 ) -> List[InvestigationItem]:
     """List all investigations for an election."""
     return await service.get_investigations_by_election(election_id)
+
+
+# List investigations for a referendum (any official)
+@router.get(
+    "/investigations/referendum/{referendum_id}",
+    responses=investigation_responses,
+    response_model=List[InvestigationItem],
+    status_code=status.HTTP_200_OK,
+)
+async def get_investigations_by_referendum(
+    referendum_id: UUID = Path(..., description="The referendum ID."),
+    service: InvestigationService = Depends(get_investigation_service),
+    current_user: TokenPayload = Depends(get_current_user),
+) -> List[InvestigationItem]:
+    """List all investigations for a referendum."""
+    return await service.get_investigations_by_referendum(referendum_id)
 
 
 # List investigations for an error report (any official)

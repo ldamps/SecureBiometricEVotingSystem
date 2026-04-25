@@ -61,6 +61,21 @@ class ErrorReportRepository:
             logger.exception("Failed to get reports by election", election_id=election_id)
             raise
 
+    async def get_reports_by_referendum(
+        self, session: AsyncSession, referendum_id: UUID,
+    ) -> list[ErrorReport]:
+        """Get all error reports for a referendum."""
+        try:
+            result = await session.execute(
+                select(self._model)
+                .where(self._model.referendum_id == referendum_id)
+                .order_by(self._model.reported_at.desc())
+            )
+            return list(result.scalars().all())
+        except Exception:
+            logger.exception("Failed to get reports by referendum", referendum_id=referendum_id)
+            raise
+
     async def get_reports_by_official(
         self, session: AsyncSession, official_id: UUID,
     ) -> list[ErrorReport]:

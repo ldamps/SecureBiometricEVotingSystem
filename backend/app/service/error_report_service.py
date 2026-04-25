@@ -53,6 +53,7 @@ class ErrorReportService:
             # 1. Persist the error report
             report = ErrorReport(
                 election_id=dto.election_id,
+                referendum_id=dto.referendum_id,
                 reported_by=dto.reported_by,
                 title=dto.title,
                 description=dto.description,
@@ -67,6 +68,7 @@ class ErrorReportService:
             investigation = Investigation(
                 error_id=report.id,
                 election_id=report.election_id,
+                referendum_id=report.referendum_id,
                 raised_by=report.reported_by,
                 title=report.title,
                 description=report.description,
@@ -78,16 +80,22 @@ class ErrorReportService:
                 self.session, investigation,
             )
 
+            scope_label = (
+                f"election {report.election_id}" if report.election_id
+                else f"referendum {report.referendum_id}"
+            )
+
             # Audit: error report created + investigation opened
             await self._audit_log_repo.create_audit_log(
                 self.session,
                 AuditLog(
                     event_type="ERROR_REPORT_CREATED",
                     action="CREATE",
-                    summary=f"Error report '{report.title}' created for election {report.election_id}",
+                    summary=f"Error report '{report.title}' created for {scope_label}",
                     resource_type="error_report",
                     resource_id=report.id,
                     election_id=report.election_id,
+                    referendum_id=report.referendum_id,
                     actor_type="OFFICIAL",
                     actor_id=report.reported_by,
                 ),
@@ -101,6 +109,7 @@ class ErrorReportService:
                     resource_type="investigation",
                     resource_id=investigation.id,
                     election_id=report.election_id,
+                    referendum_id=report.referendum_id,
                     actor_type="SYSTEM",
                 ),
             )
@@ -136,6 +145,17 @@ class ErrorReportService:
             return [error_report_orm_to_dto_unencrypted_row(r).to_schema() for r in reports]
         except Exception:
             logger.exception("Failed to get reports by election", election_id=election_id)
+            raise
+
+    async def get_reports_by_referendum(self, referendum_id: UUID) -> List[ErrorReportItem]:
+        """Get all error reports for a referendum."""
+        try:
+            reports = await self.error_report_repo.get_reports_by_referendum(
+                self.session, referendum_id,
+            )
+            return [error_report_orm_to_dto_unencrypted_row(r).to_schema() for r in reports]
+        except Exception:
+            logger.exception("Failed to get reports by referendum", referendum_id=referendum_id)
             raise
 
     async def get_reports_by_official(self, official_id: UUID) -> List[ErrorReportItem]:

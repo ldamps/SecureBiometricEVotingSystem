@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text, TIMESTAMP
+from sqlalchemy import CheckConstraint, ForeignKey, String, Text, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,7 +13,10 @@ from app.models.base.sqlalchemy_base import Base, EncryptedColumn, EncryptedDBFi
 
 
 class Investigation(Base, UUIDPrimaryKeyMixin):
-    """Investigation raised from an error report; can be assigned and resolved by officials."""
+    """Investigation raised from an error report; can be assigned and resolved by officials.
+
+    Exactly one of ``election_id`` / ``referendum_id`` must be set.
+    """
 
     __tablename__ = "investigation"
 
@@ -23,10 +26,16 @@ class Investigation(Base, UUIDPrimaryKeyMixin):
         nullable=False,
         index=True,
     )
-    election_id: Mapped[uuid.UUID] = mapped_column(
+    election_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("election.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    referendum_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("referendum.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     raised_by: Mapped[uuid.UUID | None] = mapped_column(
@@ -60,3 +69,10 @@ class Investigation(Base, UUIDPrimaryKeyMixin):
     # Relationships ----------
 
     # Database constraints + indexes ----------
+    __table_args__ = (
+        CheckConstraint(
+            "(election_id IS NOT NULL AND referendum_id IS NULL) OR "
+            "(election_id IS NULL AND referendum_id IS NOT NULL)",
+            name="ck_investigation_election_xor_referendum",
+        ),
+    )

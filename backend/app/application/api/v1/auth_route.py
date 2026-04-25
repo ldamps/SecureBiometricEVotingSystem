@@ -26,7 +26,7 @@ router = APIRouter(
 )
 
 
-# Temporary diagnostic + seed endpoint
+# Temporary diagnostic + seed endpoint for the POC / TODO: Remove after POC ------------------------------------
 @router.get("/debug-db")
 async def debug_db(service: AuthService = Depends(get_auth_service)) -> dict:
     """Temporary: show which DB and officials exist."""
@@ -535,6 +535,8 @@ async def clear_voters(service: AuthService = Depends(get_auth_service)) -> dict
     count = result.scalar()
     await db.execute(text("TRUNCATE voter CASCADE"))
     return {"status": "success", "voters_removed": count}
+
+# ------------------------------------------------------------------------------------------------------------------
 
 
 # Login — public (no token required)

@@ -22,9 +22,10 @@ interface ReportErrorModalProps {
   onSubmitted?: () => void;
   context?: string | null;
   electionId?: string;
+  referendumId?: string;
 }
 
-const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, onSubmitted, context = null, electionId }) => {
+const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, onSubmitted, context = null, electionId, referendumId }) => {
   const { theme } = useTheme();
   const card = getCardStyle(theme);
   const cardText = getCardTextStyle(theme);
@@ -49,8 +50,12 @@ const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, onSu
 
   const handleSubmit = async () => {
     if (!validate()) return;
-    if (!electionId) {
-      setSubmitError("No election selected. Error reports can only be filed for elections.");
+    if (!electionId && !referendumId) {
+      setSubmitError("No election or referendum selected. Select one before filing an error report.");
+      return;
+    }
+    if (electionId && referendumId) {
+      setSubmitError("Cannot report against both an election and a referendum.");
       return;
     }
     setSubmitting(true);
@@ -58,6 +63,7 @@ const ReportErrorModal: React.FC<ReportErrorModalProps> = ({ open, onClose, onSu
     const officialId = getAccessTokenSubject();
     await investigationApiRepository.createErrorReport({
       election_id: electionId,
+      referendum_id: referendumId,
       reported_by: officialId ?? undefined,
       title: context ? `${context} — ${title}` : title,
       description: description || undefined,

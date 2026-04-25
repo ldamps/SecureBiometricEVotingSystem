@@ -1,4 +1,4 @@
-"""Error report model - reported issue for an election."""
+"""Error report model - reported issue for an election or referendum."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text, TIMESTAMP
+from sqlalchemy import CheckConstraint, ForeignKey, String, Text, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,14 +22,23 @@ class ErrorReportSeverity(str, enum.Enum):
 
 
 class ErrorReport(Base, UUIDPrimaryKeyMixin):
-    """Error or issue reported for an election by an official."""
+    """Error or issue reported for an election or referendum by an official.
+
+    Exactly one of ``election_id`` / ``referendum_id`` must be set.
+    """
 
     __tablename__ = "error_report"
 
-    election_id: Mapped[uuid.UUID] = mapped_column(
+    election_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("election.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    referendum_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("referendum.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     reported_by: Mapped[uuid.UUID | None] = mapped_column(
@@ -46,3 +55,10 @@ class ErrorReport(Base, UUIDPrimaryKeyMixin):
     # Relationships ----------
 
     # Database constraints + indexes ----------
+    __table_args__ = (
+        CheckConstraint(
+            "(election_id IS NOT NULL AND referendum_id IS NULL) OR "
+            "(election_id IS NULL AND referendum_id IS NOT NULL)",
+            name="ck_error_report_election_xor_referendum",
+        ),
+    )

@@ -29,7 +29,7 @@ router = APIRouter(
 )
 
 
-
+# Enroll device - public (no token required)
 @router.post(
     "/enroll",
     responses=biometric_responses,
@@ -49,7 +49,7 @@ async def enroll_device(
     return await service.enroll_device(body)
 
 
-
+# Create challenge - public (no token required)
 @router.post(
     "/challenge",
     responses=biometric_responses,
@@ -67,7 +67,7 @@ async def create_challenge(
     """
     return await service.create_challenge(body)
 
-
+# verify biometrics
 @router.post(
     "/verify",
     responses=biometric_responses,
@@ -86,7 +86,7 @@ async def verify_biometric(
     return await service.verify_biometric(body)
 
 
-
+# list credentials
 @router.get(
     "/{voter_id}/credentials",
     responses=biometric_responses,
@@ -101,6 +101,7 @@ async def list_credentials(
     return await service.list_credentials(voter_id)
 
 
+# revoke credential
 @router.delete(
     "/credentials/{credential_id}",
     responses=biometric_responses,

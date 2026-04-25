@@ -10,7 +10,8 @@ class InvestigationItem(ResponseSchema):
     """Investigation response model."""
     id: str = Field(..., description="The unique identifier for the investigation.")
     error_id: str = Field(..., description="The error report that triggered this investigation.")
-    election_id: str = Field(..., description="The election this investigation relates to.")
+    election_id: Optional[str] = Field(None, description="The election this investigation relates to (mutually exclusive with referendum_id).")
+    referendum_id: Optional[str] = Field(None, description="The referendum this investigation relates to (mutually exclusive with election_id).")
     raised_by: Optional[str] = Field(None, description="The official who raised the investigation.")
     title: str = Field(..., description="Title of the investigation.")
     description: Optional[str] = Field(None, description="Details of the investigation.")

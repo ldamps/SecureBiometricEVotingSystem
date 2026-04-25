@@ -55,6 +55,17 @@ class InvestigationService:
             logger.exception("Failed to get investigations by election", election_id=election_id)
             raise
 
+    async def get_investigations_by_referendum(self, referendum_id: UUID) -> List[InvestigationItem]:
+        """Get all investigations for a referendum."""
+        try:
+            investigations = await self.investigation_repo.get_investigations_by_referendum(
+                self.session, referendum_id,
+            )
+            return [investigation_orm_to_dto_unencrypted_row(i).to_schema() for i in investigations]
+        except Exception:
+            logger.exception("Failed to get investigations by referendum", referendum_id=referendum_id)
+            raise
+
     async def get_investigations_by_error(self, error_id: UUID) -> List[InvestigationItem]:
         """Get all investigations linked to an error report."""
         try:
@@ -137,6 +148,7 @@ class InvestigationService:
                     resource_type="investigation",
                     resource_id=investigation_id,
                     election_id=updated.election_id,
+                    referendum_id=updated.referendum_id,
                     actor_type="OFFICIAL",
                     actor_id=dto.assigned_to or dto.resolved_by,
                 ),

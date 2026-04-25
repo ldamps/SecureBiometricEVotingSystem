@@ -4,6 +4,7 @@ export interface Investigation {
     id: string;
     error_id: string;
     election_id: string;
+    referendum_id: string;
     raised_by: string;
     title: string;
     description: string;
@@ -21,6 +22,7 @@ export interface Investigation {
 export interface ErrorReport {
     id: string;
     election_id: string;
+    referendum_id: string;
     reported_by: string;
     title: string;
     description: string;
@@ -29,7 +31,8 @@ export interface ErrorReport {
 }
 
 export interface CreateErrorReportRequest {
-    election_id: string;
+    election_id?: string;
+    referendum_id?: string;
     reported_by?: string;
     title: string;
     description?: string;

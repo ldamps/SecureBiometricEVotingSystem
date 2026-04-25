@@ -20,7 +20,7 @@ router = APIRouter(
 
 _kyc_service = KYCService()
 
-
+# create kyc session
 @router.post(
     "/session",
     response_model=CreateKYCSessionResponse,
@@ -36,7 +36,7 @@ async def create_kyc_session(
     )
     return CreateKYCSessionResponse(**result)
 
-
+# get kyc verified data
 @router.get(
     "/session/{session_id}/verified-data",
     response_model=KYCVerifiedOutputsResponse,
@@ -49,7 +49,7 @@ async def get_kyc_verified_data(
     result = await _kyc_service.get_verified_outputs(session_id)
     return KYCVerifiedOutputsResponse(**result)
 
-
+# get kyc status
 @router.get(
     "/session/{session_id}/status",
     response_model=KYCStatusResponse,

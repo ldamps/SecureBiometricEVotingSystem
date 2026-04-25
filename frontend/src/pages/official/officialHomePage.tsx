@@ -273,13 +273,16 @@ const OfficialHomePage: React.FC = () => {
   const [investigationsError, setInvestigationsError] = useState<string | null>(null);
 
   const loadInvestigations = useCallback(() => {
-    if (!selectedItem || selectedItem.kind !== "election") {
+    if (!selectedItem) {
       setInvestigations([]);
       return;
     }
     setInvestigationsLoading(true);
     setInvestigationsError(null);
-    investigationApiRepository.getInvestigationsByElection(selectedItem.id)
+    const fetcher = selectedItem.kind === "election"
+      ? investigationApiRepository.getInvestigationsByElection(selectedItem.id)
+      : investigationApiRepository.getInvestigationsByReferendum(selectedItem.id);
+    fetcher
       .then(setInvestigations)
       .catch((err: Error) => { setInvestigationsError(err.message || "Failed to load investigations."); setInvestigations([]); })
       .finally(() => setInvestigationsLoading(false));
@@ -953,6 +956,7 @@ const OfficialHomePage: React.FC = () => {
         onSubmitted={handleReportSubmitted}
         context={reportErrorContext}
         electionId={selectedItem?.kind === "election" ? selectedItem.id : undefined}
+        referendumId={selectedItem?.kind === "referendum" ? selectedItem.id : undefined}
       />
 
       <UpdateInvestigationModal

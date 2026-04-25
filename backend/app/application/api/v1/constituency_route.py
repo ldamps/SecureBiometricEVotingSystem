@@ -21,7 +21,7 @@ router = APIRouter(
     tags=["Constituency"],
 )
 
-
+# list constituencies
 @router.get(
     "",
     response_model=list[ConstituencyItem],
@@ -40,7 +40,7 @@ async def list_constituencies(
         constituencies = await service.get_all()
     return [ConstituencyItem.model_validate(c, from_attributes=True) for c in constituencies]
 
-
+# get constituency by id
 @router.get(
     "/{constituency_id}",
     response_model=ConstituencyItem,

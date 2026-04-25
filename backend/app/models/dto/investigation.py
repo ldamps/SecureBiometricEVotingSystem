@@ -22,7 +22,8 @@ class InvestigationDTO(InvestigationBaseDTO):
 
     id: UUID = None
     error_id: UUID = None
-    election_id: UUID = None
+    election_id: Optional[UUID] = None
+    referendum_id: Optional[UUID] = None
     raised_by: Optional[UUID] = None
     title: str = ""
     description: Optional[str] = None
@@ -40,7 +41,8 @@ class InvestigationDTO(InvestigationBaseDTO):
         return InvestigationItem(
             id=str(self.id),
             error_id=str(self.error_id),
-            election_id=str(self.election_id),
+            election_id=str(self.election_id) if self.election_id else None,
+            referendum_id=str(self.referendum_id) if self.referendum_id else None,
             raised_by=str(self.raised_by) if self.raised_by else None,
             title=self.title,
             description=self.description,

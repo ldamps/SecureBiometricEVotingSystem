@@ -1,4 +1,5 @@
 # app/application/api/v1/email_verification_route.py - Email verification code routes
+# email uses Resend for email sending
 
 from uuid import UUID
 
@@ -65,7 +66,7 @@ async def send_verification_code(
         message="A verification code has been sent to your registered email address.",
     )
 
-
+# verify email verification code
 @router.post(
     "/verify",
     responses=voter_responses,

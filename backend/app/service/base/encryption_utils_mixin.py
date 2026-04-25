@@ -283,6 +283,7 @@ def error_report_orm_to_dto_unencrypted_row(report: ErrorReport) -> ErrorReportD
     return ErrorReportDTO(
         id=report.id,
         election_id=report.election_id,
+        referendum_id=report.referendum_id,
         reported_by=report.reported_by,
         title=report.title,
         description=report.description,
@@ -297,6 +298,7 @@ def investigation_orm_to_dto_unencrypted_row(inv: Investigation) -> Investigatio
         id=inv.id,
         error_id=inv.error_id,
         election_id=inv.election_id,
+        referendum_id=inv.referendum_id,
         raised_by=inv.raised_by,
         title=inv.title,
         description=inv.description,
