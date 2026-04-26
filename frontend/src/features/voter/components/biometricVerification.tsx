@@ -251,7 +251,7 @@ function BiometricVerification({
             <div style={{
                 marginTop: usePageLayout ? 0 : "1.75rem",
                 display: "flex",
-                justifyContent: usePageLayout ? "flex-start" : "center",
+                justifyContent: "center",
                 gap: theme.spacing.md,
             }}>
                 {status === BiometricVerificationStatus.IDLE && (

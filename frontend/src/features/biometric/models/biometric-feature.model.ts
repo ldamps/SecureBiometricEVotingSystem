@@ -130,18 +130,20 @@ export interface StoredBiometricData {
  *
  * These thresholds gate an advisory template-matching check that
  * provides better error messages when enrolled templates are available
- * in IndexedDB.  The primary security gate is the biometric-bound key
- * decryption (AES-GCM), NOT template matching — so these thresholds
- * should be set at practical levels that accommodate cross-session
- * variation (lighting, angle, distance) on the same device.
+ * in IndexedDB.  The primary security gate is the dual-modality
+ * biometric-bound key decryption (AES-GCM over both face and ear
+ * fuzzy extractors), NOT template matching — so these thresholds are
+ * set permissively enough to accommodate cross-session variation
+ * (lighting, angle, framing) on the same device.
  *
- * Face 0.92 and Ear 0.85 reliably reject impostors while tolerating
- * the natural variation observed between enrollment and verification
- * sessions on the same camera.
+ * Face 0.92 reliably rejects impostors against face-api.js's deep
+ * descriptors. Ear 0.55 reflects the wider intra-class variation of
+ * hand-crafted HOG ear descriptors — wrong-ear rejection is enforced
+ * cryptographically by the fuzzy extractor, not by this advisory gate.
  */
 export const BIOMETRIC_THRESHOLDS = {
   FACE: 0.92,
-  EAR: 0.85,
+  EAR: 0.55,
 } as const;
 
 /** Legacy quantisation parameters (4 bins).

@@ -4,33 +4,42 @@
  * Extracts a 128-d feature descriptor from an ear image using
  * Histogram-of-Oriented-Gradients (HOG) style features:
  *   1. Capture a video frame at 224x224 grayscale
- *   2. Compute Sobel gradients
- *   3. Divide into an 8x8 cell grid (64 cells)
- *   4. Build a 9-bin gradient orientation histogram per cell, weighted
- *      by magnitude — yields 64 × 9 = 576 raw features
- *   5. Cell-wise L2-normalisation makes the descriptor invariant to
- *      illumination and contrast (orientations don't shift under
- *      lighting changes; magnitudes do, but per-cell normalisation
- *      cancels that)
- *   6. Project through a deterministic random matrix down to 128-d
- *   7. Final L2-normalisation so cosine similarity is meaningful
+ *   2. Apply a 5x5 box-filter smoothing pass — this is critical for
+ *      cross-session stability: without it, single-pixel jitter in the
+ *      camera shifts gradient orientations enough to drift cells'
+ *      histograms past the fuzzy extractor's RS error-correction budget
+ *   3. Compute Sobel gradients
+ *   4. Divide into a 4x4 cell grid (16 cells, each ~56x56 pixels). A
+ *      coarser grid than HOG's textbook 8x8 because the ear isn't always
+ *      framed at the same translation/scale, and small offsets must not
+ *      shift features between cells
+ *   5. Build a 9-bin gradient orientation histogram per cell, weighted
+ *      by magnitude — yields 16 × 9 = 144 raw features
+ *   6. Cell-wise L2-normalisation makes the descriptor invariant to
+ *      illumination and contrast
+ *   7. Project through a deterministic random matrix down to 128-d
+ *   8. Final L2-normalisation so cosine similarity is meaningful
  *
  * Earlier versions of this file used global colour/intensity statistics
  * (per-channel means, intensity histograms, spatial block means). Those
- * features were dominated by ambient lighting and skin tone rather than
- * by ear shape, so the resulting descriptors clustered by photographic
- * conditions instead of by identity — wrong-ear matches became routine
- * within the same room. HOG features are tied to silhouette and texture
- * orientation, which is what genuinely distinguishes one ear from another.
+ * features were dominated by ambient lighting and skin tone, so wrong
+ * ears matched routinely within the same room. HOG features are tied to
+ * silhouette and texture orientation, which is what genuinely
+ * distinguishes one ear from another. The first HOG iteration used 8x8
+ * cells with no smoothing and was too sensitive to framing — same ear,
+ * slightly different head angle would shift features into adjacent
+ * cells and overwhelm the RS correction budget. Smoothing + 4x4 cells
+ * reins that in.
  */
 
 import { FeatureExtractionResult } from "../models/biometric-feature.model";
 
 const FEATURE_DIM = 128;
-const RAW_DIM = 576;
-const CELL_GRID = 8;
+const RAW_DIM = 144;
+const CELL_GRID = 4;
 const ORIENTATION_BINS = 9;
 const FRAME_SIZE = 224;
+const SMOOTHING_KERNEL = 5;
 
 let projectionMatrix: Float32Array | null = null;
 let canvas: HTMLCanvasElement | null = null;
@@ -84,6 +93,50 @@ function project(source: Float32Array): Float32Array {
 }
 
 /**
+ * Two-pass box blur — separable horizontal then vertical. O(width*height)
+ * regardless of kernel size. Used to damp single-pixel noise before
+ * gradient computation so HOG histograms are stable across captures.
+ */
+function boxBlur(
+  src: Float32Array,
+  width: number,
+  height: number,
+  kernel: number,
+): Float32Array {
+  const radius = (kernel - 1) >> 1;
+  const horiz = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    let sum = 0;
+    for (let k = -radius; k <= radius; k++) {
+      const x = Math.max(0, Math.min(width - 1, k));
+      sum += src[y * width + x];
+    }
+    for (let x = 0; x < width; x++) {
+      horiz[y * width + x] = sum / kernel;
+      const xAdd = Math.min(width - 1, x + radius + 1);
+      const xRem = Math.max(0, x - radius);
+      sum += src[y * width + xAdd] - src[y * width + xRem];
+    }
+  }
+
+  const out = new Float32Array(width * height);
+  for (let x = 0; x < width; x++) {
+    let sum = 0;
+    for (let k = -radius; k <= radius; k++) {
+      const y = Math.max(0, Math.min(height - 1, k));
+      sum += horiz[y * width + x];
+    }
+    for (let y = 0; y < height; y++) {
+      out[y * width + x] = sum / kernel;
+      const yAdd = Math.min(height - 1, y + radius + 1);
+      const yRem = Math.max(0, y - radius);
+      sum += horiz[yAdd * width + x] - horiz[yRem * width + x];
+    }
+  }
+  return out;
+}
+
+/**
  * Build HOG-style features: per-cell gradient orientation histograms
  * with L2 normalisation.
  *
@@ -97,14 +150,19 @@ function extractRawFeatures(imageData: ImageData): Float32Array {
   const { data, width, height } = imageData;
 
   // Convert to grayscale in [0, 1].
-  const gray = new Float32Array(width * height);
-  for (let i = 0; i < gray.length; i++) {
-    gray[i] =
+  const grayRaw = new Float32Array(width * height);
+  for (let i = 0; i < grayRaw.length; i++) {
+    grayRaw[i] =
       (data[i * 4] * 0.299 +
         data[i * 4 + 1] * 0.587 +
         data[i * 4 + 2] * 0.114) /
       255;
   }
+
+  // Box-filter smoothing — averages a SMOOTHING_KERNEL × SMOOTHING_KERNEL
+  // window per pixel. Damps single-pixel noise so gradients are stable
+  // across captures of the same ear.
+  const gray = boxBlur(grayRaw, width, height, SMOOTHING_KERNEL);
 
   // Sobel gradients.
   const gradMag = new Float32Array(width * height);
