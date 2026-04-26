@@ -291,6 +291,8 @@ async def get_election_results(
     Results are only available once the election status is CLOSED.
     """
     election = await election_service.get_election_by_id(election_id)
+    if election.status == "CANCELLED":
+        raise AuthorizationError("Results are not available because this election has been cancelled.")
     if election.status != "CLOSED":
         raise AuthorizationError("Results are only available after voting has closed.")
     return await service.get_election_results(election_id)
@@ -314,6 +316,8 @@ async def get_election_tallies(
     Tallies are only available once the election status is CLOSED.
     """
     election = await election_service.get_election_by_id(election_id)
+    if election.status == "CANCELLED":
+        raise AuthorizationError("Tallies are not available because this election has been cancelled.")
     if election.status != "CLOSED":
         raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_election(election_id)
@@ -338,6 +342,8 @@ async def get_election_constituency_tallies(
     Tallies are only available once the election status is CLOSED.
     """
     election = await election_service.get_election_by_id(election_id)
+    if election.status == "CANCELLED":
+        raise AuthorizationError("Tallies are not available because this election has been cancelled.")
     if election.status != "CLOSED":
         raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_constituency(election_id, constituency_id)

@@ -212,7 +212,8 @@ const OfficialHomePage: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  const votingClosed = selectedItem
+  const isCancelled = selectedItem?.status === "CANCELLED";
+  const votingClosed = selectedItem && !isCancelled
     ? selectedItem.status === "CLOSED" ||
       (selectedItem.voting_closes != null && selectedItem.voting_closes !== "" && Date.now() > Date.parse(selectedItem.voting_closes))
     : false;
@@ -223,7 +224,7 @@ const OfficialHomePage: React.FC = () => {
     setReferendumResult(null);
     setResultsError(null);
 
-    if (!votingClosed) {
+    if (isCancelled || !votingClosed) {
       setResultsLoading(false);
       return;
     }
@@ -241,7 +242,7 @@ const OfficialHomePage: React.FC = () => {
         .catch((err: Error) => setResultsError(err.message || "Failed to load results."))
         .finally(() => setResultsLoading(false));
     }
-  }, [selectedItem, votingClosed]);
+  }, [selectedItem, votingClosed, isCancelled]);
 
   useEffect(() => { loadResults(); }, [loadResults]);
 
@@ -774,8 +775,20 @@ const OfficialHomePage: React.FC = () => {
                   </>
                 )}
 
+                {/* Cancelled */}
+                {!resultsLoading && !resultsError && isCancelled && (
+                  <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl, borderLeft: `4px solid ${theme.colors.status.error}` }}>
+                    <p style={{ ...cardText, margin: 0, fontWeight: theme.fontWeights.medium }}>
+                      This {selectedItem.kind} has been cancelled.
+                    </p>
+                    <p style={{ ...cardText, margin: `${theme.spacing.sm} 0 0 0`, color: theme.colors.text.secondary }}>
+                      Results are not available for cancelled {selectedItem.kind === "election" ? "elections" : "referendums"}.
+                    </p>
+                  </div>
+                )}
+
                 {/* Voting not yet closed */}
-                {!resultsLoading && !resultsError && !votingClosed && (
+                {!resultsLoading && !resultsError && !isCancelled && !votingClosed && (
                   <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl, borderLeft: `4px solid ${theme.colors.status.warning}` }}>
                     <p style={{ ...cardText, margin: 0, fontWeight: theme.fontWeights.medium }}>
                       Voting has not yet closed for this {selectedItem.kind}.
@@ -787,7 +800,7 @@ const OfficialHomePage: React.FC = () => {
                 )}
 
                 {/* Voting closed but no results data */}
-                {!resultsLoading && !resultsError && votingClosed && !electionResult && !referendumResult && (
+                {!resultsLoading && !resultsError && !isCancelled && votingClosed && !electionResult && !referendumResult && (
                   <div style={{ ...card, textAlign: "center", padding: theme.spacing.xl }}>
                     <p style={{ ...cardText, margin: 0, color: theme.colors.text.secondary }}>
                       No results available yet for this {selectedItem.kind}. Tallying may still be in progress.

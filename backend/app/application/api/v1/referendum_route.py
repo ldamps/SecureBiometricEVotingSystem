@@ -222,6 +222,8 @@ async def get_referendum_results(
     Results are only available once the referendum status is CLOSED.
     """
     referendum = await referendum_service.get_referendum_by_id(referendum_id)
+    if referendum.status == "CANCELLED":
+        raise AuthorizationError("Results are not available because this referendum has been cancelled.")
     if referendum.status != "CLOSED":
         raise AuthorizationError("Results are only available after voting has closed.")
     return await service.get_referendum_results(referendum_id)
@@ -245,6 +247,8 @@ async def get_referendum_tallies(
     Tallies are only available once the referendum status is CLOSED.
     """
     referendum = await referendum_service.get_referendum_by_id(referendum_id)
+    if referendum.status == "CANCELLED":
+        raise AuthorizationError("Tallies are not available because this referendum has been cancelled.")
     if referendum.status != "CLOSED":
         raise AuthorizationError("Tallies are only available after voting has closed.")
     return await service.get_tallies_by_referendum(referendum_id)
