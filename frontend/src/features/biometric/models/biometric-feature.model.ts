@@ -128,25 +128,18 @@ export interface StoredBiometricData {
 
 /** Thresholds for biometric matching (cosine similarity).
  *
- * Face 0.92 reliably rejects impostors against face-api.js's deep
- * descriptors.
+ * Face 0.92 against face-api.js's deep descriptors.
  *
- * Ear 0.85 is calibrated for the central-crop HOG descriptor with
- * signed gradient orientations. The signed orientations are what
- * separate a left ear from a right ear: their helix curves sweep in
- * opposite directions, producing gradients pointing in opposite
- * directions along the curve. With unsigned orientations they would
- * look identical at the descriptor level; with signed orientations they
- * fall in different bins, so wrong-ear cosine drops well below
- * same-ear cosine.
- *
- * The cosine gate is the practical discriminator for the ear modality.
- * The fuzzy-extractor crypto gate behind it is permissive on same-ear
- * drift to avoid false rejections.
+ * Ear 0.70 is empirically calibrated against measured cosines on a
+ * single device: same-ear cosine drifts in the 0.75–1.00 range across
+ * sessions, wrong-ear (different person) sits around 0.56 — so 0.70
+ * gives ~0.05 of headroom on each side of the gap. Tighten only after
+ * seeing a wider sample of wrong-ear scores from real captures (a
+ * single 0.56 reading isn't enough to call the upper bound).
  */
 export const BIOMETRIC_THRESHOLDS = {
   FACE: 0.92,
-  EAR: 0.85,
+  EAR: 0.70,
 } as const;
 
 /** Legacy quantisation parameters (4 bins).

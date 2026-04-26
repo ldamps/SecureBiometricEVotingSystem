@@ -177,10 +177,26 @@ function MobileVerifyPage() {
         const faceScore = match.face.similarity.toFixed(3);
         const earScore = match.ear.similarity.toFixed(3);
         setLastScores({ face: match.face.similarity, ear: match.ear.similarity });
+        // Diagnostic: dump the first few components and L2 norms of each
+        // descriptor pair. If freshFace and enrolledFace are different
+        // people but cosine is ~1.0, the values here will show whether
+        // they're literally the same vector (bug in capture/storage) or
+        // somehow producing identical descriptors despite different
+        // sources (bug in face-api.js extraction).
+        const sample = (v: Float32Array) =>
+          Array.from(v.slice(0, 4)).map((n) => n.toFixed(3)).join(", ");
+        const norm = (v: Float32Array) => {
+          let s = 0;
+          for (let i = 0; i < v.length; i++) s += v[i] * v[i];
+          return Math.sqrt(s).toFixed(4);
+        };
         // eslint-disable-next-line no-console
         console.log(
-          `[biometric] cosine match — face=${faceScore} (need ≥ 0.92, ${match.face.passed ? "PASS" : "FAIL"}), ` +
-          `ear=${earScore} (need ≥ 0.85, ${match.ear.passed ? "PASS" : "FAIL"})`,
+          `[biometric] cosine match — face=${faceScore} (${match.face.passed ? "PASS" : "FAIL"}), ear=${earScore} (${match.ear.passed ? "PASS" : "FAIL"})\n` +
+          `  fresh face [${sample(freshFace)}…] norm=${norm(freshFace)}\n` +
+          `  enroll face [${sample(enrolledFace)}…] norm=${norm(enrolledFace)}\n` +
+          `  fresh ear  [${sample(result.earDescriptor)}…] norm=${norm(result.earDescriptor)}\n` +
+          `  enroll ear [${sample(enrolledEar)}…] norm=${norm(enrolledEar)}`,
         );
         if (!match.overallPassed) {
           setState("decrypt_failed");
