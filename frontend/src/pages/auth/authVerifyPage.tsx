@@ -157,32 +157,43 @@ function AuthVerifyPage() {
           return;
         }
 
-        // Second gate: biometric-bound key decryption (AES-GCM).
+        // Second gate: dual-modality biometric-bound key decryption.
+        // Both face AND ear must RS-decode to recover the AES key.
         let privateKey: CryptoKey;
-        let recoveredMessage: Uint8Array;
+        let recoveredFaceMessage: Uint8Array;
+        let recoveredEarMessage: Uint8Array;
         try {
-          ({ privateKey, recoveredMessage } = await decryptPrivateKey(
-            freshFace,
-            result.earDescriptor,
-            encryptedBundle,
-          ));
-        } catch {
+          ({ privateKey, recoveredFaceMessage, recoveredEarMessage } =
+            await decryptPrivateKey(
+              freshFace,
+              result.earDescriptor,
+              encryptedBundle,
+            ));
+        } catch (err: any) {
           setState("decrypt_failed");
+          const isLegacyEnrollment =
+            encryptedBundle.format !== "fuzzy-extractor-rs-v4";
           setError(
-            "Could not unlock your signing key from this capture. Your face " +
-            "passed the initial match but drifted too far from the enrolled " +
-            "template to recover the key. Please retry in similar lighting " +
-            "and pose to your enrollment. If this persists, re-enroll from " +
-            "the registration page.",
+            isLegacyEnrollment
+              ? "Your enrollment was created with an older format that no longer " +
+                "supports the dual-modality (face + ear) cryptographic binding. " +
+                "Please re-enroll once from the registration page."
+              : err?.message ||
+                "Could not unlock your signing key from this capture. Retry in " +
+                "similar lighting and pose to your enrollment, with the ear " +
+                "unobstructed.",
           );
           return;
         }
 
-        // Cosine gate passed — safe to fold this capture into the helper
-        // set. Without the gate, a near-miss impostor capture that happened
-        // to decrypt would poison the bundle for future verifications.
+        // Both modalities decoded successfully — fold the capture into
+        // both helper sets to track lighting / angle drift over time.
         const rotatedBundle = appendAdaptiveHelper(
-          encryptedBundle, recoveredMessage, freshFace,
+          encryptedBundle,
+          recoveredFaceMessage,
+          recoveredEarMessage,
+          freshFace,
+          result.earDescriptor,
         );
 
         setState("submitting");

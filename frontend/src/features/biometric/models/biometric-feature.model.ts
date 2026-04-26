@@ -43,40 +43,55 @@ export interface EncryptedKeyCopy {
 }
 
 /**
- * Encrypted ECDSA private key bundle — three formats coexist.
+ * Encrypted ECDSA private key bundle — four formats coexist.
  *
- * **v3 — multi-helper fuzzy extractor (current):** an array of `helpers`,
- * each encoding the SAME random message `m` (and therefore the same AES
- * key) XOR a different enrollment descriptor. Verification tries each
- * helper; first that decodes wins. After every successful verification a
- * fresh helper is appended (oldest dropped at capacity), so the system
- * continuously learns the voter's cross-session variation — lighting,
- * angle, mild aging — without ever requiring re-enrollment.
+ * **v4 — dual-modality fuzzy extractor (current):** binds BOTH face and
+ * ear into the AES key. Two random messages `m_face` and `m_ear` are
+ * each RS-encoded to codewords. `face_helpers[i] = c_face XOR b_face_i`
+ * and `ear_helpers[i] = c_ear XOR b_ear_i`. Verification must RS-decode
+ * one helper from EACH set; the AES key is derived from
+ * `m_face || m_ear`, so failing either modality means no key. This makes
+ * the ear an information-theoretic gate (not just an advisory cosine
+ * check) and prevents wrong-ear acceptance even if the cosine layer is
+ * bypassed.
  *
- * **v2 — single-helper fuzzy extractor:** a single `helper` string. Read
- * for back-compat; any successful v2 verification upgrades the bundle to
- * v3 in place.
+ * **v3 — face-only multi-helper fuzzy extractor:** a single `helpers`
+ * array binding only the face descriptor. Re-enrolment required to
+ * migrate to v4.
  *
- * **v1 — multi-copy offset search (legacy):** many encrypted copies of the
- * same private key under different quantisation offsets. Cannot handle
- * drift across independent dimensions. Must be re-enrolled.
+ * **v2 — single-helper fuzzy extractor (legacy):** a single `helper`
+ * string. Re-enrolment required to migrate to v4.
+ *
+ * **v1 — multi-copy offset search (legacy):** many encrypted copies of
+ * the same private key under different quantisation offsets. Re-enrolment
+ * required.
  */
 export interface EncryptedKeyBundle {
   /** Format discriminator.
-   *   "fuzzy-extractor-rs-v3" — multi-helper + adaptive update.
-   *   "fuzzy-extractor-rs-v2" — single-helper (legacy, auto-upgrades on verify).
+   *   "fuzzy-extractor-rs-v4" — dual-modality face + ear binding.
+   *   "fuzzy-extractor-rs-v3" — face-only multi-helper (legacy).
+   *   "fuzzy-extractor-rs-v2" — single-helper (legacy).
    *   absent — v1 legacy multi-copy format. */
-  format?: "fuzzy-extractor-rs-v3" | "fuzzy-extractor-rs-v2";
+  format?:
+    | "fuzzy-extractor-rs-v4"
+    | "fuzzy-extractor-rs-v3"
+    | "fuzzy-extractor-rs-v2";
 
-  // --- v3 multi-helper fields ---
-  /** Hex-encoded RS codewords XOR quantised biometrics (each 48 bytes). */
+  // --- v4 dual-modality fields ---
+  /** Hex-encoded RS codewords XOR quantised face descriptors (each 48 bytes). */
+  face_helpers?: string[];
+  /** Hex-encoded RS codewords XOR quantised ear descriptors (each 48 bytes). */
+  ear_helpers?: string[];
+
+  // --- v3 face-only multi-helper field ---
+  /** Hex-encoded RS codewords XOR quantised face biometrics (each 48 bytes). */
   helpers?: string[];
 
   // --- v2 single-helper field (legacy, read-only) ---
   /** Hex-encoded RS codeword XOR quantised biometric (48 bytes). */
   helper?: string;
 
-  // --- Shared v2/v3 fields ---
+  // --- Shared v2/v3/v4 fields ---
   /** Hex-encoded PBKDF2 salt (32 bytes). */
   salt?: string;
   /** Hex-encoded AES-GCM IV (12 bytes). */

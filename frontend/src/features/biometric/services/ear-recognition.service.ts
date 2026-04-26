@@ -1,24 +1,36 @@
 /**
  * Ear recognition service.
  *
- * Extracts a 128-d feature descriptor from an ear image by:
- *   1. Capturing a video frame and resizing to 224x224
- *   2. Computing per-channel pixel statistics (mean, std, histograms)
- *      plus spatial gradient features
- *   3. Projecting the raw feature vector down to 128 dimensions via a
- *      deterministic random projection matrix
- *   4. L2-normalising so cosine similarity works correctly
+ * Extracts a 128-d feature descriptor from an ear image using
+ * Histogram-of-Oriented-Gradients (HOG) style features:
+ *   1. Capture a video frame at 224x224 grayscale
+ *   2. Compute Sobel gradients
+ *   3. Divide into an 8x8 cell grid (64 cells)
+ *   4. Build a 9-bin gradient orientation histogram per cell, weighted
+ *      by magnitude — yields 64 × 9 = 576 raw features
+ *   5. Cell-wise L2-normalisation makes the descriptor invariant to
+ *      illumination and contrast (orientations don't shift under
+ *      lighting changes; magnitudes do, but per-cell normalisation
+ *      cancels that)
+ *   6. Project through a deterministic random matrix down to 128-d
+ *   7. Final L2-normalisation so cosine similarity is meaningful
  *
- * This is a lightweight, dependency-free feature extractor that avoids
- * the TensorFlow.js version conflict with face-api.js.  It produces
- * stable, discriminative descriptors suitable for same-person
- * verification (not identification across a large gallery).
+ * Earlier versions of this file used global colour/intensity statistics
+ * (per-channel means, intensity histograms, spatial block means). Those
+ * features were dominated by ambient lighting and skin tone rather than
+ * by ear shape, so the resulting descriptors clustered by photographic
+ * conditions instead of by identity — wrong-ear matches became routine
+ * within the same room. HOG features are tied to silhouette and texture
+ * orientation, which is what genuinely distinguishes one ear from another.
  */
 
 import { FeatureExtractionResult } from "../models/biometric-feature.model";
 
 const FEATURE_DIM = 128;
-const RAW_DIM = 512;
+const RAW_DIM = 576;
+const CELL_GRID = 8;
+const ORIENTATION_BINS = 9;
+const FRAME_SIZE = 224;
 
 let projectionMatrix: Float32Array | null = null;
 let canvas: HTMLCanvasElement | null = null;
@@ -72,150 +84,94 @@ function project(source: Float32Array): Float32Array {
 }
 
 /**
- * Extract a rich feature vector from image pixel data.
+ * Build HOG-style features: per-cell gradient orientation histograms
+ * with L2 normalisation.
  *
- * Features include per-channel statistics, intensity histograms,
- * spatial block means, and gradient magnitude/orientation histograms.
- * These are hand-crafted but highly discriminative for texture-rich
- * biometrics like ears.
+ * Lighting affects gradient *magnitudes* but not *orientations*. By
+ * normalising each cell's histogram to unit length, contrast and
+ * exposure changes cancel out. What remains is the local edge geometry
+ * — the curl of the helix, the antitragus, the lobe — which is what
+ * actually identifies an ear.
  */
 function extractRawFeatures(imageData: ImageData): Float32Array {
   const { data, width, height } = imageData;
-  const features: number[] = [];
 
-  // Per-channel (R, G, B, grayscale) mean, std, min, max, skewness.
-  for (let ch = 0; ch < 3; ch++) {
-    let sum = 0, sq = 0, mn = 255, mx = 0;
-    const n = width * height;
-    for (let i = 0; i < n; i++) {
-      const v = data[i * 4 + ch];
-      sum += v; sq += v * v;
-      if (v < mn) mn = v; if (v > mx) mx = v;
-    }
-    const mean = sum / n;
-    const std = Math.sqrt(sq / n - mean * mean);
-    let skew = 0;
-    for (let i = 0; i < n; i++) {
-      skew += Math.pow((data[i * 4 + ch] - mean) / (std || 1), 3);
-    }
-    skew /= n;
-    features.push(mean / 255, std / 128, mn / 255, mx / 255, skew / 10);
-  }
-
-  // Grayscale statistics.
+  // Convert to grayscale in [0, 1].
   const gray = new Float32Array(width * height);
   for (let i = 0; i < gray.length; i++) {
-    gray[i] = (data[i * 4] * 0.299 + data[i * 4 + 1] * 0.587 + data[i * 4 + 2] * 0.114) / 255;
-  }
-  let gSum = 0, gSq = 0;
-  for (let i = 0; i < gray.length; i++) { gSum += gray[i]; gSq += gray[i] * gray[i]; }
-  const gMean = gSum / gray.length;
-  const gStd = Math.sqrt(gSq / gray.length - gMean * gMean);
-  features.push(gMean, gStd);
-
-  // Intensity histogram (32 bins).
-  const histBins = 32;
-  const hist = new Float32Array(histBins);
-  for (let i = 0; i < gray.length; i++) {
-    const bin = Math.min(histBins - 1, Math.floor(gray[i] * histBins));
-    hist[bin]++;
-  }
-  for (let b = 0; b < histBins; b++) hist[b] /= gray.length;
-  features.push(...Array.from(hist));
-
-  // Spatial block means (8x8 grid = 64 features).
-  const gridSize = 8;
-  const bw = Math.floor(width / gridSize);
-  const bh = Math.floor(height / gridSize);
-  for (let gy = 0; gy < gridSize; gy++) {
-    for (let gx = 0; gx < gridSize; gx++) {
-      let blockSum = 0, count = 0;
-      for (let y = gy * bh; y < (gy + 1) * bh; y++) {
-        for (let x = gx * bw; x < (gx + 1) * bw; x++) {
-          blockSum += gray[y * width + x];
-          count++;
-        }
-      }
-      features.push(blockSum / (count || 1));
-    }
+    gray[i] =
+      (data[i * 4] * 0.299 +
+        data[i * 4 + 1] * 0.587 +
+        data[i * 4 + 2] * 0.114) /
+      255;
   }
 
-  // Gradient magnitude and orientation histograms.
+  // Sobel gradients.
   const gradMag = new Float32Array(width * height);
   const gradOri = new Float32Array(width * height);
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
-      const gx = gray[y * width + (x + 1)] - gray[y * width + (x - 1)];
-      const gy2 = gray[(y + 1) * width + x] - gray[(y - 1) * width + x];
-      gradMag[y * width + x] = Math.sqrt(gx * gx + gy2 * gy2);
-      gradOri[y * width + x] = Math.atan2(gy2, gx);
+      const idx = y * width + x;
+      const gx =
+        -gray[(y - 1) * width + (x - 1)] +
+        gray[(y - 1) * width + (x + 1)] +
+        -2 * gray[y * width + (x - 1)] +
+        2 * gray[y * width + (x + 1)] +
+        -gray[(y + 1) * width + (x - 1)] +
+        gray[(y + 1) * width + (x + 1)];
+      const gy =
+        -gray[(y - 1) * width + (x - 1)] -
+        2 * gray[(y - 1) * width + x] -
+        gray[(y - 1) * width + (x + 1)] +
+        gray[(y + 1) * width + (x - 1)] +
+        2 * gray[(y + 1) * width + x] +
+        gray[(y + 1) * width + (x + 1)];
+      gradMag[idx] = Math.sqrt(gx * gx + gy * gy);
+      // Map [-π, π] → [0, π] (unsigned orientations: edges have the
+      // same identity regardless of which side is brighter).
+      let angle = Math.atan2(gy, gx);
+      if (angle < 0) angle += Math.PI;
+      gradOri[idx] = angle;
     }
   }
 
-  // Gradient magnitude stats.
-  let mSum = 0, mSq = 0;
-  for (let i = 0; i < gradMag.length; i++) { mSum += gradMag[i]; mSq += gradMag[i] * gradMag[i]; }
-  const mMean = mSum / gradMag.length;
-  const mStd = Math.sqrt(mSq / gradMag.length - mMean * mMean);
-  features.push(mMean, mStd);
+  // Per-cell HOG histograms.
+  const cellW = Math.floor(width / CELL_GRID);
+  const cellH = Math.floor(height / CELL_GRID);
+  const features = new Float32Array(RAW_DIM);
+  let writeIdx = 0;
 
-  // Gradient orientation histogram (16 bins).
-  const oriBins = 16;
-  const oriHist = new Float32Array(oriBins);
-  for (let i = 0; i < gradOri.length; i++) {
-    const angle = gradOri[i] + Math.PI; // [0, 2*PI]
-    const bin = Math.min(oriBins - 1, Math.floor((angle / (2 * Math.PI)) * oriBins));
-    oriHist[bin] += gradMag[i]; // weight by magnitude
-  }
-  let oriTotal = 0;
-  for (let b = 0; b < oriBins; b++) oriTotal += oriHist[b];
-  for (let b = 0; b < oriBins; b++) oriHist[b] /= (oriTotal || 1);
-  features.push(...Array.from(oriHist));
+  for (let cy = 0; cy < CELL_GRID; cy++) {
+    for (let cx = 0; cx < CELL_GRID; cx++) {
+      const hist = new Float32Array(ORIENTATION_BINS);
+      const yStart = cy * cellH;
+      const yEnd = cy === CELL_GRID - 1 ? height : (cy + 1) * cellH;
+      const xStart = cx * cellW;
+      const xEnd = cx === CELL_GRID - 1 ? width : (cx + 1) * cellW;
 
-  // Spatial gradient block means (8x8 grid = 64 features).
-  for (let gy = 0; gy < gridSize; gy++) {
-    for (let gx = 0; gx < gridSize; gx++) {
-      let blockSum = 0, count = 0;
-      for (let y = gy * bh; y < (gy + 1) * bh; y++) {
-        for (let x = gx * bw; x < (gx + 1) * bw; x++) {
-          blockSum += gradMag[y * width + x];
-          count++;
+      for (let y = yStart; y < yEnd; y++) {
+        for (let x = xStart; x < xEnd; x++) {
+          const idx = y * width + x;
+          const mag = gradMag[idx];
+          if (mag === 0) continue;
+          const angle = gradOri[idx];
+          const binFloat = (angle / Math.PI) * ORIENTATION_BINS;
+          const bin = Math.min(ORIENTATION_BINS - 1, Math.floor(binFloat));
+          hist[bin] += mag;
         }
       }
-      features.push(blockSum / (count || 1));
+
+      // L2-normalise this cell's histogram — kills lighting / contrast.
+      let norm = 0;
+      for (let b = 0; b < ORIENTATION_BINS; b++) norm += hist[b] * hist[b];
+      norm = Math.sqrt(norm) || 1;
+      for (let b = 0; b < ORIENTATION_BINS; b++) {
+        features[writeIdx++] = hist[b] / norm;
+      }
     }
   }
 
-  // LBP-like texture: for each 4x4 grid cell, compute the proportion
-  // of pixels brighter than the cell mean (196 remaining features to
-  // reach ~512 total, padded).
-  const lbpGrid = 14;
-  const lbw = Math.floor(width / lbpGrid);
-  const lbh = Math.floor(height / lbpGrid);
-  for (let gy = 0; gy < lbpGrid; gy++) {
-    for (let gx = 0; gx < lbpGrid; gx++) {
-      let cellSum = 0, count = 0;
-      for (let y = gy * lbh; y < Math.min((gy + 1) * lbh, height); y++) {
-        for (let x = gx * lbw; x < Math.min((gx + 1) * lbw, width); x++) {
-          cellSum += gray[y * width + x];
-          count++;
-        }
-      }
-      const cellMean = cellSum / (count || 1);
-      let bright = 0;
-      for (let y = gy * lbh; y < Math.min((gy + 1) * lbh, height); y++) {
-        for (let x = gx * lbw; x < Math.min((gx + 1) * lbw, width); x++) {
-          if (gray[y * width + x] > cellMean) bright++;
-        }
-      }
-      features.push(bright / (count || 1));
-    }
-  }
-
-  // Pad/truncate to exactly RAW_DIM.
-  const raw = new Float32Array(RAW_DIM);
-  raw.set(features.slice(0, RAW_DIM));
-  return raw;
+  return features;
 }
 
 /**
@@ -224,12 +180,12 @@ function extractRawFeatures(imageData: ImageData): Float32Array {
 function captureFrame(video: HTMLVideoElement): ImageData {
   if (!canvas) {
     canvas = document.createElement("canvas");
-    canvas.width = 224;
-    canvas.height = 224;
+    canvas.width = FRAME_SIZE;
+    canvas.height = FRAME_SIZE;
   }
   const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(video, 0, 0, 224, 224);
-  return ctx.getImageData(0, 0, 224, 224);
+  ctx.drawImage(video, 0, 0, FRAME_SIZE, FRAME_SIZE);
+  return ctx.getImageData(0, 0, FRAME_SIZE, FRAME_SIZE);
 }
 
 // No async model loading required for the hand-crafted extractor.
