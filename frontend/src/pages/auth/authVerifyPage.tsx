@@ -149,11 +149,8 @@ function AuthVerifyPage() {
         if (!match.overallPassed) {
           setState("decrypt_failed");
           setError(
-            `Identity mismatch. Face cosine ${faceScore} (need ≥ 0.92, ${match.face.passed ? "✓" : "✗"}). ` +
-            `Ear cosine ${earScore} (need ≥ 0.85, ${match.ear.passed ? "✓" : "✗"}). ` +
-            "Ensure good lighting, frame the ear in the centre of the camera, " +
-            "and keep it unobstructed. If verification keeps failing, re-enroll " +
-            "from the registration page.",
+            "Biometric match unsuccessful. Please try again, ensuring good " +
+            "lighting and that your ear is unobstructed.",
           );
           return;
         }

@@ -76,7 +76,6 @@ function MobileVerifyPage() {
   const [enrolledDeviceId, setEnrolledDeviceId] = useState<string>("");
   const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
   const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
-  const [lastScores, setLastScores] = useState<{ face: number; ear: number } | null>(null);
 
   // Save URL so PWA can resume here after install.
   useEffect(() => {
@@ -174,15 +173,9 @@ function MobileVerifyPage() {
           freshFace, enrolledFace,
           result.earDescriptor, enrolledEar,
         );
+        // Developer-facing diagnostic, console only — not surfaced to users.
         const faceScore = match.face.similarity.toFixed(3);
         const earScore = match.ear.similarity.toFixed(3);
-        setLastScores({ face: match.face.similarity, ear: match.ear.similarity });
-        // Diagnostic: dump the first few components and L2 norms of each
-        // descriptor pair. If freshFace and enrolledFace are different
-        // people but cosine is ~1.0, the values here will show whether
-        // they're literally the same vector (bug in capture/storage) or
-        // somehow producing identical descriptors despite different
-        // sources (bug in face-api.js extraction).
         const sample = (v: Float32Array) =>
           Array.from(v.slice(0, 4)).map((n) => n.toFixed(3)).join(", ");
         const norm = (v: Float32Array) => {
@@ -201,11 +194,8 @@ function MobileVerifyPage() {
         if (!match.overallPassed) {
           setState("decrypt_failed");
           setError(
-            `Identity mismatch. Face cosine ${faceScore} (need ≥ 0.92, ${match.face.passed ? "✓" : "✗"}). ` +
-            `Ear cosine ${earScore} (need ≥ 0.85, ${match.ear.passed ? "✓" : "✗"}). ` +
-            "Ensure good lighting, frame the ear in the centre of the camera, " +
-            "and keep it unobstructed. If verification keeps failing, re-enroll " +
-            "from the registration page.",
+            "Biometric match unsuccessful. Please try again, ensuring good " +
+            "lighting and that your ear is unobstructed.",
           );
           return;
         }
@@ -328,22 +318,6 @@ function MobileVerifyPage() {
           {error && (
             <p style={{ color: theme.colors.status.error, marginTop: theme.spacing.sm }}>
               {error}
-            </p>
-          )}
-
-          {lastScores && (
-            <p
-              style={{
-                marginTop: theme.spacing.sm,
-                fontFamily: "monospace",
-                fontSize: "0.85rem",
-                color: theme.colors.text.secondary,
-              }}
-            >
-              [diagnostic] face cosine {lastScores.face.toFixed(3)} (need ≥ 0.92){" "}
-              {lastScores.face >= 0.92 ? "✓" : "✗"} · ear cosine{" "}
-              {lastScores.ear.toFixed(3)} (need ≥ 0.85){" "}
-              {lastScores.ear >= 0.85 ? "✓" : "✗"}
             </p>
           )}
 
