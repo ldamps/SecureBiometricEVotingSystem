@@ -74,7 +74,7 @@ function MobileVerifyPage() {
   const [error, setError] = useState<string | null>(null);
   const [encryptedBundle, setEncryptedBundle] = useState<EncryptedKeyBundle | null>(null);
   const [enrolledDeviceId, setEnrolledDeviceId] = useState<string>("");
-  const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
+  const [enrolledFaces, setEnrolledFaces] = useState<FeatureDescriptor[] | null>(null);
   const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
 
   // Save URL so PWA can resume here after install.
@@ -121,7 +121,15 @@ function MobileVerifyPage() {
       //    gate against enrolled templates. If they're missing (e.g. Safari
       //    purged IndexedDB), force re-enrollment rather than fall through.
       const stored = await retrieveBiometricData(voterId);
-      if (!stored?.faceTemplate || !stored?.earTemplate) {
+      // Accept either the new multi-template format or the legacy
+      // single-template field. Both unmarshal into a list.
+      const faceTemplates: number[][] | undefined =
+        stored?.faceTemplates && stored.faceTemplates.length > 0
+          ? stored.faceTemplates
+          : stored?.faceTemplate
+            ? [stored.faceTemplate]
+            : undefined;
+      if (!faceTemplates || !stored?.earTemplate) {
         setState("no_templates");
         setError(
           "This device is not enrolled for your account. Biometric verification " +
@@ -131,7 +139,7 @@ function MobileVerifyPage() {
         );
         return;
       }
-      setEnrolledFace(new Float32Array(stored.faceTemplate));
+      setEnrolledFaces(faceTemplates.map((t) => new Float32Array(t)));
       setEnrolledEar(new Float32Array(stored.earTemplate));
 
       setEncryptedBundle(JSON.parse(active.encrypted_key_bundle));
@@ -159,7 +167,7 @@ function MobileVerifyPage() {
         // Blocking cosine-similarity gate — rejects impostors before the
         // key is ever touched. `handleStartVerify` guarantees templates
         // are loaded by the time we reach "capturing".
-        if (!enrolledFace || !enrolledEar) {
+        if (!enrolledFaces || enrolledFaces.length === 0 || !enrolledEar) {
           setState("no_templates");
           setError(
             "This device is not enrolled for your account. Biometric verification " +
@@ -170,7 +178,7 @@ function MobileVerifyPage() {
           return;
         }
         const match = matchBoth(
-          freshFace, enrolledFace,
+          freshFace, enrolledFaces,
           result.earDescriptor, enrolledEar,
         );
         // Developer-facing diagnostic, console only — not surfaced to users.
@@ -185,10 +193,13 @@ function MobileVerifyPage() {
         };
         // eslint-disable-next-line no-console
         console.log(
-          `[biometric] cosine match — face=${faceScore} (${match.face.passed ? "PASS" : "FAIL"}), ear=${earScore} (${match.ear.passed ? "PASS" : "FAIL"})\n` +
+          `[biometric] cosine match — face=${faceScore} best of ${enrolledFaces.length} enrolled (${match.face.passed ? "PASS" : "FAIL"}), ` +
+          `ear=${earScore} (${match.ear.passed ? "PASS" : "FAIL"})\n` +
           `  fresh face [${sample(freshFace)}…] norm=${norm(freshFace)}\n` +
-          `  enroll face [${sample(enrolledFace)}…] norm=${norm(enrolledFace)}\n` +
-          `  fresh ear  [${sample(result.earDescriptor)}…] norm=${norm(result.earDescriptor)}\n` +
+          enrolledFaces
+            .map((f, i) => `  enroll face #${i} [${sample(f)}…] norm=${norm(f)}`)
+            .join("\n") +
+          `\n  fresh ear  [${sample(result.earDescriptor)}…] norm=${norm(result.earDescriptor)}\n` +
           `  enroll ear [${sample(enrolledEar)}…] norm=${norm(enrolledEar)}`,
         );
         if (!match.overallPassed) {
@@ -269,7 +280,7 @@ function MobileVerifyPage() {
         setState("error");
       }
     },
-    [encryptedBundle, voterId, enrolledDeviceId, enrolledFace, enrolledEar],
+    [encryptedBundle, voterId, enrolledDeviceId, enrolledFaces, enrolledEar],
   );
 
   const handleCaptureError = useCallback((message: string) => {

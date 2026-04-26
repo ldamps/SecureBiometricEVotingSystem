@@ -33,6 +33,28 @@ export function matchFace(
   return { similarity, passed: similarity >= BIOMETRIC_THRESHOLDS.FACE };
 }
 
+/**
+ * Compare a fresh face descriptor against multiple enrolled descriptors
+ * and return the best cosine. Used when enrolment captured several
+ * descriptors under varied lighting/pose — same person under conditions
+ * close to *any* of them passes, while a different person remains far
+ * from all of them.
+ */
+export function matchFaceAgainstSet(
+  probe: FeatureDescriptor,
+  references: FeatureDescriptor[],
+): MatchResult {
+  if (references.length === 0) {
+    return { similarity: 0, passed: false };
+  }
+  let best = -1;
+  for (const ref of references) {
+    const sim = cosineSimilarity(probe, ref);
+    if (sim > best) best = sim;
+  }
+  return { similarity: best, passed: best >= BIOMETRIC_THRESHOLDS.FACE };
+}
+
 export function matchEar(
   probe: FeatureDescriptor,
   reference: FeatureDescriptor,
@@ -43,14 +65,20 @@ export function matchEar(
 
 /**
  * AND-fusion: both modalities must pass independently.
+ *
+ * `faceRef` accepts either a single descriptor (legacy) or an array of
+ * enrolled descriptors. With an array, the best cosine across the set
+ * is used — see `matchFaceAgainstSet` for rationale.
  */
 export function matchBoth(
   faceProbe: FeatureDescriptor,
-  faceRef: FeatureDescriptor,
+  faceRef: FeatureDescriptor | FeatureDescriptor[],
   earProbe: FeatureDescriptor,
   earRef: FeatureDescriptor,
 ): MultiModalMatchResult {
-  const face = matchFace(faceProbe, faceRef);
+  const face = Array.isArray(faceRef)
+    ? matchFaceAgainstSet(faceProbe, faceRef)
+    : matchFace(faceProbe, faceRef);
   const ear = matchEar(earProbe, earRef);
   return { face, ear, overallPassed: face.passed && ear.passed };
 }

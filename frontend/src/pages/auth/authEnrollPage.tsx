@@ -53,12 +53,12 @@ function AuthEnrollPage() {
           result.earDescriptor,
         );
 
-        // The locally stored face template is used only for the advisory
-        // similarity gate on this device — it's not a security boundary.
-        // Use the first enrolment descriptor.
+        // Store every enrolment face descriptor. Verification compares
+        // the fresh capture against all of them and uses the best
+        // cosine — much more reliable than picking one.
         await storeBiometricData({
           voterId,
-          faceTemplate: Array.from(result.faceDescriptors[0]),
+          faceTemplates: result.faceDescriptors.map((d) => Array.from(d)),
           earTemplate: Array.from(result.earDescriptor),
           encryptedKeyBundle: encryptedBundle,
           enrolledAt: new Date().toISOString(),

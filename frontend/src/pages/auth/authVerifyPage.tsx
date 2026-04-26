@@ -51,7 +51,7 @@ function AuthVerifyPage() {
   const [error, setError] = useState<string | null>(null);
   const [encryptedBundle, setEncryptedBundle] = useState<EncryptedKeyBundle | null>(null);
   const [enrolledDeviceId, setEnrolledDeviceId] = useState<string>("");
-  const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
+  const [enrolledFaces, setEnrolledFaces] = useState<FeatureDescriptor[] | null>(null);
   const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
 
   useEffect(() => {
@@ -88,7 +88,13 @@ function AuthVerifyPage() {
       // gate against the enrolled templates is what stops someone else
       // verifying on this device.
       const stored = await retrieveBiometricData(voterId);
-      if (!stored?.faceTemplate || !stored?.earTemplate) {
+      const faceTemplates: number[][] | undefined =
+        stored?.faceTemplates && stored.faceTemplates.length > 0
+          ? stored.faceTemplates
+          : stored?.faceTemplate
+            ? [stored.faceTemplate]
+            : undefined;
+      if (!faceTemplates || !stored?.earTemplate) {
         setState("no_templates");
         setError(
           "This device is not enrolled for your account. Biometric " +
@@ -98,7 +104,7 @@ function AuthVerifyPage() {
         );
         return;
       }
-      setEnrolledFace(new Float32Array(stored.faceTemplate));
+      setEnrolledFaces(faceTemplates.map((t) => new Float32Array(t)));
       setEnrolledEar(new Float32Array(stored.earTemplate));
 
       setEncryptedBundle(JSON.parse(active.encrypted_key_bundle));
@@ -125,7 +131,7 @@ function AuthVerifyPage() {
         // Blocking cosine-similarity gate — rejects impostors before the
         // encrypted key is ever touched. `handleStartVerify` guarantees
         // templates are loaded by the time we reach "capturing".
-        if (!enrolledFace || !enrolledEar) {
+        if (!enrolledFaces || enrolledFaces.length === 0 || !enrolledEar) {
           setState("no_templates");
           setError(
             "This device is not enrolled for your account. Biometric " +
@@ -136,15 +142,15 @@ function AuthVerifyPage() {
           return;
         }
         const match = matchBoth(
-          freshFace, enrolledFace,
+          freshFace, enrolledFaces,
           result.earDescriptor, enrolledEar,
         );
         const faceScore = match.face.similarity.toFixed(3);
         const earScore = match.ear.similarity.toFixed(3);
         // eslint-disable-next-line no-console
         console.log(
-          `[biometric] cosine match — face=${faceScore} (need ≥ 0.92, ${match.face.passed ? "PASS" : "FAIL"}), ` +
-          `ear=${earScore} (need ≥ 0.85, ${match.ear.passed ? "PASS" : "FAIL"})`,
+          `[biometric] cosine match — face=${faceScore} best of ${enrolledFaces.length} enrolled (need ≥ 0.92, ${match.face.passed ? "PASS" : "FAIL"}), ` +
+          `ear=${earScore} (need ≥ 0.70, ${match.ear.passed ? "PASS" : "FAIL"})`,
         );
         if (!match.overallPassed) {
           setState("decrypt_failed");
@@ -226,7 +232,7 @@ function AuthVerifyPage() {
         setState("error");
       }
     },
-    [encryptedBundle, voterId, enrolledDeviceId, enrolledFace, enrolledEar],
+    [encryptedBundle, voterId, enrolledDeviceId, enrolledFaces, enrolledEar],
   );
 
   const handleCaptureError = useCallback((message: string) => {

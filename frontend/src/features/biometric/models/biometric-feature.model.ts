@@ -117,10 +117,27 @@ export const MAX_HELPERS = 8;
 /** Number of pose/lighting captures taken during initial enrollment. */
 export const ENROLLMENT_CAPTURES = 3;
 
-/** Full biometric enrollment data persisted on the device. */
+/** Full biometric enrollment data persisted on the device.
+ *
+ * `faceTemplates` holds every face descriptor captured at enrolment
+ * (3 in the standard enrol flow, taken under deliberately varied
+ * lighting/pose). Verification compares the fresh capture against all
+ * of them and uses the best cosine — same person under conditions
+ * close to *any* of the enrolment captures will pass, which makes the
+ * cosine gate substantially more reliable than comparing against a
+ * single average.
+ *
+ * `faceTemplate` (singular) is kept as a backwards-compatibility
+ * fallback for legacy enrolments that pre-date the multi-template
+ * format. When present, the verify path treats it as a single-element
+ * faceTemplates array.
+ */
 export interface StoredBiometricData {
   voterId: string;
-  faceTemplate: number[];
+  /** Multiple face descriptors from enrolment (preferred). */
+  faceTemplates?: number[][];
+  /** Legacy single-descriptor field. Read-only fallback. */
+  faceTemplate?: number[];
   earTemplate: number[];
   encryptedKeyBundle: EncryptedKeyBundle;
   enrolledAt: string;
