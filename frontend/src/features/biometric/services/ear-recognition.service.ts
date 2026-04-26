@@ -41,6 +41,15 @@ const ORIENTATION_BINS = 9;
 const FRAME_SIZE = 224;
 const SMOOTHING_KERNEL = 5;
 
+/** Central region (in pixels) used for HOG. The 224×224 frame contains
+ *  too much hair / neck / background; computing HOG over the whole frame
+ *  lets a wrong ear from the same person in the same setting score
+ *  almost identically to the enrolled ear because the descriptor is
+ *  dominated by surrounding structure. Cropping to the inner region
+ *  forces the descriptor to focus on the ear itself. */
+const CROP_SIZE = 144;
+const CROP_OFFSET = (FRAME_SIZE - CROP_SIZE) >> 1;
+
 let projectionMatrix: Float32Array | null = null;
 let canvas: HTMLCanvasElement | null = null;
 
@@ -193,19 +202,27 @@ function extractRawFeatures(imageData: ImageData): Float32Array {
     }
   }
 
-  // Per-cell HOG histograms.
-  const cellW = Math.floor(width / CELL_GRID);
-  const cellH = Math.floor(height / CELL_GRID);
+  // Per-cell HOG histograms — restricted to the central CROP_SIZE × CROP_SIZE
+  // region of the frame so the descriptor reflects ear shape rather than
+  // surrounding hair / neck / background, which otherwise dominate.
+  const cellW = Math.floor(CROP_SIZE / CELL_GRID);
+  const cellH = Math.floor(CROP_SIZE / CELL_GRID);
   const features = new Float32Array(RAW_DIM);
   let writeIdx = 0;
 
   for (let cy = 0; cy < CELL_GRID; cy++) {
     for (let cx = 0; cx < CELL_GRID; cx++) {
       const hist = new Float32Array(ORIENTATION_BINS);
-      const yStart = cy * cellH;
-      const yEnd = cy === CELL_GRID - 1 ? height : (cy + 1) * cellH;
-      const xStart = cx * cellW;
-      const xEnd = cx === CELL_GRID - 1 ? width : (cx + 1) * cellW;
+      const yStart = CROP_OFFSET + cy * cellH;
+      const yEnd =
+        cy === CELL_GRID - 1
+          ? CROP_OFFSET + CROP_SIZE
+          : CROP_OFFSET + (cy + 1) * cellH;
+      const xStart = CROP_OFFSET + cx * cellW;
+      const xEnd =
+        cx === CELL_GRID - 1
+          ? CROP_OFFSET + CROP_SIZE
+          : CROP_OFFSET + (cx + 1) * cellW;
 
       for (let y = yStart; y < yEnd; y++) {
         for (let x = xStart; x < xEnd; x++) {

@@ -128,22 +128,19 @@ export interface StoredBiometricData {
 
 /** Thresholds for biometric matching (cosine similarity).
  *
- * These thresholds gate an advisory template-matching check that
- * provides better error messages when enrolled templates are available
- * in IndexedDB.  The primary security gate is the dual-modality
- * biometric-bound key decryption (AES-GCM over both face and ear
- * fuzzy extractors), NOT template matching — so these thresholds are
- * set permissively enough to accommodate cross-session variation
- * (lighting, angle, framing) on the same device.
- *
  * Face 0.92 reliably rejects impostors against face-api.js's deep
- * descriptors. Ear 0.55 reflects the wider intra-class variation of
- * hand-crafted HOG ear descriptors — wrong-ear rejection is enforced
- * cryptographically by the fuzzy extractor, not by this advisory gate.
+ * descriptors. Ear 0.80 reflects the tighter intra-class clustering
+ * once the descriptor focuses on the central ear region (rather than
+ * the whole frame including hair / background) — same-ear cosine sits
+ * comfortably above this while wrong-ear (even from the same person in
+ * the same setting) drops well below it.
+ *
+ * Both gates are advisory; the primary security boundary is the
+ * dual-modality biometric-bound AES-GCM decryption.
  */
 export const BIOMETRIC_THRESHOLDS = {
   FACE: 0.92,
-  EAR: 0.55,
+  EAR: 0.80,
 } as const;
 
 /** Legacy quantisation parameters (4 bins).
@@ -181,4 +178,25 @@ export const ENROLLMENT_QUANTISATION_PARAMS: QuantisationParams = {
   numBins: 5,
   rangeMin: -1.0,
   rangeMax: 1.0,
+};
+
+/** Ear-specific quantisation parameters.
+ *
+ * The HOG ear descriptor passes through a random projection and is then
+ * L2-normalised, which packs all 128 components into a tight band of
+ * roughly [-0.3, 0.3] with std ≈ 1/√128 ≈ 0.088. Using the wider
+ * face-style range [-1, 1] would push virtually every component into
+ * the centre bin (boundaries at ±0.2 / ±0.6), wiping out the byte-level
+ * differences between two different ears — both would quantise to
+ * "almost all centre bin" regardless of identity.
+ *
+ * Narrowing the range to [-0.3, 0.3] aligns the bin boundaries with the
+ * actual descriptor distribution, so different ears produce distinct
+ * quantised bytes that the fuzzy extractor can reject when they exceed
+ * the Reed-Solomon error-correction budget.
+ */
+export const EAR_QUANTISATION_PARAMS: QuantisationParams = {
+  numBins: 5,
+  rangeMin: -0.3,
+  rangeMax: 0.3,
 };

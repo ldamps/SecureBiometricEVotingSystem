@@ -58,6 +58,7 @@ import {
   FeatureDescriptor,
   EncryptedKeyBundle,
   QuantisationParams,
+  EAR_QUANTISATION_PARAMS,
   ENROLLMENT_QUANTISATION_PARAMS,
   MAX_HELPERS,
 } from "../models/biometric-feature.model";
@@ -221,7 +222,11 @@ export async function generateAndEncryptKeyPair(
   const faceHelpers: string[] = faceDescriptors.map((d) =>
     buildHelper(d, mFace, params),
   );
-  const earHelpers: string[] = [buildHelper(earDescriptor, mEar, params)];
+  // Ear uses its own quantisation range matched to the HOG descriptor's
+  // tighter L2-normalised distribution. See EAR_QUANTISATION_PARAMS.
+  const earHelpers: string[] = [
+    buildHelper(earDescriptor, mEar, EAR_QUANTISATION_PARAMS),
+  ];
 
   // 3. Combined secret seeds the AES key.
   const combined = new Uint8Array(mFace.length + mEar.length);
@@ -301,7 +306,7 @@ export async function decryptPrivateKey(
 
   const params = bundle.quantisationParams ?? ENROLLMENT_QUANTISATION_PARAMS;
   const bFace = descriptorToBytes(faceDescriptor, params);
-  const bEar = descriptorToBytes(earDescriptor, params);
+  const bEar = descriptorToBytes(earDescriptor, EAR_QUANTISATION_PARAMS);
 
   const recoveredFaceMessage = recoverMessageFromHelpers(bundle.face_helpers, bFace);
   if (recoveredFaceMessage === null) {
@@ -363,7 +368,11 @@ export function appendAdaptiveHelper(
   const params = bundle.quantisationParams ?? ENROLLMENT_QUANTISATION_PARAMS;
 
   const newFaceHelper = buildHelper(faceDescriptor, recoveredFaceMessage, params);
-  const newEarHelper = buildHelper(earDescriptor, recoveredEarMessage, params);
+  const newEarHelper = buildHelper(
+    earDescriptor,
+    recoveredEarMessage,
+    EAR_QUANTISATION_PARAMS,
+  );
 
   const faceHelpers = [...(bundle.face_helpers ?? [])];
   const earHelpers = [...(bundle.ear_helpers ?? [])];
