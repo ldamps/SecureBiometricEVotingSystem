@@ -76,6 +76,7 @@ function MobileVerifyPage() {
   const [enrolledDeviceId, setEnrolledDeviceId] = useState<string>("");
   const [enrolledFace, setEnrolledFace] = useState<FeatureDescriptor | null>(null);
   const [enrolledEar, setEnrolledEar] = useState<FeatureDescriptor | null>(null);
+  const [lastScores, setLastScores] = useState<{ face: number; ear: number } | null>(null);
 
   // Save URL so PWA can resume here after install.
   useEffect(() => {
@@ -173,19 +174,22 @@ function MobileVerifyPage() {
           freshFace, enrolledFace,
           result.earDescriptor, enrolledEar,
         );
+        const faceScore = match.face.similarity.toFixed(3);
+        const earScore = match.ear.similarity.toFixed(3);
+        setLastScores({ face: match.face.similarity, ear: match.ear.similarity });
+        // eslint-disable-next-line no-console
+        console.log(
+          `[biometric] cosine match — face=${faceScore} (need ≥ 0.92, ${match.face.passed ? "PASS" : "FAIL"}), ` +
+          `ear=${earScore} (need ≥ 0.85, ${match.ear.passed ? "PASS" : "FAIL"})`,
+        );
         if (!match.overallPassed) {
           setState("decrypt_failed");
-          const failedModality =
-            !match.face.passed && !match.ear.passed
-              ? "face and ear did"
-              : !match.face.passed
-                ? "face did"
-                : "ear did";
           setError(
-            `Identity mismatch. Your ${failedModality} not match the enrolled ` +
-            "biometric on this device. If this is your phone, ensure good " +
-            "lighting, face the camera directly, and keep your ear unobstructed. " +
-            "If verification keeps failing, re-enroll from the registration page.",
+            `Identity mismatch. Face cosine ${faceScore} (need ≥ 0.92, ${match.face.passed ? "✓" : "✗"}). ` +
+            `Ear cosine ${earScore} (need ≥ 0.85, ${match.ear.passed ? "✓" : "✗"}). ` +
+            "Ensure good lighting, frame the ear in the centre of the camera, " +
+            "and keep it unobstructed. If verification keeps failing, re-enroll " +
+            "from the registration page.",
           );
           return;
         }
@@ -308,6 +312,22 @@ function MobileVerifyPage() {
           {error && (
             <p style={{ color: theme.colors.status.error, marginTop: theme.spacing.sm }}>
               {error}
+            </p>
+          )}
+
+          {lastScores && (
+            <p
+              style={{
+                marginTop: theme.spacing.sm,
+                fontFamily: "monospace",
+                fontSize: "0.85rem",
+                color: theme.colors.text.secondary,
+              }}
+            >
+              [diagnostic] face cosine {lastScores.face.toFixed(3)} (need ≥ 0.92){" "}
+              {lastScores.face >= 0.92 ? "✓" : "✗"} · ear cosine{" "}
+              {lastScores.ear.toFixed(3)} (need ≥ 0.85){" "}
+              {lastScores.ear >= 0.85 ? "✓" : "✗"}
             </p>
           )}
 

@@ -139,20 +139,21 @@ function AuthVerifyPage() {
           freshFace, enrolledFace,
           result.earDescriptor, enrolledEar,
         );
+        const faceScore = match.face.similarity.toFixed(3);
+        const earScore = match.ear.similarity.toFixed(3);
+        // eslint-disable-next-line no-console
+        console.log(
+          `[biometric] cosine match — face=${faceScore} (need ≥ 0.92, ${match.face.passed ? "PASS" : "FAIL"}), ` +
+          `ear=${earScore} (need ≥ 0.85, ${match.ear.passed ? "PASS" : "FAIL"})`,
+        );
         if (!match.overallPassed) {
           setState("decrypt_failed");
-          const failedModality =
-            !match.face.passed && !match.ear.passed
-              ? "face and ear did"
-              : !match.face.passed
-                ? "face did"
-                : "ear did";
           setError(
-            `Identity mismatch. Your ${failedModality} not match the enrolled ` +
-            "biometric on this device. If this is your phone, ensure good " +
-            "lighting, face the camera directly, and keep your ear " +
-            "unobstructed. If verification keeps failing, re-enroll from the " +
-            "registration page.",
+            `Identity mismatch. Face cosine ${faceScore} (need ≥ 0.92, ${match.face.passed ? "✓" : "✗"}). ` +
+            `Ear cosine ${earScore} (need ≥ 0.85, ${match.ear.passed ? "✓" : "✗"}). ` +
+            "Ensure good lighting, frame the ear in the centre of the camera, " +
+            "and keep it unobstructed. If verification keeps failing, re-enroll " +
+            "from the registration page.",
           );
           return;
         }

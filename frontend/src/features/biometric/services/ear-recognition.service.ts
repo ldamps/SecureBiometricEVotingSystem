@@ -194,10 +194,15 @@ function extractRawFeatures(imageData: ImageData): Float32Array {
         2 * gray[(y + 1) * width + x] +
         gray[(y + 1) * width + (x + 1)];
       gradMag[idx] = Math.sqrt(gx * gx + gy * gy);
-      // Map [-π, π] → [0, π] (unsigned orientations: edges have the
-      // same identity regardless of which side is brighter).
+      // Signed orientations [0, 2π] preserve gradient *direction*, not
+      // just edge orientation. This is critical for left-vs-right ear
+      // discrimination: the helix of a left ear curls the opposite way
+      // from a right ear, producing gradients in opposite directions
+      // along the curve. Folding to unsigned [0, π] would make the two
+      // ears look identical at the descriptor level. Per-cell L2
+      // normalisation downstream still handles lighting variation.
       let angle = Math.atan2(gy, gx);
-      if (angle < 0) angle += Math.PI;
+      if (angle < 0) angle += 2 * Math.PI;
       gradOri[idx] = angle;
     }
   }
@@ -230,7 +235,7 @@ function extractRawFeatures(imageData: ImageData): Float32Array {
           const mag = gradMag[idx];
           if (mag === 0) continue;
           const angle = gradOri[idx];
-          const binFloat = (angle / Math.PI) * ORIENTATION_BINS;
+          const binFloat = (angle / (2 * Math.PI)) * ORIENTATION_BINS;
           const bin = Math.min(ORIENTATION_BINS - 1, Math.floor(binFloat));
           hist[bin] += mag;
         }
