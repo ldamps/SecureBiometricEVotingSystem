@@ -17,6 +17,8 @@ import { ElectionApiRepository } from "../../features/election/repositories/elec
 import { Election, ElectionStatus, ELECTION_TYPE_LABELS, ALLOCATION_METHOD_LABELS, AllocationMethod, ElectionType, UpdateElectionRequest } from "../../features/election/model/election.model";
 import CreateElection from "../../features/election/components/createElection";
 import EditElection from "../../features/election/components/editElection";
+import ManageCandidates from "../../features/election/components/manageCandidates";
+import ManageParties from "../../features/election/components/manageParties";
 import ReopenWindowModal from "../../features/officials/components/reopenWindowModal";
 
 const electionApiRepository = new ElectionApiRepository();
@@ -47,6 +49,8 @@ const ManageElectionsPage: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [editElection, setEditElection] = useState<Election | null>(null);
   const [reopenTarget, setReopenTarget] = useState<Election | null>(null);
+  const [candidatesElection, setCandidatesElection] = useState<Election | null>(null);
+  const [partiesOpen, setPartiesOpen] = useState(false);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -96,17 +100,26 @@ const ManageElectionsPage: React.FC = () => {
     <div style={pageWrapper}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: theme.spacing.sm, paddingLeft: theme.spacing.xl, paddingRight: theme.spacing.xl }}>
         <h1 style={{ ...pageTitle, marginBottom: 0, paddingLeft: 0 }}>Manage elections</h1>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          style={{
-            ...getTabButtonStyle(theme, true),
-            background: theme.colors.primary,
-            color: theme.colors.text.inverse,
-          }}
-        >
-          + New election
-        </button>
+        <div style={{ display: "flex", gap: theme.spacing.sm, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => setPartiesOpen(true)}
+            style={getTabButtonStyle(theme, false)}
+          >
+            Manage parties
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            style={{
+              ...getTabButtonStyle(theme, true),
+              background: theme.colors.primary,
+              color: theme.colors.text.inverse,
+            }}
+          >
+            + New election
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: theme.spacing.xl }}>
@@ -162,6 +175,10 @@ const ManageElectionsPage: React.FC = () => {
                         <td style={getTableCellStyle(theme)}>{el.constituency_ids.length}</td>
                         <td style={{ ...getTableCellStyle(theme), whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", gap: theme.spacing.xs, flexWrap: "wrap" }}>
+                            <button type="button" onClick={() => setCandidatesElection(el)}
+                              style={{ ...getTabButtonStyle(theme, false), padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}>
+                              Candidates
+                            </button>
                             {el.status === ElectionStatus.DRAFT && (
                               <>
                                 <button type="button" onClick={() => setEditElection(el)}
@@ -229,6 +246,15 @@ const ManageElectionsPage: React.FC = () => {
         currentVotingCloses={reopenTarget?.voting_closes}
         onClose={() => setReopenTarget(null)}
         onConfirm={handleReopenConfirm}
+      />
+      <ManageParties
+        open={partiesOpen}
+        onClose={() => setPartiesOpen(false)}
+      />
+      <ManageCandidates
+        open={candidatesElection !== null}
+        election={candidatesElection}
+        onClose={() => setCandidatesElection(null)}
       />
     </div>
   );

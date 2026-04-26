@@ -16,3 +16,28 @@ export interface Party {
     abbreviation?: string;
     is_active: boolean;
 }
+
+export interface CreateCandidateRequest {
+    constituency_id: string;
+    first_name: string;
+    last_name: string;
+    party_id: string;
+}
+
+export interface UpdateCandidateRequest {
+    first_name?: string;
+    last_name?: string;
+    is_active?: boolean;
+}
+
+export interface CreatePartyRequest {
+    party_name: string;
+    abbreviation?: string;
+    is_active?: boolean;
+}
+
+export interface UpdatePartyRequest {
+    party_name?: string;
+    abbreviation?: string;
+    is_active?: boolean;
+}
