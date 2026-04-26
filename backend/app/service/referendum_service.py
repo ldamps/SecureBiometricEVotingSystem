@@ -190,12 +190,31 @@ class ReferendumService(EncryptionUtilsMixin):
                     if current.voting_closes is not None and current.voting_closes > now:
                         data["voting_closes"] = now
 
+            # Mirror of the close-snap: when reopening (CLOSED -> OPEN), a
+            # voting_closes in the past would otherwise cause the schedule-based
+            # sync to immediately revert the status back to CLOSED.
+            reopening = (
+                data.get("status") == ReferendumStatus.OPEN.value
+                and current.status == ReferendumStatus.CLOSED.value
+            )
+
             # Extract constituency_ids before passing to repo (not a DB column)
             constituency_ids = data.pop("constituency_ids", None)
 
             updated = await self.referendum_repo.update_referendum(
                 self.session, referendum_id, data, is_draft=is_draft,
             )
+
+            if reopening:
+                from sqlalchemy import update as sa_update
+                now = datetime.now(timezone.utc)
+                if updated.voting_closes is not None and updated.voting_closes <= now:
+                    await self.session.execute(
+                        sa_update(self.referendum_repo._model)
+                        .where(self.referendum_repo._model.id == referendum_id)
+                        .values(voting_closes=None)
+                    )
+                    await self.session.flush()
 
             # Re-link constituencies if provided (draft only)
             if is_draft and constituency_ids is not None:

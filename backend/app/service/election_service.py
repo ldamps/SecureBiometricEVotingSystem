@@ -195,9 +195,28 @@ class ElectionService(EncryptionUtilsMixin):
                     if current.voting_closes is not None and current.voting_closes > now:
                         dto.voting_closes = now
 
+            # Mirror of the close-snap: when reopening (CLOSED -> OPEN), a
+            # voting_closes in the past would otherwise cause the schedule-based
+            # sync to immediately revert the status back to CLOSED.
+            reopening = (
+                dto.status == ElectionStatus.OPEN.value
+                and current.status == ElectionStatus.CLOSED.value
+            )
+
             updated = await self.election_repo.update_election(
                 self.session, election_id, dto, is_draft=is_draft,
             )
+
+            if reopening:
+                from sqlalchemy import update as sa_update
+                now = datetime.now(timezone.utc)
+                if updated.voting_closes is not None and updated.voting_closes <= now:
+                    await self.session.execute(
+                        sa_update(self.election_repo._model)
+                        .where(self.election_repo._model.id == election_id)
+                        .values(voting_closes=None)
+                    )
+                    await self.session.flush()
 
             # Re-link constituencies if provided (draft only)
             if is_draft and dto.constituency_ids is not None:

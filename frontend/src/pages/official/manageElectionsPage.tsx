@@ -17,6 +17,7 @@ import { ElectionApiRepository } from "../../features/election/repositories/elec
 import { Election, ElectionStatus, ELECTION_TYPE_LABELS, ALLOCATION_METHOD_LABELS, AllocationMethod, ElectionType, UpdateElectionRequest } from "../../features/election/model/election.model";
 import CreateElection from "../../features/election/components/createElection";
 import EditElection from "../../features/election/components/editElection";
+import ReopenWindowModal from "../../features/officials/components/reopenWindowModal";
 
 const electionApiRepository = new ElectionApiRepository();
 
@@ -41,18 +42,18 @@ const ManageElectionsPage: React.FC = () => {
   const { theme } = useTheme();
 
   const [elections, setElections] = useState<Election[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editElection, setEditElection] = useState<Election | null>(null);
+  const [reopenTarget, setReopenTarget] = useState<Election | null>(null);
 
   const loadData = useCallback(() => {
-    setLoading(true);
     setError(null);
     electionApiRepository.listElections()
       .then(setElections)
       .catch((err: Error) => setError(err.message || "Failed to load elections."))
-      .finally(() => setLoading(false));
+      .finally(() => setHasLoaded(true));
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -66,6 +67,18 @@ const ManageElectionsPage: React.FC = () => {
       const message = err instanceof Error ? err.message : "Failed to update election status.";
       setError(message);
     }
+  };
+
+  const handleReopenConfirm = async (votingOpensIso: string | undefined, votingClosesIso: string) => {
+    if (!reopenTarget) return;
+    const body: UpdateElectionRequest = {
+      status: ElectionStatus.OPEN,
+      voting_opens: votingOpensIso,
+      voting_closes: votingClosesIso,
+    };
+    await electionApiRepository.updateElection(reopenTarget.id, body);
+    setReopenTarget(null);
+    loadData();
   };
 
   const pageWrapper = getPageContentWrapperStyle(theme);
@@ -97,7 +110,7 @@ const ManageElectionsPage: React.FC = () => {
       </div>
 
       <div style={{ padding: theme.spacing.xl }}>
-        {loading && <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading...</p>}
+        {!hasLoaded && <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading...</p>}
         {error && (
           <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}`, marginBottom: theme.spacing.lg }}>
             <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>{error}</p>
@@ -107,7 +120,7 @@ const ManageElectionsPage: React.FC = () => {
           </div>
         )}
 
-        {!loading && !error && (
+        {hasLoaded && !error && (
           <div style={{ ...card }}>
             <h3 style={{ ...cardTitle, marginBottom: theme.spacing.md }}>Elections ({elections.length})</h3>
             {elections.length === 0 ? (
@@ -174,7 +187,7 @@ const ManageElectionsPage: React.FC = () => {
                               </>
                             )}
                             {el.status === ElectionStatus.CLOSED && (
-                              <button type="button" onClick={() => handleStatusChange(el.id, ElectionStatus.OPEN)}
+                              <button type="button" onClick={() => setReopenTarget(el)}
                                 style={{ ...getTabButtonStyle(theme, true), background: theme.colors.status.success, color: theme.colors.text.inverse, padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}>
                                 Reopen
                               </button>
@@ -207,6 +220,15 @@ const ManageElectionsPage: React.FC = () => {
         election={editElection}
         onClose={() => setEditElection(null)}
         onUpdated={() => { setEditElection(null); loadData(); }}
+      />
+      <ReopenWindowModal
+        open={reopenTarget !== null}
+        kind="election"
+        title={reopenTarget?.title ?? ""}
+        currentVotingOpens={reopenTarget?.voting_opens}
+        currentVotingCloses={reopenTarget?.voting_closes}
+        onClose={() => setReopenTarget(null)}
+        onConfirm={handleReopenConfirm}
       />
     </div>
   );

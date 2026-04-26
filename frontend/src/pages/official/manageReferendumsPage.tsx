@@ -17,6 +17,7 @@ import { ReferendumApiRepository } from "../../features/referendum/repositories/
 import { Referendum, ReferendumStatus, UpdateReferendumRequest } from "../../features/referendum/model/referendum.model";
 import CreateReferendum from "../../features/referendum/components/createReferendum";
 import EditReferendum from "../../features/referendum/components/editReferendum";
+import ReopenWindowModal from "../../features/officials/components/reopenWindowModal";
 
 const referendumApiRepository = new ReferendumApiRepository();
 
@@ -41,18 +42,18 @@ const ManageReferendumsPage: React.FC = () => {
   const { theme } = useTheme();
 
   const [referendums, setReferendums] = useState<Referendum[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editReferendum, setEditReferendum] = useState<Referendum | null>(null);
+  const [reopenTarget, setReopenTarget] = useState<Referendum | null>(null);
 
   const loadData = useCallback(() => {
-    setLoading(true);
     setError(null);
     referendumApiRepository.listReferendums()
       .then(setReferendums)
       .catch((err: Error) => setError(err.message || "Failed to load referendums."))
-      .finally(() => setLoading(false));
+      .finally(() => setHasLoaded(true));
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -66,6 +67,18 @@ const ManageReferendumsPage: React.FC = () => {
       const message = err instanceof Error ? err.message : "Failed to update referendum status.";
       setError(message);
     }
+  };
+
+  const handleReopenConfirm = async (votingOpensIso: string | undefined, votingClosesIso: string) => {
+    if (!reopenTarget) return;
+    const body: UpdateReferendumRequest = {
+      status: ReferendumStatus.OPEN,
+      voting_opens: votingOpensIso,
+      voting_closes: votingClosesIso,
+    };
+    await referendumApiRepository.updateReferendum(reopenTarget.id, body);
+    setReopenTarget(null);
+    loadData();
   };
 
   const pageWrapper = getPageContentWrapperStyle(theme);
@@ -97,7 +110,7 @@ const ManageReferendumsPage: React.FC = () => {
       </div>
 
       <div style={{ padding: theme.spacing.xl }}>
-        {loading && <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading...</p>}
+        {!hasLoaded && <p style={{ ...cardText, color: theme.colors.text.secondary }}>Loading...</p>}
         {error && (
           <div style={{ ...card, borderLeft: `4px solid ${theme.colors.status.error}`, marginBottom: theme.spacing.lg }}>
             <p style={{ ...cardText, margin: 0, color: theme.colors.status.error }}>{error}</p>
@@ -107,7 +120,7 @@ const ManageReferendumsPage: React.FC = () => {
           </div>
         )}
 
-        {!loading && !error && (
+        {hasLoaded && !error && (
           <div style={{ ...card }}>
             <h3 style={{ ...cardTitle, marginBottom: theme.spacing.md }}>Referendums ({referendums.length})</h3>
             {referendums.length === 0 ? (
@@ -170,7 +183,7 @@ const ManageReferendumsPage: React.FC = () => {
                               </>
                             )}
                             {ref.status === ReferendumStatus.CLOSED && (
-                              <button type="button" onClick={() => handleStatusChange(ref.id, ReferendumStatus.OPEN)}
+                              <button type="button" onClick={() => setReopenTarget(ref)}
                                 style={{ ...getTabButtonStyle(theme, true), background: theme.colors.status.success, color: theme.colors.text.inverse, padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fontSizes.xs }}>
                                 Reopen
                               </button>
@@ -203,6 +216,15 @@ const ManageReferendumsPage: React.FC = () => {
         referendum={editReferendum}
         onClose={() => setEditReferendum(null)}
         onUpdated={() => { setEditReferendum(null); loadData(); }}
+      />
+      <ReopenWindowModal
+        open={reopenTarget !== null}
+        kind="referendum"
+        title={reopenTarget?.title ?? ""}
+        currentVotingOpens={reopenTarget?.voting_opens}
+        currentVotingCloses={reopenTarget?.voting_closes}
+        onClose={() => setReopenTarget(null)}
+        onConfirm={handleReopenConfirm}
       />
     </div>
   );
