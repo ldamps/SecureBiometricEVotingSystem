@@ -603,7 +603,7 @@ Encrypted fields are stored as PostgreSQL JSONB columns (`EncryptedDBField`) con
 
 ## 10. Biometric Authentication
 
-The system uses a **match-on-device** model — biometric templates (face and ear descriptors) never leave the user's mobile device. The server only stores a public key and verifies cryptographic signatures.
+The system uses a **match-on-device** model — biometric templates (face and ear descriptors) never leave the user's mobile device, and the server never performs biometric comparison. The server stores the public key and an **encrypted key bundle** (the device's ECDSA private key wrapped under a biometric-derived AES-256 key). The bundle is held authoritatively on the server so adaptive helper updates persist across sessions; on the device, only the raw face/ear templates remain (in IndexedDB) for the cosine-similarity gate at verification time.
 
 ### 10.1 Flow
 
@@ -616,47 +616,71 @@ The system uses a **match-on-device** model — biometric templates (face and ea
   ENROLLMENT                    │                        │
        │  1. Generate ECDSA     │                        │
        │     P-256 key pair     │                        │
-       │  2. Capture face+ear   │                        │
-       │     descriptors        │                        │
-       │  3. Store private key  │                        │
-       │     + descriptors      │                        │
-       │     on device          │                        │
+       │  2. Capture 3 face +   │                        │
+       │     1 ear descriptors  │                        │
+       │     (blink liveness)   │                        │
+       │  3. Build dual-modality│                        │
+       │     fuzzy-extractor    │                        │
+       │     bundle: per-       │                        │
+       │     modality RS helpers│                        │
+       │     XOR'd with descrs; │                        │
+       │     m_face‖m_ear ─►    │                        │
+       │     PBKDF2 ─► AES-256; │                        │
+       │     encrypt private key│                        │
+       │  4. Store templates    │                        │
+       │     locally (IndexedDB)│                        │
        │                        │                        │
-       │──POST /enroll─────────►│  4. Validate PEM key   │
+       │──POST /enroll─────────►│  5. Validate PEM key   │
        │  (public_key_pem,      │     is ECDSA P-256     │
-       │   device_id,           │──store credential─────►│
+       │   encrypted_key_bundle,│──store credential─────►│
+       │   device_id,           │                        │
        │   modalities)          │                        │
        │◄──credential_id────────│                        │
        │                        │                        │
   VERIFICATION                  │                        │
-       │──POST /challenge──────►│  5. Generate 32-byte   │
+       │──POST /challenge──────►│  6. Generate 32-byte   │
        │  (voter_id)            │     random nonce       │
        │◄──challenge_hex────────│──store challenge──────►│
        │                        │     (5-min TTL)        │
-       │  6. On-device biometric│                        │
-       │     match (face+ear)   │                        │
-       │  7. Sign challenge     │                        │
-       │     with private key   │                        │
+       │  7. Fetch encrypted    │                        │
+       │     bundle from server │◄──bundle───────────────│
+       │  8. Capture face+ear   │                        │
+       │     (blink liveness);  │                        │
+       │     cosine gate vs     │                        │
+       │     stored templates   │                        │
+       │  9. Dual-modality      │                        │
+       │     fuzzy-decode:      │                        │
+       │     recover m_face AND │                        │
+       │     m_ear, derive AES  │                        │
+       │     key, decrypt priv  │                        │
+       │ 10. Sign challenge;    │                        │
+       │     append fresh       │                        │
+       │     helper per modality│                        │
        │                        │                        │
-       │──POST /verify─────────►│  8. Retrieve challenge │
+       │──POST /verify─────────►│ 11. Retrieve challenge │
        │  (challenge_id,        │     (not used, not     │
        │   signature,           │      expired)          │
-       │   device_id)           │  9. Load voter's       │
-       │                        │     public key         │
-       │                        │ 10. Verify ECDSA       │
-       │                        │     signature          │
-       │                        │ 11. Mark challenge     │
-       │◄──verified: true───────│     as used            │
+       │   device_id,           │ 12. Load voter's       │
+       │   encrypted_key_bundle)│     public key         │
+       │                        │ 13. Convert P1363→DER, │
+       │                        │     verify ECDSA       │
+       │                        │ 14. Mark challenge used│
+       │                        │     touch last_used_at,│
+       │                        │     persist rotated    │
+       │◄──verified: true───────│     bundle             │
 ```
 
 ### 10.2 Security Properties
 
 - **No server-side biometric storage:** Face and ear descriptors are computed and stored only on the device. The server never sees raw biometric data.
-- **ECDSA P-256 signatures:** The server stores only the public key. Verification proves the device holds the private key and the on-device biometric match succeeded.
+- **Dual-modality biometric-bound key:** The ECDSA private key is encrypted under a key derived from BOTH face and ear via a multi-helper Reed–Solomon code-offset fuzzy extractor (two independent 16-byte messages, one per modality, concatenated and stretched with PBKDF2-SHA256 / 100k iterations into an AES-256-GCM key). Either modality alone cannot reconstruct the AES key — a wrong-ear capture produces a noisy codeword too far from any RS codeword to correct, so the AES-GCM tag rejects the result.
+- **Two-gate verification:** A cosine-similarity check against the locally stored templates rejects impostors before any cryptographic key material is touched; the fuzzy extractor then provides the cryptographic gate.
+- **ECDSA P-256 signatures:** The server stores only the public key (and the encrypted bundle). Verification proves the device holds the private key and the on-device biometric match succeeded. The Web Crypto API emits IEEE P1363 signatures, which the backend converts to DER before calling `public_key.verify`.
 - **Single-use challenges:** Each challenge nonce is marked as used after verification, preventing replay attacks. Challenges expire after 5 minutes.
+- **Adaptive helper rotation:** After every successful verification, the device appends a fresh helper per modality (capped at `MAX_HELPERS`), and the server persists the rotated bundle. This lets stored templates track natural lighting/pose drift without re-enrolment. The server only persists the rotated bundle when the accompanying signature has already verified.
 - **Re-enrollment:** If a voter re-enrolls (e.g. new device), all previous credentials are deactivated first.
-- **Liveness detection:** The mobile PWA performs blink detection and head turn tracking to prevent photo/video spoofing before signing the challenge.
-- **Audit trail:** Enrollment and verification events are logged in the audit log.
+- **Liveness detection:** Before the first face capture is accepted, the mobile PWA runs a blink-based liveness probe (Eye Aspect Ratio across consecutive frames) to defeat still-photo spoofing.
+- **Audit trail:** Enrollment, successful verification (`BIOMETRIC_VERIFIED`), and failed verification (`BIOMETRIC_FAILED`) events are logged in the audit log.
 
 ---
 

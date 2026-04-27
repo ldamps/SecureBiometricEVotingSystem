@@ -4,6 +4,23 @@
  * Loads lightweight model variants (tiny face detector + 68-point landmarks
  * + 128-dimensional face descriptor network) and extracts a normalised
  * feature vector from a video frame.
+ *
+ * References:
+ *   - V. Mühler, "face-api.js: JavaScript API for face detection and face
+ *     recognition in the browser implemented on top of the tensorflow.js
+ *     core API", 2018.
+ *     https://github.com/justadudewhohacks/face-api.js
+ *   - F. Schroff, D. Kalenichenko and J. Philbin, "FaceNet: A Unified
+ *     Embedding for Face Recognition and Clustering", CVPR 2015 — the
+ *     triplet-loss embedding strategy underpinning the descriptor net.
+ *     https://arxiv.org/abs/1503.03832
+ *   - K. He, X. Zhang, S. Ren and J. Sun, "Deep Residual Learning for
+ *     Image Recognition", CVPR 2016 — the ResNet-34 backbone of
+ *     faceRecognitionNet.
+ *     https://arxiv.org/abs/1512.03385
+ *   - J. Redmon and A. Farhadi, "YOLO9000: Better, Faster, Stronger",
+ *     CVPR 2017 — basis for the Tiny Face Detector.
+ *     https://arxiv.org/abs/1612.08242
  */
 
 import * as faceapi from "face-api.js";

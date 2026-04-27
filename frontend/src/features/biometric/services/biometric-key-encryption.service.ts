@@ -52,6 +52,23 @@
  *   - Combined secret is 32 bytes, far beyond what AES-256 needs.
  *   - PBKDF2 (100k iterations) makes any residual entropy loss
  *     impractical to brute-force.
+ *
+ * References:
+ *   - Y. Dodis, L. Reyzin and A. Smith, "Fuzzy Extractors: How to Generate
+ *     Strong Keys from Biometrics and Other Noisy Data", SIAM J. Computing,
+ *     vol. 38, no. 1, 2008 (extended version of Eurocrypt 2004). The
+ *     code-offset construction used here (helper = RS(m) XOR b) is from
+ *     Section 5 of that paper.
+ *     https://www.cs.bu.edu/~reyzin/papers/fuzzy.pdf
+ *   - B. Kaliski, "PKCS #5: Password-Based Cryptography Specification
+ *     Version 2.0", RFC 2898, 2000 (PBKDF2).
+ *     https://datatracker.ietf.org/doc/html/rfc2898
+ *   - M. Dworkin, "Recommendation for Block Cipher Modes of Operation:
+ *     Galois/Counter Mode (GCM) and GMAC", NIST SP 800-38D, 2007.
+ *     https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+ *   - NIST, "Digital Signature Standard (DSS)", FIPS PUB 186-4, 2013
+ *     (ECDSA over P-256).
+ *     https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf
  */
 
 import {

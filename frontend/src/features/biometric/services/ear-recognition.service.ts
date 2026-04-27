@@ -30,6 +30,12 @@
  * slightly different head angle would shift features into adjacent
  * cells and overwhelm the RS correction budget. Smoothing + 4x4 cells
  * reins that in.
+ *
+ * Reference:
+ *   N. Dalal and B. Triggs, "Histograms of Oriented Gradients for Human
+ *   Detection", IEEE Conference on Computer Vision and Pattern Recognition
+ *   (CVPR), 2005.
+ *   https://lear.inrialpes.fr/people/triggs/pubs/Dalal-cvpr05.pdf
  */
 
 import { FeatureExtractionResult } from "../models/biometric-feature.model";

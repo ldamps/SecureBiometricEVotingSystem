@@ -26,7 +26,7 @@ router = APIRouter(
 )
 
 
-# Temporary diagnostic + seed endpoint for the POC / TODO: Remove after POC ------------------------------------
+# Temporary diagnostic + seed endpoint for the POC / TODO: Remove after POC, must be removed before production release ------------------------------------
 @router.get("/debug-db")
 async def debug_db(service: AuthService = Depends(get_auth_service)) -> dict:
     """Temporary: show which DB and officials exist."""

@@ -23,6 +23,23 @@
  * Wikiversity reference (which is widely used and well-tested).
  *
  * All polynomials are stored MSB-first: p[0] = highest-degree coefficient.
+ *
+ * References:
+ *   - Wikiversity, "Reed-Solomon codes for coders" (this file is a port of
+ *     the algorithms presented there).
+ *     https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders
+ *   - I. S. Reed and G. Solomon, "Polynomial Codes Over Certain Finite
+ *     Fields", J. SIAM, vol. 8, no. 2, 1960.
+ *     https://doi.org/10.1137/0108018
+ *   - J. L. Massey, "Shift-register synthesis and BCH decoding", IEEE
+ *     Trans. Inf. Theory, vol. 15, no. 1, 1969.
+ *     https://ieeexplore.ieee.org/document/1054260
+ *   - R. T. Chien, "Cyclic decoding procedure for the Bose-Chaudhuri-
+ *     Hocquenghem codes", IEEE Trans. Inf. Theory, vol. 10, no. 4, 1964.
+ *     https://ieeexplore.ieee.org/document/1053699
+ *   - G. D. Forney, "On decoding BCH codes", IEEE Trans. Inf. Theory,
+ *     vol. 11, no. 4, 1965.
+ *     https://ieeexplore.ieee.org/document/1053816
  */
 
 // ----- GF(2^8) arithmetic -----

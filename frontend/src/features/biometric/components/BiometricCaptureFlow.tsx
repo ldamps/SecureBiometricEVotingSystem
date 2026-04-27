@@ -45,7 +45,12 @@ interface BiometricCaptureFlowProps {
   onError: (message: string) => void;
 }
 
-/** Eye Aspect Ratio — drops below ~0.2 during a blink. */
+/** Eye Aspect Ratio — drops below ~0.2 during a blink.
+ *  Formula and threshold from:
+ *    T. Soukupová and J. Čech, "Real-Time Eye Blink Detection using Facial
+ *    Landmarks", 21st Computer Vision Winter Workshop, 2016.
+ *    https://vision.fe.uni-lj.si/cvww2016/proceedings/papers/05.pdf
+ */
 function eyeAspectRatio(eye: faceapi.Point[]): number {
   const v1 = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
   const v2 = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
